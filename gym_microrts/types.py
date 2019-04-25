@@ -1,6 +1,27 @@
 from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 from typing import List, Any
 
+ACTION_TYPE_NONE = 0
+ACTION_TYPE_MOVE = 1
+ACTION_TYPE_HARVEST = 2
+ACTION_TYPE_RETURN = 3
+ACTION_TYPE_PRODUCE = 4
+ACTION_TYPE_ATTACK_LOCATION = 5
+
+ACTION_PARAMETER_DIRECTION_NONE = -1
+ACTION_PARAMETER_DIRECTION_UP = 0
+ACTION_PARAMETER_DIRECTION_RIGHT = 1
+ACTION_PARAMETER_DIRECTION_DOWN = 2
+ACTION_PARAMETER_DIRECTION_LEFT = 3
+
+@dataclass_json
+@dataclass
+class MicrortsMessage:
+    reward: float
+    observation: List[List[List[int]]]
+    done: bool
+    info: str
 
 @dataclass
 class UnitType:
