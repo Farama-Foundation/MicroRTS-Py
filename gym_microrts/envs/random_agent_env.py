@@ -1,5 +1,6 @@
 import gym
 import socket
+import numpy as np
 import json
 from dacite import from_dict
 from gym_microrts.types import MicrortsMessage
@@ -26,7 +27,7 @@ class RandomAgentEnv(gym.Env):
         for _ in range(8):
             self._send_msg("[]")
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg('[]')))
-        return mm.observation, mm.reward, mm.done, mm.info
+        return np.array(mm.observation), mm.reward, mm.done, mm.info
 
     def reset(self):
         # get the unit table and the computing budget
@@ -35,7 +36,7 @@ class RandomAgentEnv(gym.Env):
         else:
             print(self._send_msg("done"))
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("[]")))
-        return mm.observation
+        return np.array(mm.observation)
 
     def render(self, mode='human'):
         pass
