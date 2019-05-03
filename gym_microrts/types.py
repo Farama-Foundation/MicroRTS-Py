@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from dataclasses_json import dataclass_json
 from typing import List, Any
 
 ACTION_TYPE_NONE = 0
@@ -15,7 +14,6 @@ ACTION_PARAMETER_DIRECTION_RIGHT = 1
 ACTION_PARAMETER_DIRECTION_DOWN = 2
 ACTION_PARAMETER_DIRECTION_LEFT = 3
 
-@dataclass_json
 @dataclass
 class MicrortsMessage:
     reward: float

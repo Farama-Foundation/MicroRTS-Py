@@ -23,7 +23,8 @@ class RandomAgentEnv(gym.Env):
         print(self._send_msg("[]"))
 
     def step(self, action):
-        self._send_msg(str(action))
+        action = np.array(action)
+        self._send_msg(str(action.tolist()))
         for _ in range(8):
             self._send_msg("[]")
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg('[]')))

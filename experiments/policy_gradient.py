@@ -82,7 +82,10 @@ for i_episode in range(num_episodes):
             ]), feed_dict={
                 obs_ph: [state]
         })
-        next_state, reward, done, _ = env.step(action)
+        print("test")
+        print(action)
+        next_state, reward, done, _ = env.step([action])
+        
 
         print("yeah actions taken")
 
@@ -101,17 +104,17 @@ for i_episode in range(num_episodes):
         episode_rewards += [sum(rewards)]
 
     # Go through the episode and make policy updates
-    for t, item in enumerate(rewards):
-        # The return after this timestep
-        future_rewards = sum(rewards[t + 1 :])
-        sess.run(
-            train_op,
-            feed_dict={
-                obs_ph: [states[t]],
-                action_probs_chosen_indices_ph: list(enumerate([actions_taken[t]])),
-                future_rewards_ph: future_rewards * gamma ** (t),
-            },
-        )     
+    #     # for t, item in enumerate(rewards):
+    #     #     # The return after this timestep
+    #     #     future_rewards = sum(rewards[t + 1 :])
+    #     #     sess.run(
+    #     #         train_op,
+    #     #         feed_dict={
+    #     #             obs_ph: [states[t]],
+    #     #             action_probs_chosen_indices_ph: list(enumerate([actions_taken[t]])),
+    #     #             future_rewards_ph: future_rewards * gamma ** (t),
+    #     #         },
+    #     #     )     
 
 
 plt.plot(episode_rewards)
