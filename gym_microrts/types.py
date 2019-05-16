@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Any
+from typing import List, Any, Dict
 
 ACTION_TYPE_NONE = 0
 ACTION_TYPE_MOVE = 1
@@ -19,7 +19,7 @@ class MicrortsMessage:
     reward: float
     observation: List[List[List[int]]]
     done: bool
-    info: str
+    info: Dict
 
 @dataclass
 class UnitType:

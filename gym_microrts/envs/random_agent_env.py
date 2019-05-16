@@ -2,6 +2,7 @@ import gym
 import socket
 import numpy as np
 import json
+from typing import List
 from dacite import from_dict
 from gym_microrts.types import MicrortsMessage
 from gym import error, spaces, utils
@@ -18,26 +19,26 @@ class RandomAgentEnv(gym.Env):
         s.listen(5)
         self.conn, addr = s.accept()
         self.running_first_episode = True
+        self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(4, 256, 7), dtype=np.float32)
+        self.action_space = spaces.MultiDiscrete([16, 16, 4, 4])
         print('Got connection from', addr)
         print(self._send_msg("[]"))
         print(self._send_msg("[]"))
 
     def step(self, action):
-        action = np.array(action)
+        action = np.array([action])
         self._send_msg(str(action.tolist()))
-        for _ in range(8):
-            self._send_msg("[]")
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg('[]')))
-        return np.array(mm.observation), mm.reward, mm.done, mm.info
+        return self._encode_obs(mm.observation), mm.reward, mm.done, mm.info
 
     def reset(self):
         # get the unit table and the computing budget
         if self.running_first_episode:
             self.running_first_episode = False
         else:
-            print(self._send_msg("done"))
+            self._send_msg("done")
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("[]")))
-        return np.array(mm.observation)
+        return self._encode_obs(mm.observation)
 
     def render(self, mode='human'):
         pass
@@ -48,3 +49,15 @@ class RandomAgentEnv(gym.Env):
     def _send_msg(self, msg: str):
         self.conn.send(('%s\n' % msg).encode('utf-8'))
         return self.conn.recv(4096).decode('utf-8')
+    
+    def _encode_obs(self, observation: List):
+        observation = np.array(observation)
+        num_classes = 7
+        new_obs = np.zeros((4, 16*16, num_classes))
+        reshaped_obs = observation.reshape((4,16*16))
+        reshaped_obs[2] += 1
+        reshaped_obs[3] += 1
+        reshaped_obs[reshaped_obs >= num_classes] = num_classes - 1
+        for i in range(len(reshaped_obs)):
+            new_obs[i][np.arange(len(reshaped_obs[i])), reshaped_obs[i]] = 1
+        return new_obs
