@@ -11,16 +11,16 @@ import gym
 import random
 
 # Hyperparameters
-learning_rate = 1e-3
-gamma = 0.98
+learning_rate = 1e-4
+gamma = 0.99
 seed = 1
-num_episodes = 500
+num_episodes = 20000
 batch_sz = 200
 vf_coef=0.25
-ent_coef=0.01
+ent_coef=0.02
 
 # Set up the env
-env = gym.make("Taxi-v2")
+env = gym.make("FrozenLake-v0").env
 random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(0)
@@ -62,6 +62,7 @@ loss_fn = nn.MSELoss()
 # TRY NOT TO MODIFY: start the game
 ep_rews = np.zeros((num_episodes,))
 next_obs = env.reset()
+finished_episodes_count = 0
 for update in range(num_episodes):
     # TRY NOT TO MODIFY: storage helpers for data
     next_obs = env.reset()
@@ -90,6 +91,7 @@ for update in range(num_episodes):
         actions[step] = action
         next_obs, rewards[step], dones[step], _ = env.step(int(actions[step].numpy()))
         if dones[step]:
+            finished_episodes_count += 1
             break
     
     # TODO: training.
@@ -114,4 +116,24 @@ for update in range(num_episodes):
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     ep_rews[update] = rewards.sum()
     if update % 10 == 0:
-        print(f"update = {update}, rewards = {ep_rews[update]}")
+        print(f"update = {update}, rewards = {ep_rews[update]}, finished={finished_episodes_count}")
+
+# TRY NOT TO MODIFY:
+if False:
+    next_obs = env.reset()
+    actions = torch.zeros((batch_sz,))
+    rewards, dones = np.zeros((2, batch_sz))
+    observations = np.empty((batch_sz,) + env.observation_space.shape)
+    for step in range(batch_sz):
+        env.render()
+        observations[step] = next_obs
+        logits = pg.forward(observations[step])
+        probs = Categorical(logits=logits)
+        action = probs.sample()
+
+        # TRY NOT TO MODIFY: execute the game and log data.
+        actions[step] = action
+        next_obs, rewards[step], dones[step], _ = env.step(int(actions[step].numpy()))
+        if dones[step]:
+            finished_episodes_count += 1
+            break

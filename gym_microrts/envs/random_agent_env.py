@@ -12,23 +12,45 @@ class RandomAgentEnv(gym.Env):
     metadata = {'render.modes': ['human']}
     conn = None
 
-    def __init__(self, ip_address: str='', port: int=9898):
+    def __init__(self, ip_address: str='', port: int=9898, dimension_x: int=16, dimension_y: int=16):
+        self.dimension_x = dimension_x
+        self.dimension_y = dimension_y
+        self.observation_space = spaces.Box(low=-1.0,
+            high=1.0,
+            shape=(4, self.dimension_x * self.dimension_y, 7),
+            dtype=np.float32)
+        self.action_space = spaces.MultiDiscrete([self.dimension_x, self.dimension_y, 4, 4])
+        self.t = 0
+        self.max_t = 2000
+        
         print("Waiting for connection from the MicroRTS JAVA client")
         s = socket.socket()
         s.bind((ip_address, port))
         s.listen(5)
         self.conn, addr = s.accept()
         self.running_first_episode = True
-        self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(4, 256, 7), dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([16, 16, 4, 4])
         print('Got connection from', addr)
         print(self._send_msg("[]"))
         print(self._send_msg("[]"))
+        
+    def set_map_dimension(self, dimension_x: int, dimension_y: int):
+        self.dimension_x = dimension_x
+        self.dimension_y = dimension_y
+        self.observation_space = spaces.Box(low=-1.0,
+            high=1.0,
+            shape=(4, self.dimension_x * self.dimension_y, 7),
+            dtype=np.float32)
+        self.action_space = spaces.MultiDiscrete([self.dimension_x, self.dimension_y, 4, 4])
+        
 
     def step(self, action):
         action = np.array([action])
         self._send_msg(str(action.tolist()))
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg('[]')))
+        if self.t >= self.max_t:
+            mm.done = True
+            self.t = 0
+        self.t += 1
         return self._encode_obs(mm.observation), mm.reward, mm.done, mm.info
 
     def reset(self):
@@ -53,8 +75,8 @@ class RandomAgentEnv(gym.Env):
     def _encode_obs(self, observation: List):
         observation = np.array(observation)
         num_classes = 7
-        new_obs = np.zeros((4, 16*16, num_classes))
-        reshaped_obs = observation.reshape((4,16*16))
+        new_obs = np.zeros((4, self.dimension_x * self.dimension_y, num_classes))
+        reshaped_obs = observation.reshape((4, self.dimension_x * self.dimension_y))
         reshaped_obs[2] += 1
         reshaped_obs[3] += 1
         reshaped_obs[reshaped_obs >= num_classes] = num_classes - 1

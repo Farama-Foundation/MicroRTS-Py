@@ -103,16 +103,15 @@ for update in range(num_episodes):
     # advantages are returns - baseline, value estimates in our case
     advantages = returns - values.detach().numpy()
     
-    vf_loss = loss_fn(torch.Tensor(returns), torch.Tensor(values))
-    pg_loss = (torch.Tensor(advantages) * neglogprobs).mean()
-    loss = pg_loss - entropys.mean() * ent_coef + vf_loss * vf_coef
+    vf_loss = loss_fn(torch.Tensor(returns), torch.Tensor(values)) * vf_coef
+    pg_loss = torch.Tensor(advantages) * neglogprobs
+    loss = (pg_loss - entropys * ent_coef).mean()
     
     optimizer.zero_grad()
+    vf_loss.backward()
     loss.backward()
     optimizer.step()
-    
-    
-    
+
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     ep_rews[update] = rewards.sum()
     if update % 10 == 0:
