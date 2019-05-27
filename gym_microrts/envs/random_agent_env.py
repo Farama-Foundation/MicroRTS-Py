@@ -45,8 +45,7 @@ class RandomAgentEnv(gym.Env):
 
     def step(self, action):
         action = np.array([action])
-        self._send_msg(str(action.tolist()))
-        mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg('[]')))
+        mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg(str(action.tolist()))))
         if self.t >= self.max_t:
             mm.done = True
             self.t = 0
