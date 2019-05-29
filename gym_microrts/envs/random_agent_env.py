@@ -74,7 +74,6 @@ class RandomAgentEnv(gym.Env):
     
     def _encode_obs(self, observation: List):
         observation = np.array(observation)
-        print(observation.shape, observation)
         new_obs = np.zeros((len(observation), self.dimension_x * self.dimension_y, self.num_classes))
         reshaped_obs = observation.reshape((len(observation), self.dimension_x * self.dimension_y))
         reshaped_obs[2] += 1
