@@ -11,7 +11,8 @@ env.init(4, 4)
 env = DummyVecEnv([lambda: env])  # The algorithms require a vectorized environment to run
 
 model = A2C(MlpPolicy, env, tensorboard_log="./", verbose=1)
-model.learn(total_timesteps=100000)
+model.learn(total_timesteps=1000000)
+model.save("/tmp/a2c")
 
 obs = env.reset()
 rews = []
