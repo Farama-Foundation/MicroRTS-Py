@@ -12,18 +12,25 @@ class RandomAgentEnv(gym.Env):
     metadata = {'render.modes': ['human']}
     conn = None
 
-    def __init__(self, ip_address: str='', port: int=9898, dimension_x: int=16, dimension_y: int=16):
+    def __init__(self):
+        pass
+        
+    def init(self, dimension_x: int=16, dimension_y: int=16, ip_address: str='', port: int=9898):
         self.dimension_x = dimension_x
         self.dimension_y = dimension_y
+        self.ip_address = ip_address
+        self.port = port
+
+        
+        self.num_classes = 7
+        self.num_feature_maps = 5
         self.observation_space = spaces.Box(low=-1.0,
             high=1.0,
-            shape=(4, self.dimension_x * self.dimension_y, 7),
+            shape=(self.num_feature_maps, self.dimension_x * self.dimension_y, self.num_classes),
             dtype=np.float32)
         self.action_space = spaces.MultiDiscrete([self.dimension_x, self.dimension_y, 4, 4])
         self.t = 0
         self.max_t = 2000
-        self.num_classes = 7
-        
         print("Waiting for connection from the MicroRTS JAVA client")
         s = socket.socket()
         s.bind((ip_address, port))
@@ -33,15 +40,6 @@ class RandomAgentEnv(gym.Env):
         print('Got connection from', addr)
         print(self._send_msg("[]"))
         print(self._send_msg("[]"))
-        
-    def set_map_dimension(self, dimension_x: int, dimension_y: int):
-        self.dimension_x = dimension_x
-        self.dimension_y = dimension_y
-        self.observation_space = spaces.Box(low=-1.0,
-            high=1.0,
-            shape=(4, self.dimension_x * self.dimension_y, 7),
-            dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([self.dimension_x, self.dimension_y, 4, 4])
         
 
     def step(self, action):
@@ -74,8 +72,8 @@ class RandomAgentEnv(gym.Env):
     
     def _encode_obs(self, observation: List):
         observation = np.array(observation)
-        new_obs = np.zeros((len(observation), self.dimension_x * self.dimension_y, self.num_classes))
-        reshaped_obs = observation.reshape((len(observation), self.dimension_x * self.dimension_y))
+        new_obs = np.zeros((self.num_feature_maps, self.dimension_x * self.dimension_y, self.num_classes))
+        reshaped_obs = observation.reshape((self.num_feature_maps, self.dimension_x * self.dimension_y))
         reshaped_obs[2] += 1
         reshaped_obs[3] += 1
         reshaped_obs[reshaped_obs >= self.num_classes] = self.num_classes - 1

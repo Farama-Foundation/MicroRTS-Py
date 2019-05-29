@@ -2,7 +2,7 @@ import gym
 import gym_microrts
 import numpy as np
 env = gym.make("Microrts-v0")
-env.set_map_dimension(4, 4)
+env.init(4, 4)
 observation = env.reset()
 
 #-------------------------------------------------------------------------------

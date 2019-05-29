@@ -6,12 +6,12 @@ from stable_baselines import A2C
 from stable_baselines.common import set_global_seeds
 set_global_seeds(0)
 env = gym.make("Microrts-v0")
-# env.set_map_dimension(16, 16)
-env.set_map_dimension(4, 4)
+# env.init(16, 16)
+env.init(4, 4)
 env = DummyVecEnv([lambda: env])  # The algorithms require a vectorized environment to run
 
 model = A2C(MlpPolicy, env, tensorboard_log="./", verbose=1)
-model.learn(total_timesteps=1000000)
+model.learn(total_timesteps=100000)
 
 obs = env.reset()
 rews = []
