@@ -22,6 +22,7 @@ class RandomAgentEnv(gym.Env):
         self.action_space = spaces.MultiDiscrete([self.dimension_x, self.dimension_y, 4, 4])
         self.t = 0
         self.max_t = 2000
+        self.num_classes = 7
         
         print("Waiting for connection from the MicroRTS JAVA client")
         s = socket.socket()
@@ -73,12 +74,12 @@ class RandomAgentEnv(gym.Env):
     
     def _encode_obs(self, observation: List):
         observation = np.array(observation)
-        num_classes = 7
-        new_obs = np.zeros((4, self.dimension_x * self.dimension_y, num_classes))
-        reshaped_obs = observation.reshape((4, self.dimension_x * self.dimension_y))
+        print(observation.shape, observation)
+        new_obs = np.zeros((len(observation), self.dimension_x * self.dimension_y, self.num_classes))
+        reshaped_obs = observation.reshape((len(observation), self.dimension_x * self.dimension_y))
         reshaped_obs[2] += 1
         reshaped_obs[3] += 1
-        reshaped_obs[reshaped_obs >= num_classes] = num_classes - 1
+        reshaped_obs[reshaped_obs >= self.num_classes] = self.num_classes - 1
         for i in range(len(reshaped_obs)):
             new_obs[i][np.arange(len(reshaped_obs[i])), reshaped_obs[i]] = 1
         return new_obs
