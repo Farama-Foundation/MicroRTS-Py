@@ -15,10 +15,12 @@ config.total_timesteps = 20000000
 
 set_global_seeds(config.seed)
 env = gym.make("Microrts-v0")
-env.init(config.dimension_x , config.dimension_y)
+env.init(config.dimension_x , config.dimension_y, port=9899)
 env = DummyVecEnv([lambda: env])  # The algorithms require a vectorized environment to run
 
 model = A2C(MlpPolicy, env, verbose=1)
 model.learn(total_timesteps=config.total_timesteps)
 model.save("a2c.model")
 wandb.save("a2c.model")
+
+env.close()
