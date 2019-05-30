@@ -65,6 +65,9 @@ class RandomAgentEnv(gym.Env):
 
     def close(self):
         self._send_msg("finished")
+        # send a dummy action
+        action = np.array([[0,0,0,0]])
+        self.conn.send(('%s\n' % str(action.tolist())).encode('utf-8'))
 
     def _send_msg(self, msg: str):
         self.conn.send(('%s\n' % msg).encode('utf-8'))
