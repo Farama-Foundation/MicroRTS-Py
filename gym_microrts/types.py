@@ -93,4 +93,4 @@ class Config:
     microrts_path: str
     client_port: int
     maximum_t: Optional[int] = 2000
-    client_ip: Optional[str] = "127.0.0.1",
+    client_ip: Optional[str] = "127.0.0.1"

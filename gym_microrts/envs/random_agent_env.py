@@ -2,6 +2,7 @@ import gym
 import socket
 import numpy as np
 import json
+import subprocess
 import os
 from typing import List, Tuple
 from dacite import from_dict
@@ -30,6 +31,10 @@ class RandomAgentEnv(gym.Env):
             dtype=np.float32)
         self.action_space = spaces.MultiDiscrete([self.dimension_x, self.dimension_y, 4, 4])
         self.__t = 0
+        
+        # Start the microrts client
+        microrts_jar = os.path.join(config.microrts_path, "microrts.jar")
+        subprocess.call([microrts_jar, '--server-port', config.client_port])
         print("Waiting for connection from the MicroRTS JAVA client")
         s = socket.socket()
         s.bind((config.client_ip, config.client_port))
@@ -43,7 +48,7 @@ class RandomAgentEnv(gym.Env):
         whole_map_path = os.path.join(microrts_path, map_path)
         print(whole_map_path)
         root = ET.parse(whole_map_path).getroot()
-        return root.get("height"), root.get("width")
+        return int(root.get("height")), int(root.get("width"))
         
 
     def step(self, action):
