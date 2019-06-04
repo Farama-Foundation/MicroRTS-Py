@@ -1,9 +1,17 @@
 import gym
 import gym_microrts
-import numpy as np
 env = gym.make("Microrts-v0")
-env.init(4, 4)
-observation = env.reset()
+config = gym_microrts.types.Config(
+    ai1_type="penalty",
+    ai2_type="passive",
+    map_path="maps/4x4/base4x4.xml",
+    render=False,
+    microrts_path="E:/Go/src/github.com/vwxyzjn/201905301257.microrts",
+    client_port=9898
+)
+
+env.init(config)
+#observation = env.reset()
 
 #-------------------------------------------------------------------------------
 # DEBUGGING actions

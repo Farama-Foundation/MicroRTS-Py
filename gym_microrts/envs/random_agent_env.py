@@ -2,10 +2,12 @@ import gym
 import socket
 import numpy as np
 import json
-from typing import List
+import os
+from typing import List, Tuple
 from dacite import from_dict
-from gym_microrts.types import MicrortsMessage
+from gym_microrts.types import MicrortsMessage, Config
 from gym import error, spaces, utils
+import xml.etree.ElementTree as ET
 from gym.utils import seeding
 
 class RandomAgentEnv(gym.Env):
@@ -15,40 +17,42 @@ class RandomAgentEnv(gym.Env):
     def __init__(self):
         pass
         
-    def init(self, dimension_x: int=16, dimension_y: int=16, ip_address: str='', port: int=9898):
-        self.dimension_x = dimension_x
-        self.dimension_y = dimension_y
-        self.ip_address = ip_address
-        self.port = port
-
-        
+    def init(self, config: Config):
+        self.config = config
+        self.dimension_x, self.dimension_y = self.__map_dimension(
+            config.microrts_path, config.map_path)
         self.num_classes = 7
         self.num_feature_maps = 5
+        self.running_first_episode = True
         self.observation_space = spaces.Box(low=-1.0,
             high=1.0,
             shape=(self.num_feature_maps, self.dimension_x * self.dimension_y, self.num_classes),
             dtype=np.float32)
         self.action_space = spaces.MultiDiscrete([self.dimension_x, self.dimension_y, 4, 4])
-        self.t = 0
-        self.max_t = 2000
+        self.__t = 0
         print("Waiting for connection from the MicroRTS JAVA client")
         s = socket.socket()
-        s.bind((ip_address, port))
+        s.bind((config.client_ip, config.client_port))
         s.listen(5)
         self.conn, addr = s.accept()
-        self.running_first_episode = True
         print('Got connection from', addr)
         print(self._send_msg("[]"))
         print(self._send_msg("[]"))
+    
+    def __map_dimension(self, microrts_path: str, map_path: str) -> Tuple[int]:
+        whole_map_path = os.path.join(microrts_path, map_path)
+        print(whole_map_path)
+        root = ET.parse(whole_map_path).getroot()
+        return root.get("height"), root.get("width")
         
 
     def step(self, action):
         action = np.array([action])
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg(str(action.tolist()))))
-        if self.t >= self.max_t:
+        if self.__t >= self.config.maximum_t:
             mm.done = True
-            self.t = 0
-        self.t += 1
+            self.__t = 0
+        self.__t += 1
         return self._encode_obs(mm.observation), mm.reward, mm.done, mm.info
 
     def reset(self):

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 
 ACTION_TYPE_NONE = 0
 ACTION_TYPE_MOVE = 1
@@ -83,3 +83,14 @@ class GameState:
     time: int
     pgs: Pgs
     actions: List[Any]
+
+@dataclass
+class Config:
+    ai1_type: str
+    ai2_type: str
+    map_path: str
+    render: bool
+    microrts_path: str
+    client_port: int
+    maximum_t: Optional[int] = 2000
+    client_ip: Optional[str] = "127.0.0.1",
