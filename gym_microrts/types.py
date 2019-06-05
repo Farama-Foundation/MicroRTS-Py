@@ -90,7 +90,10 @@ class Config:
     ai2_type: str
     map_path: str
     render: bool
-    microrts_path: str
     client_port: int
+    microrts_path: Optional[str] = ""
+    microrts_repo_path: Optional[str] = ""
     maximum_t: Optional[int] = 2000
     client_ip: Optional[str] = "127.0.0.1"
+    height: Optional[int] = 0
+    width: Optional[int] = 0

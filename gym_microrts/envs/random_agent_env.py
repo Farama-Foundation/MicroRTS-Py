@@ -2,7 +2,7 @@ import gym
 import socket
 import numpy as np
 import json
-import subprocess
+from subprocess import Popen, PIPE
 import os
 from typing import List, Tuple
 from dacite import from_dict
@@ -17,39 +17,83 @@ class RandomAgentEnv(gym.Env):
 
     def __init__(self):
         pass
-        
+    
     def init(self, config: Config):
+        """
+        if `config.microrts_path` is set, then the script will automatically try 
+        to launch a microrts client instance. Otherwise you need to set the 
+        `config.height` and `config.this script will just wait
+        to listen to the microrts client
+        """
         self.config = config
-        self.dimension_x, self.dimension_y = self.__map_dimension(
-            config.microrts_path, config.map_path)
+        
+        # computed properties
+        self.compute_properties()
+        
+        # start the microrts java client
+        if self.config.microrts_path and not self.config.microrts_repo_path:
+            self.start_client()
+
+        # start hte microrts server
+        self.start_server()
+
+    def compute_properties(self):
+        if self.config.microrts_path:
+            root = ET.parse(os.path.join(self.config.microrts_path, self.config.map_path)).getroot()
+            self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
+        elif self.config.microrts_repo_path:
+            root = ET.parse(os.path.join(self.config.microrts_repo_path, self.config.map_path)).getroot()
+            self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
+        else:
+            raise Exception("Couldn't read height and width of the map. Set either microrts_repo_path or microrts_path")
         self.num_classes = 7
         self.num_feature_maps = 5
         self.running_first_episode = True
         self.observation_space = spaces.Box(low=-1.0,
             high=1.0,
-            shape=(self.num_feature_maps, self.dimension_x * self.dimension_y, self.num_classes),
+            shape=(self.num_feature_maps, self.config.height * self.config.width, self.num_classes),
             dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([self.dimension_x, self.dimension_y, 4, 4])
+        self.action_space = spaces.MultiDiscrete([self.config.height, self.config.width, 4, 4])
         self.__t = 0
-        
-        # Start the microrts client
-        microrts_jar = os.path.join(config.microrts_path, "microrts.jar")
-        subprocess.call([microrts_jar, '--server-port', config.client_port])
+
+    def start_client(self):
+        commands = [
+            "java",
+            "-cp",
+            os.path.join(self.config.microrts_path, "microrts.jar"),
+            "tests.sockets.RunClient",
+            "--server-port",
+            str(self.config.client_port),
+            "--map",
+            os.path.join(self.config.microrts_path, self.config.map_path)
+        ]
+        if self.config.render:
+            commands += ["--render"]
+        self.process = Popen(
+            commands,
+            stdin=PIPE,
+            stdout=PIPE,
+            stderr=PIPE)
+
+    def start_server(self):
         print("Waiting for connection from the MicroRTS JAVA client")
         s = socket.socket()
-        s.bind((config.client_ip, config.client_port))
+        s.bind((self.config.client_ip, self.config.client_port))
         s.listen(5)
         self.conn, addr = s.accept()
         print('Got connection from', addr)
-        print(self._send_msg("[]"))
-        print(self._send_msg("[]"))
-    
-    def __map_dimension(self, microrts_path: str, map_path: str) -> Tuple[int]:
-        whole_map_path = os.path.join(microrts_path, map_path)
-        print(whole_map_path)
-        root = ET.parse(whole_map_path).getroot()
-        return int(root.get("height")), int(root.get("width"))
-        
+        try:
+            print(self._send_msg("[]"))
+            print(self._send_msg("[]"))
+        except Exception as err:
+            print("An error has occured: ", err)
+            if self.config.microrts_path:
+                print("The following is outputed by stdout of microrts client")
+                for line in self.process.stdout:
+                    print(line.decode("utf-8"))
+                print("The following is outputed by stderr of microrts client")
+                for line in self.process.stderr:
+                    print(line.decode("utf-8"))
 
     def step(self, action):
         action = np.array([action])
@@ -84,8 +128,8 @@ class RandomAgentEnv(gym.Env):
     
     def _encode_obs(self, observation: List):
         observation = np.array(observation)
-        new_obs = np.zeros((self.num_feature_maps, self.dimension_x * self.dimension_y, self.num_classes))
-        reshaped_obs = observation.reshape((self.num_feature_maps, self.dimension_x * self.dimension_y))
+        new_obs = np.zeros((self.num_feature_maps, self.config.height * self.config.width, self.num_classes))
+        reshaped_obs = observation.reshape((self.num_feature_maps, self.config.height * self.config.width))
         reshaped_obs[2] += 1
         reshaped_obs[3] += 1
         reshaped_obs[reshaped_obs >= self.num_classes] = self.num_classes - 1

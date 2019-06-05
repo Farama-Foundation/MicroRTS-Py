@@ -6,8 +6,9 @@ config = gym_microrts.types.Config(
     ai2_type="passive",
     map_path="maps/4x4/base4x4.xml",
     render=False,
+    client_port=9898,
     microrts_path="E:/Go/src/github.com/vwxyzjn/201905301257.microrts",
-    client_port=9898
+    microrts_repo_path="E:/Go/src/github.com/vwxyzjn/microrts"
 )
 
 env.init(config)
