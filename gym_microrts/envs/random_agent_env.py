@@ -69,6 +69,10 @@ class RandomAgentEnv(gym.Env):
         ]
         if self.config.render:
             commands += ["--render"]
+        if self.config.ai1_type:
+            commands += ["--ai1-type", self.config.ai1_type]
+        if self.config.ai2_type:
+            commands += ["--ai2-type", self.config.ai2_type]
         self.process = Popen(
             commands,
             stdin=PIPE,
