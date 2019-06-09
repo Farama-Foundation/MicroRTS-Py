@@ -26,8 +26,10 @@ if __name__ == "__main__":
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=2000,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=5000,
+    parser.add_argument('--total-timesteps', type=int, default=50000,
                        help='total timesteps of the experiments')
+    parser.add_argument('--torch-deterministic', type=bool, default=True,
+                       help='whether to set `torch.backends.cudnn.deterministic=True`')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
     
