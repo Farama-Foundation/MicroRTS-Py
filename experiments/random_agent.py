@@ -11,7 +11,7 @@ import random
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A2C agent')
     # Common arguments
-    parser.add_argument('--exp-name', type=str, default="dummy",
+    parser.add_argument('--exp-name', type=str, default="random",
                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="Microrts-v0",
                        help='the id of the gym environment')
