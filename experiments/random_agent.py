@@ -23,6 +23,8 @@ if __name__ == "__main__":
                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=5000,
                        help='total timesteps of the experiments')
+    parser.add_argument('--client-port', type=int, default=9898,
+                       help='total timesteps of the experiments')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
     args = parser.parse_args()
@@ -36,7 +38,7 @@ config = gym_microrts.types.Config(
     ai2_type="passive",
     map_path="maps/4x4/base4x4.xml",
     render=True,
-    client_port=9898,
+    client_port=args.client_port,
     microrts_path="E:/Go/src/github.com/vwxyzjn/201906051646.microrts"
 )
 if args.prod_mode:
