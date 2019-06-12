@@ -99,22 +99,26 @@ class RandomAgentEnv(gym.Env):
                 for line in self.process.stderr:
                     print(line.decode("utf-8"))
 
-    def step(self, action):
+    def step(self, action, raw=False):
         action = np.array([action])
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg(str(action.tolist()))))
         if self.__t >= self.config.maximum_t:
             mm.done = True
             self.__t = 0
         self.__t += 1
+        if raw:
+            return mm.observation, mm.reward, mm.done, mm.info
         return self._encode_obs(mm.observation), mm.reward, mm.done, mm.info
 
-    def reset(self):
+    def reset(self, raw=False):
         # get the unit table and the computing budget
         if self.running_first_episode:
             self.running_first_episode = False
         else:
             self._send_msg("done")
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("[]")))
+        if raw:
+            return mm.observation, mm.reward, mm.done, mm.info
         return self._encode_obs(mm.observation)
 
     def render(self, mode='human'):
