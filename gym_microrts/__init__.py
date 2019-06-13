@@ -17,7 +17,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         kwargs={'config': Config(
             ai1_type="no-penalty",
             ai2_type="passive",
-            map_path="maps/4x4/base4x4.xml",
+            map_path="maps/4x4/baseTwoWorkers4x4.xml",
             # below are dev properties
             render=True,
             client_port=9898,
@@ -31,7 +31,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         kwargs={'config': Config(
             ai1_type="no-penalty",
             ai2_type="passive",
-            map_path="maps/4x4/base4x4.xml",
+            map_path="maps/4x4/baseTwoWorkers4x4.xml",
             # below are dev properties
             render=False,
             auto_port=True,
@@ -61,6 +61,35 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
             # below are prod properties
+            render=False,
+            auto_port=True,
+            microrts_path="/root/microrts"
+        )}
+    )
+    
+    # experiments
+    register(
+        id="MicrortsLocalAgentsMaxResourcesProd8x8-v0",
+        entry_point='gym_microrts.envs:LocalAgentEnv',
+        kwargs={'config': Config(
+            ai1_type="no-penalty-individual",
+            ai2_type="passive",
+            map_path="maps/8x8/baseTwoWorkersMaxResources8x8.xml",
+            # below are prod properties
+            render=False,
+            auto_port=True,
+            microrts_path="/root/microrts"
+        )}
+    )
+    
+    register(
+        id="MicrortsGlobalAgentsMaxResourcesProd8x8-v0",
+        entry_point='gym_microrts.envs:LocalAgentEnv',
+        kwargs={'config': Config(
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/8x8/baseTwoWorkersMaxResources8x8.xml",
+            # below are dev properties
             render=False,
             auto_port=True,
             microrts_path="/root/microrts"
