@@ -18,7 +18,7 @@ def get_free_tcp_port():
     tcp.close()
     return port
 
-class RandomAgentEnv(gym.Env):
+class LocalAgentEnv(gym.Env):
     metadata = {'render.modes': ['human']}
     conn = None
 
@@ -48,22 +48,15 @@ class RandomAgentEnv(gym.Env):
     def compute_properties(self):
         if self.config.auto_port:
             self.config.client_port = get_free_tcp_port()
-        if self.config.microrts_path:
-            root = ET.parse(os.path.join(self.config.microrts_path, self.config.map_path)).getroot()
-            self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
-        elif self.config.microrts_repo_path:
-            root = ET.parse(os.path.join(self.config.microrts_repo_path, self.config.map_path)).getroot()
-            self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
-        else:
-            raise Exception("Couldn't read height and width of the map. Set either microrts_repo_path or microrts_path")
-        self.num_classes = 7
+        self.config.height, self.config.width = 3, 3
+        self.num_classes = 8
         self.num_feature_maps = 5
         self.running_first_episode = True
         self.observation_space = spaces.Box(low=-1.0,
             high=1.0,
             shape=(self.num_feature_maps, self.config.height * self.config.width, self.num_classes),
             dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([self.config.height, self.config.width, 4, 4])
+        self.action_space = spaces.MultiDiscrete([4, 4])
         self.__t = 0
 
     def start_client(self):
@@ -148,8 +141,6 @@ class RandomAgentEnv(gym.Env):
         observation = np.array(observation)
         new_obs = np.zeros((self.num_feature_maps, self.config.height * self.config.width, self.num_classes))
         reshaped_obs = observation.reshape((self.num_feature_maps, self.config.height * self.config.width))
-        reshaped_obs[2] += 1
-        reshaped_obs[3] += 1
         reshaped_obs[reshaped_obs >= self.num_classes] = self.num_classes - 1
         for i in range(len(reshaped_obs)):
             new_obs[i][np.arange(len(reshaped_obs[i])), reshaped_obs[i]] = 1

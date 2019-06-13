@@ -90,7 +90,8 @@ class Config:
     ai2_type: str
     map_path: str
     render: bool
-    client_port: int
+    auto_port: Optional[bool] = False
+    client_port: Optional[int] = 0
     microrts_path: Optional[str] = ""
     microrts_repo_path: Optional[str] = ""
     maximum_t: Optional[int] = 2000
