@@ -48,7 +48,7 @@ class LocalAgentEnv(gym.Env):
     def compute_properties(self):
         if self.config.auto_port:
             self.config.client_port = get_free_tcp_port()
-        self.config.height, self.config.width = 3, 3
+        self.config.height, self.config.width = self.config.window_size*2+1, self.config.window_size*2+1
         self.num_classes = 8
         self.num_feature_maps = 5
         self.running_first_episode = True
