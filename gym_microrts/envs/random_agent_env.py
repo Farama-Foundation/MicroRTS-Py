@@ -75,7 +75,9 @@ class RandomAgentEnv(gym.Env):
             "--server-port",
             str(self.config.client_port),
             "--map",
-            os.path.join(self.config.microrts_path, self.config.map_path)
+            os.path.join(self.config.microrts_path, self.config.map_path),
+            "--window-size",
+            str(self.config.window_size)
         ]
         if self.config.render:
             commands += ["--render"]

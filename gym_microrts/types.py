@@ -98,3 +98,4 @@ class Config:
     client_ip: Optional[str] = "127.0.0.1"
     height: Optional[int] = 0
     width: Optional[int] = 0
+    window_size: Optional[int] = 1
