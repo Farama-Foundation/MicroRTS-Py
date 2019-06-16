@@ -126,10 +126,10 @@ while global_step < args.total_timesteps:
             break
         
         if args.prod_mode and global_step % 20000 == 0:
-            torch.save(pg.state_dict(), "/tmp/pg.pt")
-            torch.save(vf.state_dict(), "/tmp/vf.pt")
-            wandb.save("/tmp/pg.pt")
-            wandb.save("/tmp/vf.pt")
+            torch.save(pg.state_dict(), f"/tmp/{experiment_name}/pg.pt")
+            torch.save(vf.state_dict(), f"/tmp/{experiment_name}/vf.pt")
+            wandb.save( f"/tmp/{experiment_name}/pg.pt")
+            wandb.save(f"/tmp/{experiment_name}/vf.pt")
     
     # TODO: training.
     # calculate the discounted rewards, or namely, returns
