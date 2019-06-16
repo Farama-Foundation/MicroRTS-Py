@@ -78,11 +78,12 @@ class LocalAgentEnv(gym.Env):
             commands += ["--ai1-type", self.config.ai1_type]
         if self.config.ai2_type:
             commands += ["--ai2-type", self.config.ai2_type]
+        f = open("/dev/null", "w")
+        print(commands)
         self.process = Popen(
             commands,
-            stdin=PIPE,
-            stdout=PIPE,
-            stderr=PIPE)
+            stdout=f,
+            stderr=f)
 
     def start_server(self):
         print("Waiting for connection from the MicroRTS JAVA client")
