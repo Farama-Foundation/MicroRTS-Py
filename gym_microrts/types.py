@@ -99,3 +99,4 @@ class Config:
     height: Optional[int] = 0
     width: Optional[int] = 0
     window_size: Optional[int] = 1
+    evaluation_filename: Optional[str] = ""

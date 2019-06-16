@@ -78,6 +78,8 @@ class LocalAgentEnv(gym.Env):
             commands += ["--ai1-type", self.config.ai1_type]
         if self.config.ai2_type:
             commands += ["--ai2-type", self.config.ai2_type]
+        if self.config.evaluation_filename:
+            commands += ["--evaluation-filename", os.path.join(os.getcwd(), self.config.evaluation_filename)]
         f = open("/dev/null", "w")
         print(commands)
         self.process = Popen(

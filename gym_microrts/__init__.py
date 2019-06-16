@@ -1,5 +1,7 @@
+from copy import deepcopy
 from gym.envs.registration import register
 import gym
+import uuid
 from .types import Config
 
 # enable repeated experiments
@@ -11,7 +13,9 @@ if V0NAME not in gym.envs.registry.env_specs:
         entry_point='gym_microrts.envs:RandomAgentEnv',
     )
     
-    register(
+    envs = []
+    
+    envs += [dict(
         id="MicrortsGlobalAgentsDev-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
@@ -21,11 +25,11 @@ if V0NAME not in gym.envs.registry.env_specs:
             # below are dev properties
             render=True,
             client_port=9898,
-            microrts_repo_path="E:/Go/src/github.com/vwxyzjn/201906051646.microrts"
+            microrts_repo_path="E:/Go/src/github.com/vwxyzjn/microrts"
         )}
-    )
+    )]
     
-    register(
+    envs += [dict(
         id="MicrortsGlobalAgentsProd-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
@@ -37,9 +41,9 @@ if V0NAME not in gym.envs.registry.env_specs:
             auto_port=True,
             microrts_path="/root/microrts"
         )}
-    )
+    )]
     
-    register(
+    envs += [dict(
         id="MicrortsLocalAgentsDev-v0",
         entry_point='gym_microrts.envs:LocalAgentEnv',
         kwargs={'config': Config(
@@ -49,11 +53,11 @@ if V0NAME not in gym.envs.registry.env_specs:
             # below are dev properties
             render=True,
             client_port=9898,
-            microrts_repo_path="E:/Go/src/github.com/vwxyzjn/201906051646.microrts"
+            microrts_repo_path="E:/Go/src/github.com/vwxyzjn/microrts"
         )}
-    )
+    )]
         
-    register(
+    envs += [dict(
         id="MicrortsLocalAgentsProd-v0",
         entry_point='gym_microrts.envs:LocalAgentEnv',
         kwargs={'config': Config(
@@ -65,10 +69,10 @@ if V0NAME not in gym.envs.registry.env_specs:
             auto_port=True,
             microrts_path="/root/microrts"
         )}
-    )
+    )]
     
     # experiments
-    register(
+    envs += [dict(
         id=f"MicrortsGlobalAgentsMaxResources4x4Prod-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
@@ -80,9 +84,9 @@ if V0NAME not in gym.envs.registry.env_specs:
             auto_port=True,
             microrts_path="/root/microrts"
         )}
-    )
+    )]
 
-    register(
+    envs += [dict(
         id=f"MicrortsGlobalAgentsMaxResources6x6Prod-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
@@ -94,9 +98,9 @@ if V0NAME not in gym.envs.registry.env_specs:
             auto_port=True,
             microrts_path="/root/microrts"
         )}
-    )
+    )]
 
-    register(
+    envs += [dict(
         id=f"MicrortsGlobalAgentsMaxResources8x8Prod-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
@@ -108,10 +112,10 @@ if V0NAME not in gym.envs.registry.env_specs:
             auto_port=True,
             microrts_path="/root/microrts"
         )}
-    )
+    )]
 
     for i in range(1, 4):
-        register(
+        envs += [dict(
             id=f"MicrortsLocalAgentsMaxResources4x4Window{i}Prod-v0",
             entry_point='gym_microrts.envs:LocalAgentEnv',
             kwargs={'config': Config(
@@ -124,9 +128,9 @@ if V0NAME not in gym.envs.registry.env_specs:
                 microrts_path="/root/microrts",
                 window_size=i
             )}
-        )
+        )]
 
-        register(
+        envs += [dict(
             id=f"MicrortsLocalAgentsMaxResources6x6Window{i}Prod-v0",
             entry_point='gym_microrts.envs:LocalAgentEnv',
             kwargs={'config': Config(
@@ -139,9 +143,9 @@ if V0NAME not in gym.envs.registry.env_specs:
                 microrts_path="/root/microrts",
                 window_size=i
             )}
-        )
+        )]
 
-        register(
+        envs += [dict(
             id=f"MicrortsLocalAgentsMaxResources8x8Window{i}Prod-v0",
             entry_point='gym_microrts.envs:LocalAgentEnv',
             kwargs={'config': Config(
@@ -154,4 +158,12 @@ if V0NAME not in gym.envs.registry.env_specs:
                 microrts_path="/root/microrts",
                 window_size=i
             )}
-        )
+        )]
+
+    for env in envs:
+        register(env['id'], entry_point=env['entry_point'], kwargs=env['kwargs'])
+        env_p = deepcopy(env)
+        env_p['id'] = "Eval" + env_p['id']
+        env_p['kwargs']['config'].evaluation_filename = "evals/"+str(uuid.uuid4())+".json"
+        microrts_repo_path="E:/Go/src/github.com/vwxyzjn/microrts"
+        register(env_p['id'], entry_point=env_p['entry_point'], kwargs=env_p['kwargs'])
