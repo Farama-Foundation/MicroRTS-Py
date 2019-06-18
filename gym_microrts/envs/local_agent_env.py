@@ -150,3 +150,7 @@ class LocalAgentEnv(gym.Env):
         for i in range(len(reshaped_obs)):
             new_obs[i][np.arange(len(reshaped_obs[i])), reshaped_obs[i]] = 1
         return new_obs
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
