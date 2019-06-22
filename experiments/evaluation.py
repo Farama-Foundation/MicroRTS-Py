@@ -127,3 +127,6 @@ for run in runs:
     except Exception as e:
         print(e)
         print(run.name, "failed")
+        
+
+print(df.groupby(df.index).mean())
