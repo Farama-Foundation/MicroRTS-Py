@@ -119,14 +119,19 @@ for run in runs:
                 
         env.close()
         time.sleep(2)
-        with open(env.config.evaluation_filename) as f:
-            data = json.load(f)
-        df = df.append(pd.DataFrame(data, index=[gym_id]))
         os.remove(f"models/{run.name}pg.pt")
         os.remove(f"models/{run.name}vf.pt")
+        with open(env.config.evaluation_filename) as f:
+            data = json.load(f)
+        for key, value in data.items():
+            if type(value) == list:
+                data[key] = str(value)
+        df = df.append(pd.DataFrame(data, index=[gym_id]))
+        
     except Exception as e:
         print(e)
         print(run.name, "failed")
-        
+
 
 print(df.groupby(df.index).mean())
+

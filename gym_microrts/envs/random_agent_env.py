@@ -64,7 +64,6 @@ class RandomAgentEnv(gym.Env):
             shape=(self.num_feature_maps, self.config.height * self.config.width, self.num_classes),
             dtype=np.float32)
         self.action_space = spaces.MultiDiscrete([self.config.height, self.config.width, 4, 4])
-        self.__t = 0
 
     def start_client(self):
         commands = [
@@ -117,20 +116,13 @@ class RandomAgentEnv(gym.Env):
     def step(self, action, raw=False):
         action = np.array([action])
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg(str(action.tolist()))))
-        if self.__t >= self.config.maximum_t:
-            mm.done = True
-            self.__t = 0
-        self.__t += 1
         if raw:
             return mm.observation, mm.reward, mm.done, mm.info
         return self._encode_obs(mm.observation), mm.reward, mm.done, mm.info
 
     def reset(self, raw=False):
         # get the unit table and the computing budget
-        if self.running_first_episode:
-            self.running_first_episode = False
-        else:
-            self._send_msg("done")
+        self._send_msg("done")
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("[]")))
         if raw:
             return mm.observation, mm.reward, mm.done, mm.info

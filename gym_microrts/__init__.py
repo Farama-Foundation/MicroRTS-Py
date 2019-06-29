@@ -165,5 +165,9 @@ if V0NAME not in gym.envs.registry.env_specs:
         env_p = deepcopy(env)
         env_p['id'] = "Eval" + env_p['id']
         env_p['kwargs']['config'].evaluation_filename = "evals/"+str(uuid.uuid4())+".json"
-        microrts_repo_path="E:/Go/src/github.com/vwxyzjn/microrts"
+        # debug
+        # env_p['kwargs']['config'].microrts_repo_path="E:/Go/src/github.com/vwxyzjn/microrts"
+        # env_p['kwargs']['config'].client_port=9898
+        # env_p['kwargs']['config'].auto_port = False
+        
         register(env_p['id'], entry_point=env_p['entry_point'], kwargs=env_p['kwargs'])
