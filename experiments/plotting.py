@@ -3,7 +3,10 @@ import pandas as pd
 import seaborn as sns
 from scipy.ndimage.filters import gaussian_filter1d
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
+sns.set(font_scale=1.6)
+sns.set_style("white")
 #sns.set()
 
 def strip_expnames(x):
@@ -33,10 +36,13 @@ def save_plots(runs, filename, title):
     g = sns.relplot(x="timestep", y="episode reward",
                 hue="experiment", style="experiment", estimator=np.mean,
                 hue_order=['Global Representation', 'Local Representation with w=1', 'Local Representation with w=2'],
-                kind="line", ci="sd", data=df, facet_kws={"legend_out":False}, aspect=2)
+                kind="line", ci=None, data=df, facet_kws={"legend_out":False}, aspect=2)
     handles, labels = g.ax.get_legend_handles_labels()
     g.ax.legend(handles=handles[1:], labels=labels[1:], loc='upper left')
-    g.fig.suptitle(title)
+    g.ax.xaxis.set_major_formatter(ticker.EngFormatter())
+    g.ax.set_ylabel('')    
+    g.ax.set_xlabel('')
+    g.fig.suptitle(title, y=1.0, fontsize = 16)
     g.savefig(filename)
 
     
