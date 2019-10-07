@@ -39,7 +39,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             # below are dev properties
             render=False,
             auto_port=True,
-            microrts_path="/root/microrts"
+            microrts_path="~/microrts"
         )}
     )]
     
@@ -67,7 +67,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             # below are prod properties
             render=False,
             auto_port=True,
-            microrts_path="/root/microrts"
+            microrts_path="~/microrts"
         )}
     )]
     
@@ -82,7 +82,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             # below are dev properties
             render=False,
             auto_port=True,
-            microrts_path="/root/microrts"
+            microrts_path="~/microrts"
         )}
     )]
 
@@ -96,7 +96,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             # below are dev properties
             render=False,
             auto_port=True,
-            microrts_path="/root/microrts"
+            microrts_path="~/microrts"
         )}
     )]
 
@@ -110,7 +110,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             # below are dev properties
             render=False,
             auto_port=True,
-            microrts_path="/root/microrts"
+            microrts_path="~/microrts"
         )}
     )]
 
@@ -125,7 +125,7 @@ if V0NAME not in gym.envs.registry.env_specs:
                 # below are prod properties
                 render=False,
                 auto_port=True,
-                microrts_path="/root/microrts",
+                microrts_path="~/microrts",
                 window_size=i
             )}
         )]
@@ -140,7 +140,7 @@ if V0NAME not in gym.envs.registry.env_specs:
                 # below are prod properties
                 render=False,
                 auto_port=True,
-                microrts_path="/root/microrts",
+                microrts_path="~/microrts",
                 window_size=i
             )}
         )]
@@ -155,7 +155,7 @@ if V0NAME not in gym.envs.registry.env_specs:
                 # below are prod properties
                 render=False,
                 auto_port=True,
-                microrts_path="/root/microrts",
+                microrts_path="~/microrts",
                 window_size=i
             )}
         )]
