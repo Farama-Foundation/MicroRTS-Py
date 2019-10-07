@@ -38,3 +38,4 @@ for _ in range(10000):
     env.step(env.action_space.sample())
 env.close()
 ```
+![demo.gif](demo.gif)
