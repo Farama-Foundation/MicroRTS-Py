@@ -19,6 +19,7 @@ Then clone the repo
 ```bash
 $ git clone https://github.com/vwxyzjn/gym-microrts.git && \
 cd gym-microrts && \
+pip install dacite && \
 pip install -e .
 $ python3 hello_world.py
 ```

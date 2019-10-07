@@ -62,12 +62,12 @@ class LocalAgentEnv(gym.Env):
         commands = [
             "java",
             "-cp",
-            os.path.join(self.config.microrts_path, "microrts.jar"),
+            os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")),
             "tests.sockets.RunClient",
             "--server-port",
             str(self.config.client_port),
             "--map",
-            os.path.join(self.config.microrts_path, self.config.map_path),
+            os.path.expanduser(os.path.join(self.config.microrts_path, self.config.map_path)),
             "--window-size",
             str(self.config.window_size)
         ]

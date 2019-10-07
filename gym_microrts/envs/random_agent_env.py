@@ -49,10 +49,10 @@ class RandomAgentEnv(gym.Env):
         if self.config.auto_port:
             self.config.client_port = get_free_tcp_port()
         if self.config.microrts_path:
-            root = ET.parse(os.path.join(self.config.microrts_path, self.config.map_path)).getroot()
+            root = ET.parse(os.path.expanduser(os.path.join(self.config.microrts_path, self.config.map_path))).getroot()
             self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
         elif self.config.microrts_repo_path:
-            root = ET.parse(os.path.join(self.config.microrts_repo_path, self.config.map_path)).getroot()
+            root = ET.parse(os.path.expanduser(os.path.join(self.config.microrts_repo_path, self.config.map_path))).getroot()
             self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
         else:
             raise Exception("Couldn't read height and width of the map. Set either microrts_repo_path or microrts_path")
@@ -69,12 +69,12 @@ class RandomAgentEnv(gym.Env):
         commands = [
             "java",
             "-cp",
-            os.path.join(self.config.microrts_path, "microrts.jar"),
+            os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")),
             "tests.sockets.RunClient",
             "--server-port",
             str(self.config.client_port),
             "--map",
-            os.path.join(self.config.microrts_path, self.config.map_path),
+            os.path.expanduser(os.path.join(self.config.microrts_path, self.config.map_path)),
             "--window-size",
             str(self.config.window_size)
         ]
