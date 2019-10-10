@@ -39,3 +39,8 @@ for _ in range(10000):
 env.close()
 ```
 ![demo.gif](demo.gif)
+
+
+## Performances of agents on different map sizes
+
+https://app.wandb.ai/costa-huang/MicrortsRL
