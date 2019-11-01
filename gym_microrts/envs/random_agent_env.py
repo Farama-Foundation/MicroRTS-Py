@@ -86,12 +86,11 @@ class RandomAgentEnv(gym.Env):
             commands += ["--ai2-type", self.config.ai2_type]
         if self.config.evaluation_filename:
             commands += ["--evaluation-filename", os.path.join(os.getcwd(), self.config.evaluation_filename)]
-        f = open("/dev/null", "w")
         print(commands)
         self.process = Popen(
             commands,
-            stdout=f,
-            stderr=f)
+            stdout=PIPE,
+            stderr=PIPE)
 
     def start_server(self):
         print("Waiting for connection from the MicroRTS JAVA client")
@@ -100,18 +99,15 @@ class RandomAgentEnv(gym.Env):
         s.listen(5)
         self.conn, addr = s.accept()
         print('Got connection from', addr)
-        try:
-            print(self._send_msg("[]"))
-            print(self._send_msg("[]"))
-        except Exception as err:
-            print("An error has occured: ", err)
-            if self.config.microrts_path:
-                print("The following is outputed by stdout of microrts client")
-                for line in self.process.stdout:
-                    print(line.decode("utf-8"))
-                print("The following is outputed by stderr of microrts client")
-                for line in self.process.stderr:
-                    print(line.decode("utf-8"))
+        print(self._send_msg("[]"))
+        print(self._send_msg("[]"))
+
+    def print_microrts_outputs(self):
+        stdout, stderr = self.process.communicate()
+        print("The following is outputed by stdout of microrts client")
+        print(stdout.decode("utf-8"))
+        print("The following is outputed by stderr of microrts client")
+        print(stderr.decode("utf-8"))
 
     def step(self, action, raw=False):
         action = np.array([action])
@@ -138,7 +134,11 @@ class RandomAgentEnv(gym.Env):
         self.conn.send(('%s\n' % str(action.tolist())).encode('utf-8'))
 
     def _send_msg(self, msg: str):
-        self.conn.send(('%s\n' % msg).encode('utf-8'))
+        try:
+            self.conn.send(('%s\n' % msg).encode('utf-8'))
+        except Exception as err:
+            print("An error has occured: ", err)
+            self.print_microrts_outputs()
         return self.conn.recv(4096).decode('utf-8')
     
     def _encode_obs(self, observation: List):
