@@ -94,10 +94,13 @@ class BaseSingleAgentEnv(gym.Env):
 
     def step(self, action, raw=False):
         action = np.array([action])
-        self._send_msg(str(action.tolist()))
-        for _ in range(self.config.frame_skip-2):
-            self._send_msg("[]")
-        mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("[]")))
+        if self.config.frame_skip == 0:
+            mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg(str(action.tolist()))))
+        else:
+            self._send_msg(str(action.tolist()))
+            for _ in range(self.config.frame_skip-2):
+                self._send_msg("[]")
+            mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("[]")))
         if raw:
             return mm.observation, mm.reward, mm.done, mm.info
         return self._encode_obs(mm.observation), mm.reward, mm.done, mm.info

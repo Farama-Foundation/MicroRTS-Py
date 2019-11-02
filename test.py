@@ -9,6 +9,7 @@ if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
         "MicrortsGlobalAgentsDev-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
+            frame_skip=0,
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
