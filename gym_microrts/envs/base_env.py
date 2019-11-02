@@ -84,6 +84,7 @@ class BaseSingleAgentEnv(gym.Env):
         print('Got connection from', addr)
         print(self._send_msg("[]"))
         print(self._send_msg("[]"))
+        self.reset()
 
     def print_microrts_outputs(self):
         stdout, stderr = self.process.communicate()

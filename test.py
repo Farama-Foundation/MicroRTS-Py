@@ -42,13 +42,13 @@ observation = env.reset()
 #-------------------------------------------------------------------------------
 
 # mine left
-# observation, reward, done, info = env.step([1, 0, 2, 3])
+# observation, reward, done, info = env.step([1, 0, 2, 3], True)
 
 # move right
-# observation, reward, done, info = env.step([1, 0, 1, 1])
+# observation, reward, done, info = env.step([1, 0, 1, 1], True)
 
 # move left
-# observation, reward, done, info = env.step([2, 0, 1, 1])
+# observation, reward, done, info = env.step([2, 0, 1, 3], True)
 
 # for second worker mine top
-# observation, reward, done, info = env.step([0, 1, 2, 0])
+# observation, reward, done, info = env.step([0, 1, 2, 0], True)
