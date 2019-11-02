@@ -44,7 +44,7 @@ observation = env.reset()
 # observation, reward, done, info = env.step([1, 0, 2, 3])
 
 # move right
-# observation, reward, done, info = env.step([1, 0, 1, 3])
+# observation, reward, done, info = env.step([1, 0, 1, 1])
 
 # move left
 # observation, reward, done, info = env.step([2, 0, 1, 1])
