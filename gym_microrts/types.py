@@ -100,3 +100,4 @@ class Config:
     width: Optional[int] = 0
     window_size: Optional[int] = 1
     evaluation_filename: Optional[str] = ""
+    frame_skip: Optional[int] = 0

@@ -16,23 +16,10 @@ if V0NAME not in gym.envs.registry.env_specs:
     envs = []
     
     envs += [dict(
-        id="MicrortsGlobalAgentsDev-v0",
-        entry_point='gym_microrts.envs:RandomAgentEnv',
-        kwargs={'config': Config(
-            ai1_type="no-penalty",
-            ai2_type="passive",
-            map_path="maps/4x4/baseTwoWorkers4x4.xml",
-            # below are dev properties
-            render=True,
-            client_port=9898,
-            microrts_repo_path="E:/Go/src/github.com/vwxyzjn/microrts"
-        )}
-    )]
-    
-    envs += [dict(
         id="MicrortsGlobalAgentsProd-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
+            frame_skip=10,
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
@@ -42,25 +29,12 @@ if V0NAME not in gym.envs.registry.env_specs:
             microrts_path="~/microrts"
         )}
     )]
-    
-    envs += [dict(
-        id="MicrortsLocalAgentsDev-v0",
-        entry_point='gym_microrts.envs:LocalAgentEnv',
-        kwargs={'config': Config(
-            ai1_type="no-penalty-individual",
-            ai2_type="passive",
-            map_path="maps/4x4/baseTwoWorkers4x4.xml",
-            # below are dev properties
-            render=True,
-            client_port=9898,
-            microrts_repo_path="E:/Go/src/github.com/vwxyzjn/microrts"
-        )}
-    )]
-        
+
     envs += [dict(
         id="MicrortsLocalAgentsProd-v0",
         entry_point='gym_microrts.envs:LocalAgentEnv',
         kwargs={'config': Config(
+            frame_skip=10,
             ai1_type="no-penalty-individual",
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
@@ -76,6 +50,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         id=f"MicrortsGlobalAgentsMaxResources4x4Prod-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
+            frame_skip=10,
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
@@ -90,6 +65,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         id=f"MicrortsGlobalAgentsMaxResources6x6Prod-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
+            frame_skip=10,
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/6x6/baseTwoWorkersMaxResources6x6.xml",
@@ -104,6 +80,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         id=f"MicrortsGlobalAgentsMaxResources8x8Prod-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
+            frame_skip=10,
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/8x8/baseTwoWorkersMaxResources8x8.xml",
@@ -119,6 +96,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             id=f"MicrortsLocalAgentsMaxResources4x4Window{i}Prod-v0",
             entry_point='gym_microrts.envs:LocalAgentEnv',
             kwargs={'config': Config(
+                frame_skip=10,
                 ai1_type="no-penalty-individual",
                 ai2_type="passive",
                 map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
@@ -134,6 +112,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             id=f"MicrortsLocalAgentsMaxResources6x6Window{i}Prod-v0",
             entry_point='gym_microrts.envs:LocalAgentEnv',
             kwargs={'config': Config(
+                frame_skip=10,
                 ai1_type="no-penalty-individual",
                 ai2_type="passive",
                 map_path="maps/6x6/baseTwoWorkersMaxResources6x6.xml",
@@ -149,6 +128,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             id=f"MicrortsLocalAgentsMaxResources8x8Window{i}Prod-v0",
             entry_point='gym_microrts.envs:LocalAgentEnv',
             kwargs={'config': Config(
+                frame_skip=10,
                 ai1_type="no-penalty-individual",
                 ai2_type="passive",
                 map_path="maps/8x8/baseTwoWorkersMaxResources8x8.xml",
@@ -160,8 +140,9 @@ if V0NAME not in gym.envs.registry.env_specs:
             )}
         )]
 
+    # Additional variants
     for env in envs:
-        register(env['id'], entry_point=env['entry_point'], kwargs=env['kwargs'])
+        
         env_p = deepcopy(env)
         env_p['id'] = "Eval" + env_p['id']
         env_p['kwargs']['config'].evaluation_filename = "evals/"+str(uuid.uuid4())+".json"
@@ -170,4 +151,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         # env_p['kwargs']['config'].client_port=9898
         # env_p['kwargs']['config'].auto_port = False
         
+        # Regular
+        register(env['id'], entry_point=env['entry_point'], kwargs=env['kwargs'])
+        # Evaluation
         register(env_p['id'], entry_point=env_p['entry_point'], kwargs=env_p['kwargs'])

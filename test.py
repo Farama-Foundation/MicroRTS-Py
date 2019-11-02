@@ -1,19 +1,40 @@
 import gym
 import gym_microrts
-env = gym.make("MicrortsLocalAgentsDev-v0")
+from gym.envs.registration import register
+from gym_microrts import Config
 
-#env = gym.make("Microrts-v0")
-#config = gym_microrts.types.Config(
-#    ai1_type="no-penalty-individual",
-#    ai2_type="passive",
-#    map_path="maps/4x4/baseTwoWorkers4x4.xml",
-#    render=True,
-#    client_port=9898,
-#    microrts_path="E:/Go/src/github.com/vwxyzjn/201906051646.microrts",
-#    microrts_repo_path="E:/Go/src/github.com/vwxyzjn/microrts"
-#)
-#env.init(config)
-#observation = env.reset()
+
+if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
+    register(
+        "MicrortsGlobalAgentsDev-v0",
+        entry_point='gym_microrts.envs:RandomAgentEnv',
+        kwargs={'config': Config(
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/4x4/baseTwoWorkers4x4.xml",
+            # below are dev properties
+            render=True,
+            client_port=9898,
+            microrts_repo_path="/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts"
+        )}
+    )
+    register(
+        "MicrortsLocalAgentsDev-v0",
+        entry_point='gym_microrts.envs:LocalAgentEnv',
+        kwargs={'config': Config(
+            frame_skip=10,
+            ai1_type="no-penalty-individual",
+            ai2_type="passive",
+            map_path="maps/4x4/baseTwoWorkers4x4.xml",
+            # below are dev properties
+            render=True,
+            client_port=9898,
+            microrts_repo_path="/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts"
+        )}
+    )
+
+env = gym.make("MicrortsGlobalAgentsDev-v0")
+observation = env.reset()
 
 #-------------------------------------------------------------------------------
 # DEBUGGING actions
