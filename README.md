@@ -40,6 +40,9 @@ env.close()
 ```
 ![demo.gif](demo.gif)
 
+## Papers written using gym-microrts
+
+* Comparing Observation and Action Representations for Deep Reinforcement Learning in MicroRTS (https://arxiv.org/abs/1910.12134)
 
 ## Performances of agents on different map sizes
 
