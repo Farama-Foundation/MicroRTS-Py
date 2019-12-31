@@ -61,8 +61,6 @@ class BaseSingleAgentEnv(gym.Env):
             "--window-size",
             str(self.config.window_size)
         ]
-        if self.config.render:
-            commands += ["--render"]
         if self.config.ai1_type:
             commands += ["--ai1-type", self.config.ai1_type]
         if self.config.ai2_type:
@@ -115,7 +113,8 @@ class BaseSingleAgentEnv(gym.Env):
         return self._encode_obs(mm.observation)
 
     def render(self, mode='human'):
-        pass
+        if mode=='human':
+            self._send_msg("render")
 
     def close(self):
         self._send_msg("finished")

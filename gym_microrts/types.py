@@ -89,7 +89,6 @@ class Config:
     ai1_type: str
     ai2_type: str
     map_path: str
-    render: bool
     auto_port: Optional[bool] = False
     client_port: Optional[int] = 0
     microrts_path: Optional[str] = ""
