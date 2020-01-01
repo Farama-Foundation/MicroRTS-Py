@@ -16,23 +16,27 @@ from gym_microrts.envs.base_env import BaseSingleAgentEnv, get_free_tcp_port
 class LocalAgentEnv(BaseSingleAgentEnv):
 
     def init_properties(self):
-        if self.config.auto_port:
-            self.config.client_port = get_free_tcp_port()
         self.config.height, self.config.width = self.config.window_size*2+1, self.config.window_size*2+1
-        self.num_classes = 8
-        self.num_feature_maps = 5
-        self.running_first_episode = True
-        self.observation_space = spaces.Box(low=-1.0,
+        self.num_planes = [6, 6, 4, len(self.utt['unitTypes'])+2, 7]
+        self.observation_space = spaces.Box(low=0.0,
             high=1.0,
-            shape=(self.num_feature_maps, self.config.height * self.config.width, self.num_classes),
-            dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([4, 4])
+            shape=(self.config.height * self.config.width,
+                   sum(self.num_planes)),
+                   dtype=np.int32)
+        self.action_space = spaces.MultiDiscrete([
+            6, 4, 4, 4, 4,
+            len(self.utt['unitTypes']),
+            self.config.height,
+            self.config.width
+        ])
     
-    def _encode_obs(self, observation: List):
-        observation = np.array(observation)
-        new_obs = np.zeros((self.num_feature_maps, self.config.height * self.config.width, self.num_classes))
-        reshaped_obs = observation.reshape((self.num_feature_maps, self.config.height * self.config.width))
-        reshaped_obs[reshaped_obs >= self.num_classes] = self.num_classes - 1
-        for i in range(len(reshaped_obs)):
-            new_obs[i][np.arange(len(reshaped_obs[i])), reshaped_obs[i]] = 1
-        return new_obs
+    def _encode_obs(self, obs: List):
+        obs = obs.reshape(len(obs), -1).clip(0, np.array([self.num_planes]).T-1)
+        obs_planes = np.zeros((self.config.height * self.config.width, 
+                               sum(self.num_planes)), dtype=np.int)
+        obs_planes[np.arange(len(obs_planes)),obs[0]] = 1
+
+        for i in range(1, len(self.num_planes)):
+            print(sum(self.num_planes[:i]))
+            obs_planes[np.arange(len(obs_planes)),obs[i]+sum(self.num_planes[:i])] = 1
+        return obs_planes

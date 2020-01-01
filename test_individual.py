@@ -4,20 +4,7 @@ from gym.envs.registration import register
 from gym_microrts import Config
 
 
-if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
-    register(
-        "MicrortsGlobalAgentsDev-v0",
-        entry_point='gym_microrts.envs:RandomAgentEnv',
-        kwargs={'config': Config(
-            frame_skip=10,
-            ai1_type="no-penalty",
-            ai2_type="passive",
-            map_path="maps/4x4/baseTwoWorkers4x4.xml",
-            # below are dev properties
-            client_port=9898,
-            microrts_repo_path="/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts"
-        )}
-    )
+if "MicrortsLocalAgentsDev-v0" not in gym.envs.registry.env_specs:
     register(
         "MicrortsLocalAgentsDev-v0",
         entry_point='gym_microrts.envs:LocalAgentEnv',
@@ -33,19 +20,19 @@ if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
     )
 
 env = gym.make("MicrortsLocalAgentsDev-v0")
-observation = env.reset()
+observation = env.reset(True)
 
 #-------------------------------------------------------------------------------
 # DEBUGGING actions
 #-------------------------------------------------------------------------------
 
 # mine left
-# env.step([1, 0, 2, 0, 3, 0, 0, 0, 0, 0], True)
+# env.step([2, 0, 3, 0, 0, 0, 0, 0], True)
 # env.render()
 
 # # move right
 # # observation, reward, done, info = env.step([1, 0, 1, 1], True)
-# env.step([1, 0, 1, 1, 0, 0, 0, 0, 0, 0], True)
+# env.step([1, 1, 0, 0, 0, 0, 0, 0], True)
 # env.render()
 
 # # move left

@@ -13,34 +13,43 @@ from gym.utils import seeding
 from gym_microrts.envs.base_env import BaseSingleAgentEnv, get_free_tcp_port
 
 class RandomAgentEnv(BaseSingleAgentEnv):
+    """
+    observation space is defined as 
+    
+    
+    
+    action space is defined as 
+    
+    [[0]x_coordinate(x), [1]y_coordinate(y), [2]a_t(6), [3]p_move(4), [4]p_harvest(4), 
+    [5]p_return(4), [6]p_produce_direction(4), [7]p_produce_unit_type(z), 
+    [8]p_attack_location_x_coordinate(x),  [9]p_attack_location_y_coordinate(y)]
+    """
 
     def init_properties(self):
-        if self.config.auto_port:
-            self.config.client_port = get_free_tcp_port()
-        if self.config.microrts_path:
-            root = ET.parse(os.path.expanduser(os.path.join(self.config.microrts_path, self.config.map_path))).getroot()
-            self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
-        elif self.config.microrts_repo_path:
-            root = ET.parse(os.path.expanduser(os.path.join(self.config.microrts_repo_path, self.config.map_path))).getroot()
-            self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
-        else:
-            raise Exception("Couldn't read height and width of the map. Set either microrts_repo_path or microrts_path")
-        self.num_classes = 7
-        self.num_feature_maps = 5
-        self.running_first_episode = True
-        self.observation_space = spaces.Box(low=-1.0,
+        # [num_planes_hp(5), num_planes_resources(5), num_planes_player(5), 
+        # num_planes_unit_type(z), num_planes_unit_action(6)]
+        self.num_planes = [5, 5, 3, len(self.utt['unitTypes'])+1, 6]
+        self.observation_space = spaces.Box(low=0.0,
             high=1.0,
-            shape=(self.num_feature_maps, self.config.height * self.config.width, self.num_classes),
-            dtype=np.float32)
-        self.action_space = spaces.MultiDiscrete([self.config.height, self.config.width, 4, 4])
+            shape=(self.config.height * self.config.width,
+                   sum(self.num_planes)),
+                   dtype=np.int32)
+        self.action_space = spaces.MultiDiscrete([
+            self.config.height,
+            self.config.width,
+            6, 4, 4, 4, 4,
+            len(self.utt['unitTypes']),
+            self.config.height,
+            self.config.width
+        ])
 
-    def _encode_obs(self, observation: List):
-        observation = np.array(observation)
-        new_obs = np.zeros((self.num_feature_maps, self.config.height * self.config.width, self.num_classes))
-        reshaped_obs = observation.reshape((self.num_feature_maps, self.config.height * self.config.width))
-        reshaped_obs[2] += 1
-        reshaped_obs[3] += 1
-        reshaped_obs[reshaped_obs >= self.num_classes] = self.num_classes - 1
-        for i in range(len(reshaped_obs)):
-            new_obs[i][np.arange(len(reshaped_obs[i])), reshaped_obs[i]] = 1
-        return new_obs
+    def _encode_obs(self, obs: List):
+        obs = obs.reshape(len(obs), -1).clip(0, np.array([self.num_planes]).T-1)
+        obs_planes = np.zeros((self.config.height * self.config.width, 
+                               sum(self.num_planes)), dtype=np.int)
+        obs_planes[np.arange(len(obs_planes)),obs[0]] = 1
+
+        for i in range(1, len(self.num_planes)):
+            print(sum(self.num_planes[:i]))
+            obs_planes[np.arange(len(obs_planes)),obs[i]+sum(self.num_planes[:i])] = 1
+        return obs_planes

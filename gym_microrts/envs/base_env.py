@@ -20,7 +20,6 @@ def get_free_tcp_port():
 
 class BaseSingleAgentEnv(gym.Env):
     metadata = {'render.modes': ['human']}
-    conn = None
 
     def __init__(self, config=None):
         if config:
@@ -34,9 +33,17 @@ class BaseSingleAgentEnv(gym.Env):
         to listen to the microrts client
         """
         self.config = config
-        
-        # computed properties
-        self.init_properties()
+        if self.config.auto_port:
+            self.config.client_port = get_free_tcp_port()
+        if self.config.microrts_path:
+            root = ET.parse(os.path.expanduser(os.path.join(self.config.microrts_path, self.config.map_path))).getroot()
+            self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
+        elif self.config.microrts_repo_path:
+            root = ET.parse(os.path.expanduser(os.path.join(self.config.microrts_repo_path, self.config.map_path))).getroot()
+            self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
+        else:
+            raise Exception("Couldn't read height and width of the map. Set either microrts_repo_path or microrts_path")
+        self.running_first_episode = True
         
         # start the microrts java client
         if self.config.microrts_path and not self.config.microrts_repo_path:
@@ -44,6 +51,10 @@ class BaseSingleAgentEnv(gym.Env):
 
         # start hte microrts server
         self.start_server()
+        
+        # computed properties
+        self.init_properties()
+        self.reset()
 
     def init_properties(self):
         raise NotImplementedError
@@ -81,8 +92,9 @@ class BaseSingleAgentEnv(gym.Env):
         self.conn, addr = s.accept()
         print('Got connection from', addr)
         print(self._send_msg("[]"))
-        print(self._send_msg("[]"))
-        self.reset()
+        self.utt = self._send_msg("[]")
+        print(self.utt)
+        self.utt = json.loads(self.utt[3:])
 
     def print_microrts_outputs(self):
         stdout, stderr = self.process.communicate()
@@ -100,6 +112,7 @@ class BaseSingleAgentEnv(gym.Env):
             for _ in range(self.config.frame_skip-2):
                 self._send_msg("[]")
             mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("[]")))
+        mm.observation = np.array(mm.observation).transpose(0, 2, 1)
         if raw:
             return mm.observation, mm.reward, mm.done, mm.info
         return self._encode_obs(mm.observation), mm.reward, mm.done, mm.info
@@ -108,6 +121,7 @@ class BaseSingleAgentEnv(gym.Env):
         # get the unit table and the computing budget
         self._send_msg("done")
         mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("[]")))
+        mm.observation = np.array(mm.observation).transpose(0, 2, 1)
         if raw:
             return mm.observation, mm.reward, mm.done, mm.info
         return self._encode_obs(mm.observation)
