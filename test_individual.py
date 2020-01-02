@@ -9,7 +9,7 @@ if "MicrortsLocalAgentsDev-v0" not in gym.envs.registry.env_specs:
         "MicrortsLocalAgentsDev-v0",
         entry_point='gym_microrts.envs:LocalAgentEnv',
         kwargs={'config': Config(
-            frame_skip=10,
+            frame_skip=9,
             ai1_type="no-penalty-individual",
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
@@ -30,6 +30,11 @@ observation = env.reset(True)
 # env.step([2, 0, 3, 0, 0, 0, 0, 0], True)
 # env.render()
 
+# # make barracks
+# env.step([4, 0, 0, 0, 2, 2, 0, 0], True)
+# env.render()
+
+
 # # move right
 # # observation, reward, done, info = env.step([1, 0, 1, 1], True)
 # env.step([1, 1, 0, 0, 0, 0, 0, 0], True)
@@ -43,9 +48,6 @@ observation = env.reset(True)
 # env.step([3, 2, 5, 0, 0, 0, 0, 0, 3, 3], True)
 # env.render()
 
-# # make barracks
-# env.step([0, 1, 4, 0, 0, 0, 2, 2, 0, 0], True)
-# env.render()
 
 # # make light
 # env.step([0, 2, 4, 0, 0, 0, 2, 5, 0, 0], True)

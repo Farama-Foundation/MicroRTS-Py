@@ -50,6 +50,5 @@ class RandomAgentEnv(BaseSingleAgentEnv):
         obs_planes[np.arange(len(obs_planes)),obs[0]] = 1
 
         for i in range(1, len(self.num_planes)):
-            print(sum(self.num_planes[:i]))
             obs_planes[np.arange(len(obs_planes)),obs[i]+sum(self.num_planes[:i])] = 1
         return obs_planes

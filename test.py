@@ -9,7 +9,7 @@ if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
         "MicrortsGlobalAgentsDev-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
-            frame_skip=10,
+            frame_skip=9,
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
@@ -18,22 +18,10 @@ if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
             microrts_repo_path="/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts"
         )}
     )
-    register(
-        "MicrortsLocalAgentsDev-v0",
-        entry_point='gym_microrts.envs:LocalAgentEnv',
-        kwargs={'config': Config(
-            frame_skip=10,
-            ai1_type="no-penalty-individual",
-            ai2_type="passive",
-            map_path="maps/4x4/baseTwoWorkers4x4.xml",
-            # below are dev properties
-            client_port=9898,
-            microrts_repo_path="/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts"
-        )}
-    )
 
-env = gym.make("MicrortsLocalAgentsDev-v0")
-observation = env.reset()
+env = gym.make("MicrortsGlobalAgentsDev-v0")
+env.action_space.seed(0)
+#observation = env.reset()
 
 #-------------------------------------------------------------------------------
 # DEBUGGING actions

@@ -54,7 +54,6 @@ class BaseSingleAgentEnv(gym.Env):
         
         # computed properties
         self.init_properties()
-        self.reset()
 
     def init_properties(self):
         raise NotImplementedError
@@ -104,14 +103,9 @@ class BaseSingleAgentEnv(gym.Env):
         print(stderr.decode("utf-8"))
 
     def step(self, action, raw=False):
+        action = np.append(action, [self.config.frame_skip])
         action = np.array([action])
-        if self.config.frame_skip == 0:
-            mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg(str(action.tolist()))))
-        else:
-            self._send_msg(str(action.tolist()))
-            for _ in range(self.config.frame_skip-2):
-                self._send_msg("[]")
-            mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("[]")))
+        mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg(str(action.tolist()))))
         mm.observation = np.array(mm.observation).transpose(0, 2, 1)
         if raw:
             return mm.observation, mm.reward, mm.done, mm.info
@@ -119,8 +113,8 @@ class BaseSingleAgentEnv(gym.Env):
 
     def reset(self, raw=False):
         # get the unit table and the computing budget
-        self._send_msg("done")
-        mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("[]")))
+        #self._send_msg("reset")
+        mm = from_dict(data_class=MicrortsMessage, data=json.loads(self._send_msg("reset")))
         mm.observation = np.array(mm.observation).transpose(0, 2, 1)
         if raw:
             return mm.observation, mm.reward, mm.done, mm.info
