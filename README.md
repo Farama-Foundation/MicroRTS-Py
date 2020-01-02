@@ -7,8 +7,8 @@ This repo contains the source code for the gym wrapper of MicroRTS authored by [
 Go to [http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/](http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/) to download the latest version of MicroRTS build. For example:
 
 ```bash
-$ mkdir ~/microrts && \
-wget -O ~/microrts/microrts.zip http://microrts.s3.amazonaws.com/microrts/artifacts/201912312343.microrts.zip && \
+$ rm ~/microrts -rf && mkdir ~/microrts && \
+wget -O ~/microrts/microrts.zip http://microrts.s3.amazonaws.com/microrts/artifacts/202001020056.microrts.zip && \
 unzip ~/microrts/microrts.zip -d ~/microrts/ && \
 rm ~/microrts/microrts.zip
 ~/microrts
