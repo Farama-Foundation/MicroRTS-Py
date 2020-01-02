@@ -40,14 +40,21 @@ observation = env.reset(True)
 # env.step([1, 1, 0, 0, 0, 0, 0, 0], True)
 # env.render()
 
+# move down
+# env.step([1, 2, 0, 0, 0, 0, 0, 0], True)
+# env.render()
+
 # # move left
 # env.step([2, 0, 1, 3, 0, 0, 0, 0, 0, 0], True)
 # env.render()
 
-# # attack right bottom
-# env.step([3, 2, 5, 0, 0, 0, 0, 0, 3, 3], True)
+# # attack right bottom from the top
+# env.step([5, 0, 0, 0, 0, 0, 1, 2], True)
 # env.render()
 
+# # attack right bottom from the left
+# env.step([5, 0, 0, 0, 0, 0, 2, 0], True)
+# env.render()
 
 # # make light
 # env.step([0, 2, 4, 0, 0, 0, 2, 5, 0, 0], True)

@@ -19,7 +19,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         id="MicrortsGlobalAgentsProd-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
-            frame_skip=10,
+            frame_skip=9,
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
@@ -33,7 +33,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         id="MicrortsLocalAgentsProd-v0",
         entry_point='gym_microrts.envs:LocalAgentEnv',
         kwargs={'config': Config(
-            frame_skip=10,
+            frame_skip=9,
             ai1_type="no-penalty-individual",
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
@@ -48,7 +48,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         id=f"MicrortsGlobalAgentsMaxResources4x4Prod-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
-            frame_skip=10,
+            frame_skip=9,
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
@@ -62,7 +62,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         id=f"MicrortsGlobalAgentsMaxResources6x6Prod-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
-            frame_skip=10,
+            frame_skip=9,
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/6x6/baseTwoWorkersMaxResources6x6.xml",
@@ -76,7 +76,7 @@ if V0NAME not in gym.envs.registry.env_specs:
         id=f"MicrortsGlobalAgentsMaxResources8x8Prod-v0",
         entry_point='gym_microrts.envs:RandomAgentEnv',
         kwargs={'config': Config(
-            frame_skip=10,
+            frame_skip=9,
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/8x8/baseTwoWorkersMaxResources8x8.xml",
@@ -91,7 +91,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             id=f"MicrortsLocalAgentsMaxResources4x4Window{i}Prod-v0",
             entry_point='gym_microrts.envs:LocalAgentEnv',
             kwargs={'config': Config(
-                frame_skip=10,
+                frame_skip=9,
                 ai1_type="no-penalty-individual",
                 ai2_type="passive",
                 map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
@@ -106,7 +106,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             id=f"MicrortsLocalAgentsMaxResources6x6Window{i}Prod-v0",
             entry_point='gym_microrts.envs:LocalAgentEnv',
             kwargs={'config': Config(
-                frame_skip=10,
+                frame_skip=9,
                 ai1_type="no-penalty-individual",
                 ai2_type="passive",
                 map_path="maps/6x6/baseTwoWorkersMaxResources6x6.xml",
@@ -121,7 +121,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             id=f"MicrortsLocalAgentsMaxResources8x8Window{i}Prod-v0",
             entry_point='gym_microrts.envs:LocalAgentEnv',
             kwargs={'config': Config(
-                frame_skip=10,
+                frame_skip=9,
                 ai1_type="no-penalty-individual",
                 ai2_type="passive",
                 map_path="maps/8x8/baseTwoWorkersMaxResources8x8.xml",
