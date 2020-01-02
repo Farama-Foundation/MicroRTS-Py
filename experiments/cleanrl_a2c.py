@@ -10,6 +10,7 @@ from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
 import numpy as np
 import gym
+import gym_microrts
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
