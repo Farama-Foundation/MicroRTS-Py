@@ -8,7 +8,7 @@ Go to [http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/](h
 
 ```bash
 $ rm ~/microrts -rf && mkdir ~/microrts && \
-wget -O ~/microrts/microrts.zip http://microrts.s3.amazonaws.com/microrts/artifacts/202001011906.microrts.zip && \
+wget -O ~/microrts/microrts.zip http://microrts.s3.amazonaws.com/microrts/artifacts/202001020056.microrts.zip && \
 unzip ~/microrts/microrts.zip -d ~/microrts/ && \
 rm ~/microrts/microrts.zip
 ~/microrts
