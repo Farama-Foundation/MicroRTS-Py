@@ -14,8 +14,6 @@ if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
             # below are dev properties
-            client_port=9898,
-            microrts_repo_path="/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts"
         )}
     )
 

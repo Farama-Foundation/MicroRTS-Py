@@ -89,10 +89,7 @@ class Config:
     ai1_type: str
     ai2_type: str
     map_path: str
-    auto_port: Optional[bool] = False
-    client_port: Optional[int] = 0
     microrts_path: Optional[str] = ""
-    microrts_repo_path: Optional[str] = ""
     maximum_t: Optional[int] = 2000
     client_ip: Optional[str] = "127.0.0.1"
     height: Optional[int] = 0

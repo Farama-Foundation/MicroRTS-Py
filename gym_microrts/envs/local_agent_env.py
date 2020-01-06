@@ -11,7 +11,7 @@ from gym import error, spaces, utils
 import xml.etree.ElementTree as ET
 from gym.utils import seeding
 
-from gym_microrts.envs.base_env import BaseSingleAgentEnv, get_free_tcp_port
+from gym_microrts.envs.base_env import BaseSingleAgentEnv
 
 class LocalAgentEnv(BaseSingleAgentEnv):
 

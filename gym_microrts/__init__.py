@@ -24,7 +24,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
             # below are dev properties
-            auto_port=True,
             microrts_path="~/microrts"
         )}
     )]
@@ -38,7 +37,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
             # below are prod properties
-            auto_port=True,
             microrts_path="~/microrts"
         )}
     )]
@@ -53,7 +51,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
             # below are dev properties
-            auto_port=True,
             microrts_path="~/microrts"
         )}
     )]
@@ -67,7 +64,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/6x6/baseTwoWorkersMaxResources6x6.xml",
             # below are dev properties
-            auto_port=True,
             microrts_path="~/microrts"
         )}
     )]
@@ -81,7 +77,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/8x8/baseTwoWorkersMaxResources8x8.xml",
             # below are dev properties
-            auto_port=True,
             microrts_path="~/microrts"
         )}
     )]
@@ -96,7 +91,6 @@ if V0NAME not in gym.envs.registry.env_specs:
                 ai2_type="passive",
                 map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
                 # below are prod properties
-                auto_port=True,
                 microrts_path="~/microrts",
                 window_size=i
             )}
@@ -111,7 +105,6 @@ if V0NAME not in gym.envs.registry.env_specs:
                 ai2_type="passive",
                 map_path="maps/6x6/baseTwoWorkersMaxResources6x6.xml",
                 # below are prod properties
-                auto_port=True,
                 microrts_path="~/microrts",
                 window_size=i
             )}
@@ -126,7 +119,6 @@ if V0NAME not in gym.envs.registry.env_specs:
                 ai2_type="passive",
                 map_path="maps/8x8/baseTwoWorkersMaxResources8x8.xml",
                 # below are prod properties
-                auto_port=True,
                 microrts_path="~/microrts",
                 window_size=i
             )}
