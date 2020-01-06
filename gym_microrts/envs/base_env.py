@@ -77,8 +77,8 @@ class BaseSingleAgentEnv(gym.Env):
         if mode=='human':
             self.client.render(False)
         elif mode == 'rgb_array':
-            bytes_array = self.client.render(True)
-            image = Image.open(io.BytesIO(bytes_array[:]))
+            bytes_array = self.client.render(True)[:]
+            image = Image.frombytes("RGB", (640, 640), bytes_array)
             return np.array(image)
 
     def close(self):
