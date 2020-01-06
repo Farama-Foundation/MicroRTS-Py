@@ -25,6 +25,10 @@ class RandomAgentEnv(BaseSingleAgentEnv):
     [8]p_attack_location_x_coordinate(x),  [9]p_attack_location_y_coordinate(y)]
     """
 
+    def start_client(self):
+        from ts import JNIClient
+        return JNIClient(os.path.expanduser(self.config.microrts_path))
+
     def init_properties(self):
         # [num_planes_hp(5), num_planes_resources(5), num_planes_player(5), 
         # num_planes_unit_type(z), num_planes_unit_action(6)]

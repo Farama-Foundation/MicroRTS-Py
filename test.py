@@ -14,6 +14,7 @@ if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
             # below are dev properties
+            microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts",
         )}
     )
 

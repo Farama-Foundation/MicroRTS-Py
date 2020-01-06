@@ -38,18 +38,17 @@ class BaseSingleAgentEnv(gym.Env):
         to listen to the microrts client
         """
         self.config = config
-        root = ET.parse(os.path.expanduser(self.config.map_path)).getroot()
+        root = ET.parse(os.path.expanduser(os.path.join(self.config.microrts_path, self.config.map_path))).getroot()
         self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
         self.running_first_episode = True
         self.closed = False
 
         # Launch the JVM
         registerDomain("ts", alias="tests")
-        jpype.addClassPath("/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts/microrts.jar")
+        jpype.addClassPath(os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")))
         jpype.startJVM()
 
-        from ts import JNIClient
-        self.client = JNIClient()
+        self.client = self.start_client()
         
         # get the unit type table
         self.utt = json.loads(self.client.sendUTT()) 
@@ -59,19 +58,24 @@ class BaseSingleAgentEnv(gym.Env):
 
     def init_properties(self):
         raise NotImplementedError
+        
+    def start_client(self):
+        raise NotImplementedError
 
     def step(self, action, raw=False):
         action = np.append(action, [self.config.frame_skip])
         action = np.array([action])
         mm = self.client.step(action)
+        for _ in range(self.config.frame_skip):
+            mm = self.client.step(action)
         if raw:
-            return convert3DJarrayToNumpy(mm.observation), mm.reward, mm.done, mm.info
-        return self._encode_obs(convert3DJarrayToNumpy(mm.observation)), mm.reward, mm.done, mm.info
+            return convert3DJarrayToNumpy(mm.observation).transpose(0, 2, 1), mm.reward, mm.done, mm.info
+        return self._encode_obs(convert3DJarrayToNumpy(mm.observation).transpose(0, 2, 1)), mm.reward, mm.done, mm.info
 
     def reset(self, raw=False):
         if raw:
-            return convert3DJarrayToNumpy(self.client.reset().observation)
-        return self._encode_obs(convert3DJarrayToNumpy(self.client.reset().observation))
+            return convert3DJarrayToNumpy(self.client.reset().observation).transpose(0, 2, 1)
+        return self._encode_obs(convert3DJarrayToNumpy(self.client.reset().observation).transpose(0, 2, 1))
 
     def render(self, mode='human'):
         if mode=='human':

@@ -15,6 +15,10 @@ from gym_microrts.envs.base_env import BaseSingleAgentEnv
 
 class LocalAgentEnv(BaseSingleAgentEnv):
 
+    def start_client(self):
+        from ts import JNIClient
+        return JNIClient(os.path.expanduser(self.config.microrts_path), self.config.window_size)
+    
     def init_properties(self):
         self.config.height, self.config.width = self.config.window_size*2+1, self.config.window_size*2+1
         self.num_planes = [6, 6, 4, len(self.utt['unitTypes'])+2, 7]
