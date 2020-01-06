@@ -12,6 +12,7 @@ import numpy as np
 import gym
 import gym_microrts
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
+from gym.wrappers import Monitor
 import time
 import random
 import os
@@ -21,7 +22,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).strip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="Taxi-v2",
+    parser.add_argument('--gym-id', type=str, default="MicrortsGlobalAgentsProd-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -58,6 +59,7 @@ if __name__ == "__main__":
 # TRY NOT TO MODIFY: setup the environment
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = gym.make(args.gym_id)
+env = Monitor(env, './video')
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -107,7 +109,7 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name)
+    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
     wandb.save(os.path.abspath(__file__))
 global_step = 0
