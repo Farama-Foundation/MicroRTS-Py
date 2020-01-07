@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 from gym.utils import seeding
 from gym_microrts.envs.base_env import BaseSingleAgentEnv
 
-class RandomAgentEnv(BaseSingleAgentEnv):
+class GlobalAgentEnv(BaseSingleAgentEnv):
     """
     observation space is defined as 
     
@@ -27,7 +27,7 @@ class RandomAgentEnv(BaseSingleAgentEnv):
 
     def start_client(self):
         from ts import JNIClient
-        return JNIClient(os.path.expanduser(self.config.microrts_path))
+        return JNIClient(os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
     def init_properties(self):
         # [num_planes_hp(5), num_planes_resources(5), num_planes_player(5), 

@@ -10,14 +10,14 @@ V0NAME = 'Microrts-v0'
 if V0NAME not in gym.envs.registry.env_specs:
     register(
         id=V0NAME,
-        entry_point='gym_microrts.envs:RandomAgentEnv',
+        entry_point='gym_microrts.envs:GlobalAgentEnv',
     )
     
     envs = []
     
     envs += [dict(
         id="MicrortsGlobalAgentsProd-v0",
-        entry_point='gym_microrts.envs:RandomAgentEnv',
+        entry_point='gym_microrts.envs:GlobalAgentEnv',
         kwargs={'config': Config(
             frame_skip=9,
             ai1_type="no-penalty",
@@ -44,7 +44,7 @@ if V0NAME not in gym.envs.registry.env_specs:
     # experiments
     envs += [dict(
         id=f"MicrortsGlobalAgentsMaxResources4x4Prod-v0",
-        entry_point='gym_microrts.envs:RandomAgentEnv',
+        entry_point='gym_microrts.envs:GlobalAgentEnv',
         kwargs={'config': Config(
             frame_skip=9,
             ai1_type="no-penalty",
@@ -57,7 +57,7 @@ if V0NAME not in gym.envs.registry.env_specs:
 
     envs += [dict(
         id=f"MicrortsGlobalAgentsMaxResources6x6Prod-v0",
-        entry_point='gym_microrts.envs:RandomAgentEnv',
+        entry_point='gym_microrts.envs:GlobalAgentEnv',
         kwargs={'config': Config(
             frame_skip=9,
             ai1_type="no-penalty",
@@ -70,7 +70,7 @@ if V0NAME not in gym.envs.registry.env_specs:
 
     envs += [dict(
         id=f"MicrortsGlobalAgentsMaxResources8x8Prod-v0",
-        entry_point='gym_microrts.envs:RandomAgentEnv',
+        entry_point='gym_microrts.envs:GlobalAgentEnv',
         kwargs={'config': Config(
             frame_skip=9,
             ai1_type="no-penalty",
