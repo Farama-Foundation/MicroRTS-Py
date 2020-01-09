@@ -188,9 +188,17 @@ if V0NAME not in gym.envs.registry.env_specs:
     # Additional variants and registration
     for env in envs:
         # Regular
-        register(env['id'], entry_point=env['entry_point'], kwargs=env['kwargs'])
+        register(
+            env['id'],
+            entry_point=env['entry_point'],
+            kwargs=env['kwargs'],
+            max_episode_steps=env['max_episode_steps'])
         # Evaluation
         env_p = deepcopy(env)
         env_p['id'] = "Eval" + env_p['id']
         env_p['kwargs']['config'].evaluation_filename = "evals/"+str(uuid.uuid4())+".json"
-        register(env_p['id'], entry_point=env_p['entry_point'], kwargs=env_p['kwargs'])
+        register(
+            env_p['id'],
+            entry_point=env_p['entry_point'],
+            kwargs=env_p['kwargs'],
+            max_episode_steps=env['max_episode_steps'])
