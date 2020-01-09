@@ -44,9 +44,10 @@ class BaseSingleAgentEnv(gym.Env):
         self.closed = False
 
         # Launch the JVM
-        registerDomain("ts", alias="tests")
-        jpype.addClassPath(os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")))
-        jpype.startJVM()
+        if not jpype._jpype.isStarted():
+            registerDomain("ts", alias="tests")
+            jpype.addClassPath(os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")))
+            jpype.startJVM()
 
         self.client = self.start_client()
         
@@ -87,6 +88,7 @@ class BaseSingleAgentEnv(gym.Env):
 
     def close(self):
         self.client.close()
+        jpype.shutdownJVM()
     
     def _encode_obs(self, observation: List):
         raise NotImplementedError
