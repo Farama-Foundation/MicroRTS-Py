@@ -7,7 +7,7 @@ from gym_microrts import Config
 if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
     register(
         "MicrortsGlobalAgentsDev-v0",
-        entry_point='gym_microrts.envs:RandomAgentEnv',
+        entry_point='gym_microrts.envs:GlobalAgentEnv',
         kwargs={'config': Config(
             frame_skip=9,
             ai1_type="no-penalty",
