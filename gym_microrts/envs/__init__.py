@@ -1,2 +1,4 @@
-from gym_microrts.envs.random_agent_env import RandomAgentEnv
+from gym_microrts.envs.global_agent_env import GlobalAgentEnv
 from gym_microrts.envs.local_agent_env import LocalAgentEnv
+from gym_microrts.envs.global_agent_mining_env import GlobalAgentMiningEnv
+from gym_microrts.envs.global_agent_mining_hilbert_env import GlobalAgentMiningHilbertEnv

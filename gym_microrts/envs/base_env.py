@@ -44,9 +44,10 @@ class BaseSingleAgentEnv(gym.Env):
         self.closed = False
 
         # Launch the JVM
-        registerDomain("ts", alias="tests")
-        jpype.addClassPath(os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")))
-        jpype.startJVM()
+        if not jpype._jpype.isStarted():
+            registerDomain("ts", alias="tests")
+            jpype.addClassPath(os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")))
+            jpype.startJVM()
 
         self.client = self.start_client()
         
@@ -69,8 +70,8 @@ class BaseSingleAgentEnv(gym.Env):
         for _ in range(self.config.frame_skip):
             mm = self.client.step(action)
         if raw:
-            return convert3DJarrayToNumpy(mm.observation).transpose(0, 2, 1), mm.reward, mm.done, mm.info
-        return self._encode_obs(convert3DJarrayToNumpy(mm.observation).transpose(0, 2, 1)), mm.reward, mm.done, mm.info
+            return convert3DJarrayToNumpy(mm.observation).transpose(0, 2, 1), mm.reward, mm.done, json.loads(mm.info)
+        return self._encode_obs(convert3DJarrayToNumpy(mm.observation).transpose(0, 2, 1)), mm.reward, mm.done, json.loads(mm.info)
 
     def reset(self, raw=False):
         if raw:
@@ -87,6 +88,7 @@ class BaseSingleAgentEnv(gym.Env):
 
     def close(self):
         self.client.close()
+        jpype.shutdownJVM()
     
     def _encode_obs(self, observation: List):
         raise NotImplementedError
