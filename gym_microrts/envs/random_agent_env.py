@@ -39,12 +39,10 @@ class RandomAgentEnv(BaseSingleAgentEnv):
                    sum(self.num_planes)),
                    dtype=np.int32)
         self.action_space = spaces.MultiDiscrete([
-            self.config.height,
-            self.config.width,
+            self.config.height * self.config.width,
             6, 4, 4, 4, 4,
             len(self.utt['unitTypes']),
-            self.config.height,
-            self.config.width
+            self.config.height * self.config.width
         ])
 
     def _encode_obs(self, obs: List):
