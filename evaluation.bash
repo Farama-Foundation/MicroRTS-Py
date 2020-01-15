@@ -29,6 +29,28 @@ do
     (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c.py \
     --total-timesteps 2000000 \
     --wandb-project-name gym-microrts \
+    --gym-id MicrortsGlobalAgentsMaxResources4x4NoFrameSkipProd-v0 \
+    --prod-mode True \
+    --capture-video True \
+    --seed $seed) >& /dev/null &
+done
+
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c_mask.py \
+    --total-timesteps 2000000 \
+    --wandb-project-name gym-microrts \
+    --gym-id MicrortsGlobalAgentsMaxResources4x4NoFrameSkipProd-v0 \
+    --prod-mode True \
+    --capture-video True \
+    --seed $seed) >& /dev/null &
+done
+
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c.py \
+    --total-timesteps 2000000 \
+    --wandb-project-name gym-microrts \
     --gym-id MicrortsGlobalAgentsMaxResources6x6Prod-v0 \
     --prod-mode True \
     --capture-video True \

@@ -69,7 +69,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             # below are dev properties
             microrts_path="~/microrts"
         )},
-        max_episode_steps=200,
+        max_episode_steps=2000,
     )]
 
     envs += [dict(
