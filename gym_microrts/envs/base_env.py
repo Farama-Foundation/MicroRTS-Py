@@ -12,8 +12,6 @@ import xml.etree.ElementTree as ET
 from gym.utils import seeding
 from PIL import Image
 import io
-import struct
-import mmap
 
 import jpype
 from jpype.imports import registerDomain
@@ -66,17 +64,18 @@ class BaseSingleAgentEnv(gym.Env):
     def step(self, action, raw=False):
         action = np.append(action, [self.config.frame_skip])
         action = np.array([action])
-        mm = self.client.step(action)
+        response = self.client.step(action)
         for _ in range(self.config.frame_skip):
-            mm = self.client.step(np.array([]))
+            response = self.client.step(np.array([]))
         if raw:
-            return convert3DJarrayToNumpy(mm.observation), mm.reward, mm.done, json.loads(mm.info)
-        return self._encode_obs(convert3DJarrayToNumpy(mm.observation)), mm.reward, mm.done, json.loads(mm.info)
+            return convert3DJarrayToNumpy(response.observation), response.reward, response.done, json.loads(response.info)
+        return self._encode_obs(convert3DJarrayToNumpy(response.observation)), response.reward, response.done, json.loads(response.info)
 
     def reset(self, raw=False):
+        response = self.client.reset()
         if raw:
-            return convert3DJarrayToNumpy(self.client.reset().observation)
-        return self._encode_obs(convert3DJarrayToNumpy(self.client.reset().observation))
+            return convert3DJarrayToNumpy(response.observation)
+        return self._encode_obs(convert3DJarrayToNumpy(response.observation))
 
     def render(self, mode='human'):
         if mode=='human':

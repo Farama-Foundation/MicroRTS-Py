@@ -54,3 +54,17 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
         for i in range(1, len(self.num_planes)):
             obs_planes[np.arange(len(obs_planes)),obs[i]+sum(self.num_planes[:i])] = 1
         return obs_planes
+
+    def step(self, action, raw=False):
+        raw_obs, reward, done, info = super(GlobalAgentEnv, self).step(action, True)
+        self.unit_location_mask = raw_obs[3].flatten().clip(max=1)
+        if raw:
+            return raw_obs, reward, done, info
+        return self._encode_obs(raw_obs), reward, done, info
+
+    def reset(self, raw=False):
+        raw_obs = super(GlobalAgentEnv, self).reset(True)
+        self.unit_location_mask = raw_obs[3].flatten().clip(max=1)
+        if raw:
+            return raw_obs
+        return self._encode_obs(raw_obs)

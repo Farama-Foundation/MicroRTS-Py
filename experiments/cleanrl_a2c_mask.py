@@ -154,6 +154,9 @@ while global_step < args.total_timesteps:
 
         elif isinstance(env.action_space, MultiDiscrete):
             logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
+            
+            # Gym-microrts logic: unit selection masking
+            logits_categories[0][0] * torch.Tensor(env.unit_location_mask).to(device)
             action = []
             probs_categories = []
             probs_entropies = torch.zeros((logits.shape[0]), device=device)
