@@ -12,7 +12,7 @@ if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
             frame_skip=9,
             ai1_type="no-penalty",
             ai2_type="passive",
-            map_path="maps/4x4/baseTwoWorkers4x4.xml",
+            map_path="maps/base4x5.xml",
             # below are dev properties
             microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts",
         )}
@@ -20,19 +20,23 @@ if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
 
 env = gym.make("MicrortsGlobalAgentsDev-v0")
 env.action_space.seed(0)
-#observation = env.reset()
+try:
+    obs = env.reset(True)
+except Exception as e:
+    e.printStackTrace()
+
 
 #-------------------------------------------------------------------------------
 # DEBUGGING actions
 #-------------------------------------------------------------------------------
 
 # mine left
-# env.step([1, 0, 2, 0, 3, 0, 0, 0, 0, 0], True)
+# env.step([4 ,2, 0, 3, 0, 0, 0, 0, 0], True)
 # env.render()
 
 # # move right
 # # observation, reward, done, info = env.step([1, 0, 1, 1], True)
-# env.step([1, 0, 1, 1, 0, 0, 0, 0, 0, 0], True)
+# env.step([17, 1, 1, 0, 0, 0, 0, 0, 0], True)
 # env.render()
 
 # # move left

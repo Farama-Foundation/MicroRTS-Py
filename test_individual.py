@@ -12,7 +12,7 @@ if "MicrortsLocalAgentsDev-v0" not in gym.envs.registry.env_specs:
             frame_skip=9,
             ai1_type="no-penalty-individual",
             ai2_type="passive",
-            map_path="maps/4x4/baseTwoWorkers4x4.xml",
+            map_path="maps/base4x5.xml",
             # below are dev properties
             microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts",
         )}

@@ -68,15 +68,15 @@ class BaseSingleAgentEnv(gym.Env):
         action = np.array([action])
         mm = self.client.step(action)
         for _ in range(self.config.frame_skip):
-            mm = self.client.step(action)
+            mm = self.client.step(np.array([]))
         if raw:
-            return convert3DJarrayToNumpy(mm.observation).transpose(0, 2, 1), mm.reward, mm.done, json.loads(mm.info)
-        return self._encode_obs(convert3DJarrayToNumpy(mm.observation).transpose(0, 2, 1)), mm.reward, mm.done, json.loads(mm.info)
+            return convert3DJarrayToNumpy(mm.observation), mm.reward, mm.done, json.loads(mm.info)
+        return self._encode_obs(convert3DJarrayToNumpy(mm.observation)), mm.reward, mm.done, json.loads(mm.info)
 
     def reset(self, raw=False):
         if raw:
-            return convert3DJarrayToNumpy(self.client.reset().observation).transpose(0, 2, 1)
-        return self._encode_obs(convert3DJarrayToNumpy(self.client.reset().observation).transpose(0, 2, 1))
+            return convert3DJarrayToNumpy(self.client.reset().observation)
+        return self._encode_obs(convert3DJarrayToNumpy(self.client.reset().observation))
 
     def render(self, mode='human'):
         if mode=='human':
