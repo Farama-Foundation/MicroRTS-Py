@@ -46,7 +46,7 @@ if V0NAME not in gym.envs.registry.env_specs:
     # experiments
     envs += [dict(
         id=f"MicrortsGlobalAgentsMaxResources4x4Prod-v0",
-        entry_point='gym_microrts.envs:GlobalAgentEnv',
+        entry_point='gym_microrts.envs:GlobalAgentMiningEnv',
         kwargs={'config': Config(
             frame_skip=9,
             ai1_type="no-penalty",
@@ -60,7 +60,7 @@ if V0NAME not in gym.envs.registry.env_specs:
 
     envs += [dict(
         id=f"MicrortsGlobalAgentsMaxResources4x4NoFrameSkipProd-v0",
-        entry_point='gym_microrts.envs:GlobalAgentEnv',
+        entry_point='gym_microrts.envs:GlobalAgentMiningEnv',
         kwargs={'config': Config(
             frame_skip=0,
             ai1_type="no-penalty",
