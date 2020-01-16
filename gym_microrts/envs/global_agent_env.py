@@ -59,14 +59,16 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
 
     def step(self, action, raw=False):
         raw_obs, reward, done, info = super(GlobalAgentEnv, self).step(action, True)
-        self.unit_location_mask = raw_obs[3].flatten().clip(max=1) - raw_obs[4].flatten().clip(max=1)
+        # raw_obs[3] - raw_obs[4].clip(max=1) means mask busy units
+        # * np.where((raw_obs[2])==2,0, (raw_obs[2]))).flatten() means mask units not owned
+        self.unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==2,0, (raw_obs[2]))).flatten()
         if raw:
             return raw_obs, reward, done, info
         return self._encode_obs(raw_obs), reward, done, info
 
     def reset(self, raw=False):
         raw_obs = super(GlobalAgentEnv, self).reset(True)
-        self.unit_location_mask = raw_obs[3].flatten().clip(max=1) - raw_obs[4].flatten().clip(max=1)
+        self.unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==2,0, (raw_obs[2]))).flatten()
         if raw:
             return raw_obs
         return self._encode_obs(raw_obs)

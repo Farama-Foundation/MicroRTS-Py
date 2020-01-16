@@ -119,6 +119,19 @@ class Value(nn.Module):
         x = self.fc2(x)
         return x
 
+class CategoricalMasked(Categorical):
+
+    def __init__(self, probs=None, logits=None, validate_args=None, masks=None):
+        self.masks = torch.BoolTensor(masks).to(device)
+        logits = torch.where(self.masks, logits, torch.tensor(-1e+8))
+        super(CategoricalMasked, self).__init__(probs, logits, validate_args)
+    
+    def entropy(self):
+        p_log_p = self.logits * self.probs
+        p_log_p = torch.where(self.masks, p_log_p, torch.tensor(0.))
+        return -p_log_p.sum(-1)
+    
+
 pg = Policy().to(device)
 vf = Value().to(device)
 optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
@@ -139,6 +152,7 @@ while global_step < args.total_timesteps:
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
+        env.render()
         global_step += 1
         obs[step] = next_obs.copy()
 
@@ -154,14 +168,21 @@ while global_step < args.total_timesteps:
 
         elif isinstance(env.action_space, MultiDiscrete):
             logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
-            
-            # Gym-microrts logic: unit selection masking
-            logits_categories[0][0] *= torch.Tensor(env.unit_location_mask).to(device)
             action = []
             probs_categories = []
             probs_entropies = torch.zeros((logits.shape[0]), device=device)
             neglogprob = torch.zeros((logits.shape[0]), device=device)
-            for i in range(len(logits_categories)):
+            
+            # Gym-microrts logic: unit selection masking
+            i=0
+            probs_categories.append(CategoricalMasked(logits=logits_categories[i], masks=env.unit_location_mask))
+            if len(action) != env.action_space.shape:
+                action.append(probs_categories[i].sample())
+            neglogprob -= probs_categories[i].log_prob(action[i])
+            probs_entropies += probs_categories[i].entropy()
+            
+
+            for i in range(1, len(logits_categories)):
                 probs_categories.append(Categorical(logits=logits_categories[i]))
                 if len(action) != env.action_space.shape:
                     action.append(probs_categories[i].sample())
