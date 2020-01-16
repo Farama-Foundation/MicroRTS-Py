@@ -17,6 +17,8 @@ class GlobalAgentMiningEnv(GlobalAgentEnv):
     Always return False for the terminal signal of the game
     """
 
-    def step(self, action, raw=False):
-        observation, reward, done, info = super(GlobalAgentMiningEnv, self).step(action, raw)
-        return observation, reward, False, info
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import ResourceGatherRewardFunction
+        rf = ResourceGatherRewardFunction()
+        return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path)

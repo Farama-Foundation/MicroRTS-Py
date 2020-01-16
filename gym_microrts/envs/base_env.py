@@ -44,6 +44,7 @@ class BaseSingleAgentEnv(gym.Env):
         # Launch the JVM
         if not jpype._jpype.isStarted():
             registerDomain("ts", alias="tests")
+            registerDomain("ai")
             jpype.addClassPath(os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")))
             jpype.startJVM()
 
@@ -62,11 +63,8 @@ class BaseSingleAgentEnv(gym.Env):
         raise NotImplementedError
 
     def step(self, action, raw=False):
-        action = np.append(action, [self.config.frame_skip])
         action = np.array([action])
-        response = self.client.step(action)
-        for _ in range(self.config.frame_skip):
-            response = self.client.step(np.array([]))
+        response = self.client.step(action, self.config.frame_skip)
         if raw:
             return convert3DJarrayToNumpy(response.observation), response.reward, response.done, json.loads(response.info)
         return self._encode_obs(convert3DJarrayToNumpy(response.observation)), response.reward, response.done, json.loads(response.info)

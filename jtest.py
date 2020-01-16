@@ -4,6 +4,7 @@ import jpype
 from jpype.imports import registerDomain
 import jpype.imports
 registerDomain("ts", alias="tests")
+registerDomain("ai")
 from jpype.types import *
 jpype.addClassPath("/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts/microrts.jar")
 
@@ -12,4 +13,6 @@ jpype.startJVM()
 from java.lang import System
 print(System.getProperty("java.class.path"))
 from ts import JNIClient
-jc = JNIClient("/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts/")
+from ai.rewardfunction import ResourceGatherRewardFunction
+rf = ResourceGatherRewardFunction()
+jc = JNIClient(rf, "/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts/", "maps/4x4/baseTwoWorkers4x4.xml")

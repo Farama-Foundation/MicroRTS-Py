@@ -17,7 +17,9 @@ class LocalAgentEnv(BaseSingleAgentEnv):
 
     def start_client(self):
         from ts import JNIClient
-        return JNIClient(os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.window_size)
+        from ai.rewardfunction import SimpleEvaluationRewardFunction
+        rf = SimpleEvaluationRewardFunction()
+        return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.window_size)
     
     def init_properties(self):
         self.config.height, self.config.width = self.config.window_size*2+1, self.config.window_size*2+1

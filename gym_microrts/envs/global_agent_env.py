@@ -27,7 +27,9 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
 
     def start_client(self):
         from ts import JNIClient
-        return JNIClient(os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        from ai.rewardfunction import SimpleEvaluationRewardFunction
+        rf = SimpleEvaluationRewardFunction()
+        return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
     def init_properties(self):
         # [num_planes_hp(5), num_planes_resources(5), num_planes_player(5), 
