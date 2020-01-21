@@ -37,7 +37,7 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
         self.num_planes = [5, 5, 3, len(self.utt['unitTypes'])+1, 6]
         self.observation_space = spaces.Box(low=0.0,
             high=1.0,
-            shape=(self.config.height * self.config.width,
+            shape=(self.config.height, self.config.width,
                    sum(self.num_planes)),
                    dtype=np.int32)
         self.action_space = spaces.MultiDiscrete([
@@ -55,7 +55,7 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
 
         for i in range(1, len(self.num_planes)):
             obs_planes[np.arange(len(obs_planes)),obs[i]+sum(self.num_planes[:i])] = 1
-        return obs_planes
+        return obs_planes.reshape(self.config.height, self.config.width, -1)
 
     def step(self, action, raw=False):
         raw_obs, reward, done, info = super(GlobalAgentEnv, self).step(action, True)
