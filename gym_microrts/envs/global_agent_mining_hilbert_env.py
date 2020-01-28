@@ -29,9 +29,6 @@ def build_hilbert_idx(order):
     return hilber_curve_path, hilber_idx
 
 class GlobalAgentMiningHilbertEnv(GlobalAgentMiningEnv):
-    """
-    Always return False for the terminal signal of the game
-    """
 
     def __init__(self, config=None):
         super().__init__(config=config)

@@ -13,9 +13,6 @@ from gym.utils import seeding
 from gym_microrts.envs.global_agent_env import GlobalAgentEnv
 
 class GlobalAgentMiningEnv(GlobalAgentEnv):
-    """
-    Always return False for the terminal signal of the game
-    """
 
     def start_client(self):
         from ts import JNIClient
