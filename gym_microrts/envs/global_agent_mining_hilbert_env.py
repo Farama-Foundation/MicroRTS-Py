@@ -10,7 +10,7 @@ from gym_microrts.types import MicrortsMessage, Config
 from gym import error, spaces, utils
 import xml.etree.ElementTree as ET
 from gym.utils import seeding
-from gym_microrts.envs.global_agent_mining_env import GlobalAgentMiningEnv
+from gym_microrts.envs.global_agent_env import GlobalAgentMiningEnv
 from hilbertcurve.hilbertcurve import HilbertCurve
 
 def build_hilbert_idx(order):

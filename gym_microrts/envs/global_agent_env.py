@@ -72,3 +72,31 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
         if raw:
             return raw_obs
         return self._encode_obs(raw_obs)
+
+class GlobalAgentMiningEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import ResourceGatherRewardFunction
+        rf = ResourceGatherRewardFunction()
+        return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+class GlobalAgentBinaryEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import WinLossRewardFunction
+        rf = WinLossRewardFunction()
+        return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+class GlobalAgentAttackEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import AttackRewardFunction
+        rf = AttackRewardFunction()
+        return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+class GlobalAgentProduceWorkerEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import ProduceWorkerRewardFunction
+        rf = ProduceWorkerRewardFunction()
+        return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path)

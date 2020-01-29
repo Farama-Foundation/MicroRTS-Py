@@ -1,4 +1,3 @@
-from gym_microrts.envs.global_agent_env import GlobalAgentEnv
+from gym_microrts.envs.global_agent_env import GlobalAgentEnv, GlobalAgentMiningEnv, GlobalAgentBinaryEnv, GlobalAgentAttackEnv, GlobalAgentProduceWorkerEnv
 from gym_microrts.envs.local_agent_env import LocalAgentEnv
-from gym_microrts.envs.global_agent_mining_env import GlobalAgentMiningEnv
 from gym_microrts.envs.global_agent_mining_hilbert_env import GlobalAgentMiningHilbertEnv

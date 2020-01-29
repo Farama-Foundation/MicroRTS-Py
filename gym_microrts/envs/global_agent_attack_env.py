@@ -12,10 +12,10 @@ import xml.etree.ElementTree as ET
 from gym.utils import seeding
 from gym_microrts.envs.global_agent_env import GlobalAgentEnv
 
-class GlobalAgentMiningEnv(GlobalAgentEnv):
+class GlobalAttackBinaryEnv(GlobalAgentEnv):
 
     def start_client(self):
         from ts import JNIClient
-        from ai.rewardfunction import ResourceGatherRewardFunction
-        rf = ResourceGatherRewardFunction()
+        from ai.rewardfunction import AttackRewardFunction
+        rf = AttackRewardFunction()
         return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path)
