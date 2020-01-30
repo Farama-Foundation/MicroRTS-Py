@@ -4,10 +4,10 @@ import gym_microrts
 from gym.envs.registration import register
 from gym_microrts import Config
 
-if "GlobalAttackBinaryEnv-v0" not in gym.envs.registry.env_specs:
+if "GlobalAgentAttackEnv-v0" not in gym.envs.registry.env_specs:
     register(
-        "GlobalAttackBinaryEnv-v0",
-        entry_point='gym_microrts.envs:GlobalAttackBinaryEnv',
+        "GlobalAgentAttackEnv-v0",
+        entry_point='gym_microrts.envs:GlobalAgentAttackEnv',
         kwargs={'config': Config(
             frame_skip=9,
             ai1_type="no-penalty",
@@ -18,7 +18,7 @@ if "GlobalAttackBinaryEnv-v0" not in gym.envs.registry.env_specs:
         )}
     )
 
-env = gym.make("GlobalAttackBinaryEnv-v0")
+env = gym.make("GlobalAgentAttackEnv-v0")
 env.action_space.seed(0)
 try:
     obs = env.reset(True)
