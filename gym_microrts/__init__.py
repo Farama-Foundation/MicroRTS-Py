@@ -226,6 +226,20 @@ if V0NAME not in gym.envs.registry.env_specs:
         max_episode_steps=6000,
     )]
 
+    # full game
+    envs += [dict(
+        id="MicrortsGlobalAgentHRL10x10-v0",
+        entry_point='gym_microrts.envs:GlobalAgentHRLEnv',
+        kwargs={'config': Config(
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            # below are dev properties
+            microrts_path="~/microrts"
+        )},
+        max_episode_steps=3000,
+    )]
+
     # Additional variants and registration
     for env in envs:
         # Regular

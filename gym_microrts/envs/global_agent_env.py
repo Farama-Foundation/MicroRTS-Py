@@ -124,9 +124,20 @@ class GlobalAgentHRLEnv(GlobalAgentEnv):
         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction
         rfs = JArray(RewardFunctionInterface)([
             WinLossRewardFunction(), 
-            ResourceGatherRewardFunction(), 
-            AttackRewardFunction(), 
+            ResourceGatherRewardFunction(),  
             ProduceWorkerRewardFunction(),
             ProduceBuildingRewardFunction(),
+            AttackRewardFunction(),
             ProduceCombatUnitRewardFunction(),])
         return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+    def step(self, action, raw=False):
+        obs, reward, done, info = super(GlobalAgentEnv, self).step(action, True)
+        # obs[3] - obs[4].clip(max=1) means mask busy units
+        # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
+        self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        if not raw:
+            obs = self._encode_obs(obs)
+        info["dones"] = done
+        info["rewards"] = reward
+        return obs, reward[0], done[0], info

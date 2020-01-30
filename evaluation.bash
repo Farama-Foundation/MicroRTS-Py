@@ -14,6 +14,18 @@ do
     --seed $seed) >& /dev/null &
 done
 
+for seed in {1..1}
+do
+    (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c_hrl.py \
+    --total-timesteps 2000000 \
+    --wandb-project-name gym-microrts-hrl \
+    --gym-id MicrortsGlobalAgentHRL10x10-v0 \
+    --prod-mode True \
+    --capture-video True \
+    --cuda False \
+    --seed $seed) >& /dev/null &
+done
+
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c.py \
