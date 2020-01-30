@@ -4,7 +4,7 @@ import gym_microrts
 from gym.envs.registration import register
 from gym_microrts import Config
 
-gym_id = "GlobalAgentAttackEnv"
+gym_id = "GlobalAgentProduceCombatUnitEnv"
 if gym_id not in gym.envs.registry.env_specs:
     register(
         gym_id+'-v0',
@@ -27,26 +27,20 @@ try:
 except Exception as e:
     e.printStackTrace()
 
-
-env.step([1, 1, 1, 0, 0, 0, 0, 0, 0], True)
-env.render()
-env.step([2, 1, 1, 0, 0, 0, 0, 0, 0], True)
-env.render()
-env.step([3, 1, 2, 0, 0, 0, 0, 0, 0], True)
-env.render()
-env.step([7, 1, 2, 0, 0, 0, 0, 0, 0], True)
+assert env.step([4, 4, 0, 0, 0, 2, 2, 0, 0], True)[1] == 0
 env.render()
 
-# attack correct location
-assert env.step([11, 5, 0, 0, 0, 0, 0, 15], True)[1] > 0
-env.render()
 
-# attack wrong location no reward
-assert env.step([11, 5, 0, 0, 0, 0, 0, 3], True)[1] == 0
-env.render()
+for _ in range(10):
+    # mine
+    assert env.step([1, 2, 0, 3, 0, 0, 0, 0, 0], True)[1] == 0
+    env.render()
+    
+    # return
+    assert env.step([1, 3, 0, 0, 2, 0, 0, 0, 0], True)[1] == 0
+    env.render()
 
-# attack wrong unit no reward
-assert env.step([11, 5, 0, 0, 0, 0, 0, 5], True)[1] == 0
-env.render()
+
+assert env.step([8, 4, 0, 0, 0, 1, 6, 0, 0], True)[1] > 0
 
 env.close()

@@ -4,10 +4,11 @@ import gym_microrts
 from gym.envs.registration import register
 from gym_microrts import Config
 
-if "GlobalAgentProduceWorkerEnv-v0" not in gym.envs.registry.env_specs:
+gym_id = "GlobalAgentProduceWorkerEnv"
+if gym_id not in gym.envs.registry.env_specs:
     register(
-        "GlobalAgentProduceWorkerEnv-v0",
-        entry_point='gym_microrts.envs:GlobalAgentProduceWorkerEnv',
+        gym_id+'-v0',
+        entry_point=f'gym_microrts.envs:{gym_id}',
         kwargs={'config': Config(
             frame_skip=9,
             ai1_type="no-penalty",
@@ -17,8 +18,8 @@ if "GlobalAgentProduceWorkerEnv-v0" not in gym.envs.registry.env_specs:
             microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts",
         )}
     )
-
-env = gym.make("GlobalAgentProduceWorkerEnv-v0")
+env = gym.make(gym_id+'-v0')
+print(gym_id)
 env.action_space.seed(0)
 try:
     obs = env.reset(True)
@@ -26,6 +27,7 @@ try:
 except Exception as e:
     e.printStackTrace()
 
-
 assert env.step([5, 4, 0, 0, 0, 1, 3, 0], True)[1] > 0
 env.render()
+
+env.close()

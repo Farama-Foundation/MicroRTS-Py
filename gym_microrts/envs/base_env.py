@@ -46,12 +46,12 @@ class BaseSingleAgentEnv(gym.Env):
             registerDomain("ts", alias="tests")
             registerDomain("ai")
             jpype.addClassPath(os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")))
-            jpype.startJVM()
+            jpype.startJVM(convertStrings=False)
 
         self.client = self.start_client()
         
         # get the unit type table
-        self.utt = json.loads(self.client.sendUTT()) 
+        self.utt = json.loads(str(self.client.sendUTT()))
         
         # computed properties
         self.init_properties()
@@ -66,8 +66,8 @@ class BaseSingleAgentEnv(gym.Env):
         action = np.array([action])
         response = self.client.step(action, self.config.frame_skip)
         if raw:
-            return convert3DJarrayToNumpy(response.observation), response.reward[:], response.done[:], json.loads(response.info)
-        return self._encode_obs(convert3DJarrayToNumpy(response.observation)), response.reward[:], response.done[:], json.loads(response.info)
+            return convert3DJarrayToNumpy(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
+        return self._encode_obs(convert3DJarrayToNumpy(response.observation)), response.reward[:], response.done[:], json.loads(str(response.info))
 
     def reset(self, raw=False):
         response = self.client.reset()

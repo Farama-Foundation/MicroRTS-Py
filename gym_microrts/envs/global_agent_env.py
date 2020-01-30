@@ -21,16 +21,16 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
     
     action space is defined as 
     
-    [[0]x_coordinate(x), [1]y_coordinate(y), [2]a_t(6), [3]p_move(4), [4]p_harvest(4), 
-    [5]p_return(4), [6]p_produce_direction(4), [7]p_produce_unit_type(z), 
-    [8]p_attack_location_x_coordinate(x),  [9]p_attack_location_y_coordinate(y)]
+    [[0]x_coordinate*y_coordinate(x*y), [1]a_t(6), [2]p_move(4), [3]p_harvest(4), 
+    [4]p_return(4), [5]p_produce_direction(4), [6]p_produce_unit_type(z), 
+    [7]x_coordinate*y_coordinate(x*y)]
     """
 
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, SimpleEvaluationRewardFunction
         rfs = JArray(RewardFunctionInterface)([SimpleEvaluationRewardFunction()])
-        return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
     def init_properties(self):
         # [num_planes_hp(5), num_planes_resources(5), num_planes_player(5), 
@@ -76,18 +76,18 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
             return raw_obs
         return self._encode_obs(raw_obs)
 
-class GlobalAgentMiningEnv(GlobalAgentEnv):
-    def start_client(self):
-        from ts import JNIClient
-        from ai.rewardfunction import RewardFunctionInterface, ResourceGatherRewardFunction
-        rfs = JArray(RewardFunctionInterface)([ResourceGatherRewardFunction()])
-        return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path)
-
 class GlobalAgentBinaryEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction
         rfs = JArray(RewardFunctionInterface)([WinLossRewardFunction()])
+        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+class GlobalAgentMiningEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, ResourceGatherRewardFunction
+        rfs = JArray(RewardFunctionInterface)([ResourceGatherRewardFunction()])
         return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
 class GlobalAgentAttackEnv(GlobalAgentEnv):
@@ -102,4 +102,31 @@ class GlobalAgentProduceWorkerEnv(GlobalAgentEnv):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, ProduceWorkerRewardFunction
         rfs = JArray(RewardFunctionInterface)([ProduceWorkerRewardFunction()])
-        return JNIClient(rf, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+class GlobalAgentProduceBuildingEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, ProduceBuildingRewardFunction
+        rfs = JArray(RewardFunctionInterface)([ProduceBuildingRewardFunction()])
+        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+class GlobalAgentProduceCombatUnitEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, ProduceCombatUnitRewardFunction
+        rfs = JArray(RewardFunctionInterface)([ProduceCombatUnitRewardFunction()])
+        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+class GlobalAgentHRLEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction
+        rfs = JArray(RewardFunctionInterface)([
+            WinLossRewardFunction(), 
+            ResourceGatherRewardFunction(), 
+            AttackRewardFunction(), 
+            ProduceWorkerRewardFunction(),
+            ProduceBuildingRewardFunction(),
+            ProduceCombatUnitRewardFunction(),])
+        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
