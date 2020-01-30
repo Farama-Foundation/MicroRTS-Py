@@ -27,7 +27,6 @@ try:
 except Exception as e:
     e.printStackTrace()
 
-
 assert env.step([4, 4, 0, 0, 0, 2, 2, 0, 0], True)[1] > 0
 env.render()
 
