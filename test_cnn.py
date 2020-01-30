@@ -27,7 +27,7 @@ if "MicrortsGlobalAgentsDev-v0" not in gym.envs.registry.env_specs:
             frame_skip=9,
             ai1_type="no-penalty",
             ai2_type="passive",
-            map_path="maps/24x24/basesWorkers24x24.xml",
+            map_path="maps/10x10/basesWorkers10x10.xml",
             # below are dev properties
             microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts",
         )}
@@ -37,19 +37,21 @@ env = gym.make("MicrortsGlobalAgentsDev-v0")
 env.action_space.seed(0)
 try:
     obs = env.reset(True)
+    env.render()
 except Exception as e:
     e.printStackTrace()
 
 
 s = nn.Sequential(
-    nn.Conv2d(27, 16, kernel_size=3, stride=1),
-    nn.MaxPool2d(2),
+    nn.Conv2d(27, 16, kernel_size=3,),
+    nn.MaxPool2d(1),
     nn.ReLU(),
-    nn.Conv2d(16, 32, kernel_size=2, stride=1),
-    nn.MaxPool2d(2),
+    nn.Conv2d(16, 32, kernel_size=3),
+    nn.MaxPool2d(1),
     nn.ReLU())
 
-print(torch.Tensor(np.moveaxis(env.reset(), -1, 0)).unsqueeze(0).shape)
+data = torch.Tensor(np.moveaxis(env.reset(), -1, 0)).unsqueeze(0)
+print(data.shape)
 #-------------------------------------------------------------------------------
 # DEBUGGING actions
 #-------------------------------------------------------------------------------

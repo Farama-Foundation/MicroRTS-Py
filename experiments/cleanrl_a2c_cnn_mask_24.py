@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsGlobalAgentBinary10x10-v0",
+    parser.add_argument('--gym-id', type=str, default="MicrortsGlobalAgentMining24x24Prod-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -97,14 +97,14 @@ class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(27, 16, kernel_size=3,),
-            nn.MaxPool2d(1),
+            nn.Conv2d(27, 16, kernel_size=3, stride=1),
+            nn.MaxPool2d(2),
             nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=3),
-            nn.MaxPool2d(1),
+            nn.Conv2d(16, 32, kernel_size=2, stride=1),
+            nn.MaxPool2d(2),
             nn.ReLU())
         self.fc = nn.Sequential(
-            nn.Linear(32*6*6, 128),
+            nn.Linear(32*5*5, 128),
             nn.ReLU(),
             nn.Linear(128, output_shape)
         )
@@ -120,14 +120,14 @@ class Value(nn.Module):
     def __init__(self):
         super(Value, self).__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(27, 16, kernel_size=3,),
-            nn.MaxPool2d(1),
+            nn.Conv2d(27, 16, kernel_size=3, stride=1),
+            nn.MaxPool2d(2),
             nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=3),
-            nn.MaxPool2d(1),
+            nn.Conv2d(16, 32, kernel_size=2, stride=1),
+            nn.MaxPool2d(2),
             nn.ReLU())
         self.fc = nn.Sequential(
-            nn.Linear(32*6*6, 128),
+            nn.Linear(32*5*5, 128),
             nn.ReLU(),
             nn.Linear(128, 1)
         )
