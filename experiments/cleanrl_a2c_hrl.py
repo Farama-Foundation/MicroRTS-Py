@@ -162,7 +162,7 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 
 # sub policys
 num = 6
-temp_num = 4
+temp_num = 6
 pgs = [Policy().to(device) for _ in range(num)]
 vfs = [Value().to(device) for _ in range(num)]
 optimizers = [optim.Adam(list(pgs[i].parameters()) + list(vfs[i].parameters()), 
@@ -204,47 +204,57 @@ while global_step < args.total_timesteps:
                 dist[i] = torch.dist(logits, logitss[i])
             sub_logits_idx = torch.argmin(dist[1:]) + 1
             sub_logits = logitss[sub_logits_idx]
+            
+        writer.add_scalar("charts/sub_logits_idx", sub_logits_idx, global_step)
         
         for i in range(len(pgs)):
             values[i,step] = vfs[i].forward(obs[step:step+1])
 
         # ALGO LOGIC: `env.action_space` specific logic
         if isinstance(env.action_space, MultiDiscrete):
-            logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
-            sub_logits_categories = torch.split(sub_logits, env.action_space.nvec.tolist(), dim=1)
+            all_logits_categories =  []
             action = []
-            probs_categories = []
-            probs_entropies = torch.zeros((logits.shape[0]), device=device)
-            neglogprob = torch.zeros((logits.shape[0]), device=device)
-            sub_probs_categories = []
-            sub_probs_entropies = torch.zeros((logits.shape[0]), device=device)
-            sub_neglogprob = torch.zeros((logits.shape[0]), device=device)
-            
-            # Gym-microrts logic: unit selection masking
-            i=0
-            probs_categories.append(CategoricalMasked(logits=logits_categories[i], masks=env.unit_location_mask))
-            sub_probs_categories.append(CategoricalMasked(logits=sub_logits_categories[i], masks=env.unit_location_mask))
-            temp_probs = Categorical(probs_categories[i].probs + alpha * (sub_probs_categories[i].probs - probs_categories[i].probs))
-            if len(action) != env.action_space.shape:
-                action.append(temp_probs.sample())
-            neglogprob -= probs_categories[i].log_prob(action[i])
-            probs_entropies += probs_categories[i].entropy()
-            sub_neglogprob -= sub_probs_categories[i].log_prob(action[i])
-            sub_probs_entropies += sub_probs_categories[i].entropy()  
+            all_probs_categories = []
+            all_probs_entropies =  []
+            all_neglogprob =  []
+            for i in range(temp_num):
+                all_logits_categories.append(torch.split(logitss[i], env.action_space.nvec.tolist(), dim=1))
+                all_probs_categories.append([])
+                all_probs_entropies.append(torch.zeros((logitss[i].shape[0]), device=device))
+                all_neglogprob.append(torch.zeros((logitss[i].shape[0]), device=device))
+                
+                logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
+                sub_logits_categories = torch.split(sub_logits, env.action_space.nvec.tolist(), dim=1)
+                action = []
+                probs_categories = []
+                probs_entropies = torch.zeros((logits.shape[0]), device=device)
+                neglogprob = torch.zeros((logits.shape[0]), device=device)
+                sub_probs_categories = []
+                sub_probs_entropies = torch.zeros((logits.shape[0]), device=device)
+                sub_neglogprob = torch.zeros((logits.shape[0]), device=device)
 
-            for i in range(1, len(logits_categories)):
-                probs_categories.append(Categorical(logits=logits_categories[i]))
-                sub_probs_categories.append(Categorical(logits=sub_logits_categories[i]))
-                temp_probs = Categorical(probs_categories[i].probs + alpha * (sub_probs_categories[i].probs - probs_categories[i].probs))
+            for i in range(temp_num):
+                j=0
+                all_probs_categories[i].append(CategoricalMasked(logits=all_logits_categories[i][j], masks=env.unit_location_mask))
+            for i in range(temp_num):
+                for j in range(1, len(all_logits_categories[0])):
+                    all_probs_categories[i].append(Categorical(logits=all_logits_categories[i][j]))
+
+            # action guidence:
+            for j in range(0, len(all_logits_categories[0])):
+                temp_probs = Categorical(all_probs_categories[0][j].probs + alpha * (all_probs_categories[sub_logits_idx][j].probs - all_probs_categories[0][j].probs))    
                 if len(action) != env.action_space.shape:
                     action.append(temp_probs.sample())
-                neglogprob -= probs_categories[i].log_prob(action[i])
-                probs_entropies += probs_categories[i].entropy()
-                sub_neglogprob -= sub_probs_categories[i].log_prob(action[i])
-                sub_probs_entropies += sub_probs_categories[i].entropy()  
+            
+            for i in range(temp_num):
+                for j in range(0, len(all_logits_categories[0])):
+                    all_neglogprob[i] -= all_probs_categories[i][j].log_prob(action[j])
+                    all_probs_entropies[i] += all_probs_categories[i][j].entropy()
+            
+            neglogprobs[:,step] = torch.tensor(all_neglogprob).to(device)
+            entropys[:,step] = torch.tensor(all_probs_entropies).to(device)
             action = torch.stack(action).transpose(0, 1).tolist()
-            actions[step], neglogprobs[0,step], entropys[0,step] = action[0], neglogprob, probs_entropies
-            neglogprobs[sub_logits_idx,step], entropys[sub_logits_idx,step] = sub_neglogprob, sub_probs_entropies
+            actions[step] = action[0]
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, reward, done, info = env.step(actions[step])
@@ -264,19 +274,16 @@ while global_step < args.total_timesteps:
 
     vf_loss = ((torch.Tensor(returns).to(device) - values)**2).mean(1) * args.vf_coef
     pg_loss = torch.Tensor(advantages).to(device) * neglogprobs
-    loss = (pg_loss - entropys * args.ent_coef).mean(1) + vf_loss
+    loss = ((pg_loss - entropys * args.ent_coef).mean(1) + vf_loss).sum()
 
-    # HRL: master update
-    optimizers[0].zero_grad()
-    loss[0].backward(retain_graph=True)
+    # HRL: update
+    for i in range(num):
+        optimizers[i].zero_grad()
+    loss.backward()
     nn.utils.clip_grad_norm_(list(pgs[0].parameters()) + list(vfs[0].parameters()), args.max_grad_norm)
-    optimizers[0].step()
+    for i in range(num):
+        optimizers[i].step()
 
-    # HRL: sub update
-    optimizers[sub_logits_idx].zero_grad()
-    loss[sub_logits_idx].backward(retain_graph=True)
-    nn.utils.clip_grad_norm_(list(pgs[sub_logits_idx].parameters()) + list(vfs[sub_logits_idx].parameters()), args.max_grad_norm)
-    optimizers[sub_logits_idx].step()
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/epsilon", epsilon, global_step)
