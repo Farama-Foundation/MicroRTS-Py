@@ -29,8 +29,8 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, SimpleEvaluationRewardFunction
-        rfs = JArray(RewardFunctionInterface)([SimpleEvaluationRewardFunction()])
-        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        self.rfs = JArray(RewardFunctionInterface)([SimpleEvaluationRewardFunction()])
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
     def init_properties(self):
         # [num_planes_hp(5), num_planes_resources(5), num_planes_player(5), 
@@ -80,56 +80,78 @@ class GlobalAgentBinaryEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction
-        rfs = JArray(RewardFunctionInterface)([WinLossRewardFunction()])
-        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        self.rfs = JArray(RewardFunctionInterface)([WinLossRewardFunction()])
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
 class GlobalAgentMiningEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, ResourceGatherRewardFunction
-        rfs = JArray(RewardFunctionInterface)([ResourceGatherRewardFunction()])
-        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        self.rfs = JArray(RewardFunctionInterface)([ResourceGatherRewardFunction()])
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
 class GlobalAgentAttackEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, AttackRewardFunction
-        rfs = JArray(RewardFunctionInterface)([AttackRewardFunction()])
-        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        self.rfs = JArray(RewardFunctionInterface)([AttackRewardFunction()])
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
 class GlobalAgentProduceWorkerEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, ProduceWorkerRewardFunction
-        rfs = JArray(RewardFunctionInterface)([ProduceWorkerRewardFunction()])
-        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        self.rfs = JArray(RewardFunctionInterface)([ProduceWorkerRewardFunction()])
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
 class GlobalAgentProduceBuildingEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, ProduceBuildingRewardFunction
-        rfs = JArray(RewardFunctionInterface)([ProduceBuildingRewardFunction()])
-        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        self.rfs = JArray(RewardFunctionInterface)([ProduceBuildingRewardFunction()])
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
 class GlobalAgentProduceCombatUnitEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, ProduceCombatUnitRewardFunction
-        rfs = JArray(RewardFunctionInterface)([ProduceCombatUnitRewardFunction()])
-        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        self.rfs = JArray(RewardFunctionInterface)([ProduceCombatUnitRewardFunction()])
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
 class GlobalAgentHRLEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction
-        rfs = JArray(RewardFunctionInterface)([
+        self.rfs = JArray(RewardFunctionInterface)([
             WinLossRewardFunction(), 
             ResourceGatherRewardFunction(),  
             ProduceWorkerRewardFunction(),
             ProduceBuildingRewardFunction(),
             AttackRewardFunction(),
             ProduceCombatUnitRewardFunction(),])
-        return JNIClient(rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        self.num_reward_function = len(self.rfs)
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+    def step(self, action, raw=False):
+        obs, reward, done, info = super(GlobalAgentEnv, self).step(action, True)
+        # obs[3] - obs[4].clip(max=1) means mask busy units
+        # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
+        self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        if not raw:
+            obs = self._encode_obs(obs)
+        info["dones"] = done
+        info["rewards"] = reward
+        return obs, reward[0], done[0], info
+
+class GlobalAgentHRLMiningEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction
+        self.rfs = JArray(RewardFunctionInterface)([
+            WinLossRewardFunction(), 
+            ResourceGatherRewardFunction(),])
+        self.num_reward_function = len(self.rfs)
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
     def step(self, action, raw=False):
         obs, reward, done, info = super(GlobalAgentEnv, self).step(action, True)
