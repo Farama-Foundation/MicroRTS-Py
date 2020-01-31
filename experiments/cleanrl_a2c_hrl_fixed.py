@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsGlobalAgentHRL10x10-v0",
+    parser.add_argument('--gym-id', type=str, default="MicrortsGlobalAgentHRLMining10x10-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -30,7 +30,7 @@ if __name__ == "__main__":
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=1000,
+    parser.add_argument('--total-timesteps', type=int, default=2000000,
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
@@ -151,19 +151,15 @@ class CategoricalMasked(Categorical):
         p_log_p = torch.where(self.masks, p_log_p, torch.tensor(0.).to(device))
         return -p_log_p.sum(-1)
 
-# master
-pg = Policy().to(device)
-vf = Value().to(device)
-optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
-
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope =  (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
 
-# sub policys
 num = env.num_reward_function
-pgs = [Policy().to(device) for _ in range(num)]
-vfs = [Value().to(device) for _ in range(num)]
+pgs = [Policy().to(device)] #  for _ in range(num)
+vfs = [Value().to(device)] #  for _ in range(num)
+pgs = [Policy().to(device)] + pgs
+vfs = [Value().to(device)] + vfs
 optimizers = [optim.Adam(list(pgs[i].parameters()) + list(vfs[i].parameters()), 
     lr=args.learning_rate) for i in range(num)]
 loss_fn = nn.MSELoss()
@@ -184,7 +180,7 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
         epsilon = linear_schedule(1.0, 0.1, 0.7*args.total_timesteps, global_step)
-        alpha = linear_schedule(1.0, 0.8, 0.7*args.total_timesteps, global_step)
+        alpha = 1 # linear_schedule(1.0, 0.8, 0.7*args.total_timesteps, global_step)
 
         # env.render()
         global_step += 1
@@ -241,8 +237,9 @@ while global_step < args.total_timesteps:
                     all_neglogprob[i] -= all_probs_categories[i][j].log_prob(action[j])
                     all_probs_entropies[i] += all_probs_categories[i][j].entropy()
             
-            neglogprobs[:,step] = torch.tensor(all_neglogprob).to(device)
-            entropys[:,step] = torch.tensor(all_probs_entropies).to(device)
+            for i in range(len(all_neglogprob)):
+                neglogprobs[i,step] = all_neglogprob[i]
+                entropys[i,step] = all_probs_entropies[i]
             action = torch.stack(action).transpose(0, 1).tolist()
             actions[step] = action[0]
 
@@ -264,7 +261,7 @@ while global_step < args.total_timesteps:
 
     vf_loss = ((torch.Tensor(returns).to(device) - values)**2).mean(1) * args.vf_coef
     pg_loss = torch.Tensor(advantages).to(device) * neglogprobs
-    loss = ((pg_loss - entropys * args.ent_coef).mean(1) + vf_loss).sum()
+    loss = ((pg_loss - entropys * args.ent_coef).mean(1) + vf_loss).mean()
 
     # HRL: update
     for i in range(num):
