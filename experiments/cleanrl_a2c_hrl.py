@@ -151,19 +151,12 @@ class CategoricalMasked(Categorical):
         p_log_p = torch.where(self.masks, p_log_p, torch.tensor(0.).to(device))
         return -p_log_p.sum(-1)
 
-# master
-pg = Policy().to(device)
-vf = Value().to(device)
-optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
-
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope =  (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
 
-# sub policys
-num = 6
-temp_num = 6
-pgs = [Policy().to(device) for _ in range(num)]
+num = env.num_reward_function
+pgs = [Policy().to(device) for _ in range(num)] 
 vfs = [Value().to(device) for _ in range(num)]
 optimizers = [optim.Adam(list(pgs[i].parameters()) + list(vfs[i].parameters()), 
     lr=args.learning_rate) for i in range(num)]
@@ -195,15 +188,15 @@ while global_step < args.total_timesteps:
         # HRL: select sub logits
         logitss = [pg.forward(obs[step:step+1]) for pg in pgs]
         logits = logitss[0]
-        if random.random() < epsilon:
-            sub_logits_idx = np.random.randint(1, temp_num)
-            sub_logits = logitss[sub_logits_idx]
-        else:
-            dist = torch.zeros((temp_num)).to(device)
-            for i in range(1, temp_num):
-                dist[i] = torch.dist(logits, logitss[i])
-            sub_logits_idx = torch.argmin(dist[1:]) + 1
-            sub_logits = logitss[sub_logits_idx]
+        sub_logits_idx = 1
+        if global_step % 100 == 0:
+            if random.random() < epsilon:
+                sub_logits_idx = np.random.randint(1, num)
+            else:
+                dist = torch.zeros((num)).to(device)
+                for i in range(1, num):
+                    dist[i] = torch.dist(logits, logitss[i])
+                sub_logits_idx = torch.argmin(dist[1:]) + 1
             
         writer.add_scalar("charts/sub_logits_idx", sub_logits_idx, global_step)
         
@@ -217,26 +210,16 @@ while global_step < args.total_timesteps:
             all_probs_categories = []
             all_probs_entropies =  []
             all_neglogprob =  []
-            for i in range(temp_num):
+            for i in range(num):
                 all_logits_categories.append(torch.split(logitss[i], env.action_space.nvec.tolist(), dim=1))
                 all_probs_categories.append([])
                 all_probs_entropies.append(torch.zeros((logitss[i].shape[0]), device=device))
                 all_neglogprob.append(torch.zeros((logitss[i].shape[0]), device=device))
-                
-                logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
-                sub_logits_categories = torch.split(sub_logits, env.action_space.nvec.tolist(), dim=1)
-                action = []
-                probs_categories = []
-                probs_entropies = torch.zeros((logits.shape[0]), device=device)
-                neglogprob = torch.zeros((logits.shape[0]), device=device)
-                sub_probs_categories = []
-                sub_probs_entropies = torch.zeros((logits.shape[0]), device=device)
-                sub_neglogprob = torch.zeros((logits.shape[0]), device=device)
 
-            for i in range(temp_num):
+            for i in range(num):
                 j=0
                 all_probs_categories[i].append(CategoricalMasked(logits=all_logits_categories[i][j], masks=env.unit_location_mask))
-            for i in range(temp_num):
+            for i in range(num):
                 for j in range(1, len(all_logits_categories[0])):
                     all_probs_categories[i].append(Categorical(logits=all_logits_categories[i][j]))
 
@@ -246,13 +229,14 @@ while global_step < args.total_timesteps:
                 if len(action) != env.action_space.shape:
                     action.append(temp_probs.sample())
             
-            for i in range(temp_num):
+            for i in range(num):
                 for j in range(0, len(all_logits_categories[0])):
                     all_neglogprob[i] -= all_probs_categories[i][j].log_prob(action[j])
                     all_probs_entropies[i] += all_probs_categories[i][j].entropy()
             
-            neglogprobs[:,step] = torch.tensor(all_neglogprob).to(device)
-            entropys[:,step] = torch.tensor(all_probs_entropies).to(device)
+            for i in range(len(all_neglogprob)):
+                neglogprobs[i,step] = all_neglogprob[i]
+                entropys[i,step] = all_probs_entropies[i]
             action = torch.stack(action).transpose(0, 1).tolist()
             actions[step] = action[0]
 

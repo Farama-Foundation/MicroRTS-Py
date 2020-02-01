@@ -192,13 +192,11 @@ while global_step < args.total_timesteps:
         logits = logitss[0]
         # if random.random() < epsilon:
         #     sub_logits_idx = np.random.randint(1, num)
-        #     sub_logits = logitss[sub_logits_idx]
         # else:
         #     dist = torch.zeros((num)).to(device)
         #     for i in range(1, num):
         #         dist[i] = torch.dist(logits, logitss[i])
         #     sub_logits_idx = torch.argmin(dist[1:]) + 1
-        #     sub_logits = logitss[sub_logits_idx]
         sub_logits_idx = 1
             
         writer.add_scalar("charts/sub_logits_idx", sub_logits_idx, global_step)
@@ -261,7 +259,7 @@ while global_step < args.total_timesteps:
 
     vf_loss = ((torch.Tensor(returns).to(device) - values)**2).mean(1) * args.vf_coef
     pg_loss = torch.Tensor(advantages).to(device) * neglogprobs
-    loss = ((pg_loss - entropys * args.ent_coef).mean(1) + vf_loss).mean()
+    loss = ((pg_loss - entropys * args.ent_coef).mean(1) + vf_loss).sum()
 
     # HRL: update
     for i in range(num):
