@@ -254,6 +254,19 @@ if V0NAME not in gym.envs.registry.env_specs:
     )]
 
     envs += [dict(
+        id=f"MicrortsGlobalAgentHRLMining10x10FrameSkip9-v0",
+        entry_point='gym_microrts.envs:GlobalAgentHRLMiningEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        )},
+        max_episode_steps=200,
+    )]
+
+    envs += [dict(
         id=f"MicrortsGlobalAgentMining10x10-v0",
         entry_point='gym_microrts.envs:GlobalAgentMiningEnv',
         kwargs={'config': Config(
@@ -263,6 +276,19 @@ if V0NAME not in gym.envs.registry.env_specs:
             microrts_path="~/microrts"
         )},
         max_episode_steps=2000,
+    )]
+
+    envs += [dict(
+        id=f"MicrortsGlobalAgentMining10x10FrameSkip9-v0",
+        entry_point='gym_microrts.envs:GlobalAgentMiningEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        )},
+        max_episode_steps=200,
     )]
 
     # Additional variants and registration
