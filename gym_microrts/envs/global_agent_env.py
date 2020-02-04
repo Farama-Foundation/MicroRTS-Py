@@ -163,3 +163,45 @@ class GlobalAgentHRLMiningEnv(GlobalAgentEnv):
         info["dones"] = done
         info["rewards"] = reward
         return obs, reward[0], done[0], info
+
+class GlobalAgentHRLProduceWorkerEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction
+        self.rfs = JArray(RewardFunctionInterface)([
+            WinLossRewardFunction(), 
+            ProduceWorkerRewardFunction(),])
+        self.num_reward_function = len(self.rfs)
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+    def step(self, action, raw=False):
+        obs, reward, done, info = super(GlobalAgentEnv, self).step(action, True)
+        # obs[3] - obs[4].clip(max=1) means mask busy units
+        # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
+        self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        if not raw:
+            obs = self._encode_obs(obs)
+        info["dones"] = done
+        info["rewards"] = reward
+        return obs, reward[0], done[0], info
+
+class GlobalAgentHRLAttackRewardEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction
+        self.rfs = JArray(RewardFunctionInterface)([
+            WinLossRewardFunction(), 
+            AttackRewardFunction(),])
+        self.num_reward_function = len(self.rfs)
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+    def step(self, action, raw=False):
+        obs, reward, done, info = super(GlobalAgentEnv, self).step(action, True)
+        # obs[3] - obs[4].clip(max=1) means mask busy units
+        # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
+        self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        if not raw:
+            obs = self._encode_obs(obs)
+        info["dones"] = done
+        info["rewards"] = reward
+        return obs, reward[0], done[0], info

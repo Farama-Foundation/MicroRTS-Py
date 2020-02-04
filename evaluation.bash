@@ -43,6 +43,30 @@ do
     (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c_hrl_fixed.py \
     --total-timesteps 2000000 \
     --wandb-project-name gym-microrts-hrl \
+    --gym-id MicrortsGlobalAgentHRLAttackReward10x10FrameSkip9-v0 \
+    --prod-mode True \
+    --capture-video True \
+    --cuda False \
+    --seed $seed) >& /dev/null &
+done
+
+for seed in {1..1}
+do
+    (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c_hrl_fixed.py \
+    --total-timesteps 2000000 \
+    --wandb-project-name gym-microrts-hrl \
+    --gym-id MicrortsGlobalAgentHRLProduceWorker10x10FrameSkip9-v0 \
+    --prod-mode True \
+    --capture-video True \
+    --cuda False \
+    --seed $seed) >& /dev/null &
+done
+
+for seed in {1..1}
+do
+    (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c_hrl_fixed.py \
+    --total-timesteps 2000000 \
+    --wandb-project-name gym-microrts-hrl \
     --gym-id MicrortsGlobalAgentHRLMining10x10-v0 \
     --prod-mode True \
     --capture-video True \
@@ -53,9 +77,9 @@ done
 for seed in {1..1}
 do
     (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c_cnn_mask.py \
-    --total-timesteps 2000000 \
+    --total-timesteps 2000 \
     --wandb-project-name gym-microrts-hrl \
-    --gym-id MicrortsGlobalAgentMining10x10-v0 \
+    --gym-id MicrortsGlobalAgentMining10x10FrameSkip9-v0 \
     --prod-mode True \
     --capture-video True \
     --cuda False \
