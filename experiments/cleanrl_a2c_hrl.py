@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsGlobalAgentHRL10x10-v0",
+    parser.add_argument('--gym-id', type=str, default="MicrortsGlobalAgentHRLAttackCloserToEnemyBase10x10FrameSkip9-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -230,8 +230,11 @@ while global_step < args.total_timesteps:
                 j=0
                 all_probs_categories[i].append(CategoricalMasked(logits=all_logits_categories[i][j], masks=env.unit_location_mask))
             for i in range(num):
-                for j in range(1, len(all_logits_categories[0])):
+                for j in range(1, len(all_logits_categories[0])-1):
                     all_probs_categories[i].append(Categorical(logits=all_logits_categories[i][j]))
+            for i in range(num):
+                j=len(all_logits_categories[0])-1
+                all_probs_categories[i].append(CategoricalMasked(logits=all_logits_categories[i][j], masks=env.target_unit_location_mask))
 
             # action guidence:
             for j in range(0, len(all_logits_categories[0])):
@@ -249,6 +252,15 @@ while global_step < args.total_timesteps:
                 entropys[i,step] = all_probs_entropies[i]
             action = torch.stack(action).transpose(0, 1).tolist()
             actions[step] = action[0]
+            
+        if args.prod_mode and global_step % 20000 == 0:
+            if not os.path.exists(f"models/{experiment_name}"):
+                os.makedirs(f"models/{experiment_name}")
+            for i in range(num):
+                torch.save(pgs[i].state_dict(), f"models/{experiment_name}/pg_{str(env.rfs[i])}.pt")
+                torch.save(vfs[i].state_dict(), f"models/{experiment_name}/vf_{str(env.rfs[i])}.pt")
+                wandb.save(f"models/{experiment_name}/pg_{str(env.rfs[i])}.pt")
+                wandb.save(f"models/{experiment_name}/vf_{str(env.rfs[i])}.pt")
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, reward, done, info = env.step(actions[step])

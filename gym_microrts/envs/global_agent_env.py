@@ -63,6 +63,7 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
         # obs[3] - obs[4].clip(max=1) means mask busy units
         # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
         self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
         if len(reward)==1:
@@ -72,6 +73,7 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
     def reset(self, raw=False):
         raw_obs = super(GlobalAgentEnv, self).reset(True)
         self.unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==2,0, (raw_obs[2]))).flatten()
+        self.target_unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==1,0, (raw_obs[2]).clip(max=1))).flatten()
         if raw:
             return raw_obs
         return self._encode_obs(raw_obs)
@@ -144,6 +146,7 @@ class GlobalAgentHRLEnv(GlobalAgentEnv):
         # obs[3] - obs[4].clip(max=1) means mask busy units
         # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
         self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
         info["dones"] = done
@@ -165,6 +168,7 @@ class GlobalAgentHRLMiningEnv(GlobalAgentEnv):
         # obs[3] - obs[4].clip(max=1) means mask busy units
         # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
         self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
         info["dones"] = done
@@ -186,6 +190,7 @@ class GlobalAgentHRLProduceWorkerEnv(GlobalAgentEnv):
         # obs[3] - obs[4].clip(max=1) means mask busy units
         # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
         self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
         info["dones"] = done
@@ -207,6 +212,7 @@ class GlobalAgentHRLAttackEnv(GlobalAgentEnv):
         # obs[3] - obs[4].clip(max=1) means mask busy units
         # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
         self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
         info["dones"] = done
@@ -229,6 +235,7 @@ class GlobalAgentHRLAttackCloserToEnemyBaseEnv(GlobalAgentEnv):
         # obs[3] - obs[4].clip(max=1) means mask busy units
         # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
         self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
         info["dones"] = done
