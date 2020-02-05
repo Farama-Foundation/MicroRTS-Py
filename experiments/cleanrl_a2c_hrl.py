@@ -286,10 +286,9 @@ while global_step < args.total_timesteps:
     for i in range(num):
         optimizers[i].zero_grad()
     loss.backward()
-    nn.utils.clip_grad_norm_(list(pgs[0].parameters()) + list(vfs[0].parameters()), args.max_grad_norm)
     for i in range(num):
+        nn.utils.clip_grad_norm_(list(pgs[i].parameters()) + list(vfs[i].parameters()), args.max_grad_norm)
         optimizers[i].step()
-
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/epsilon", epsilon, global_step)

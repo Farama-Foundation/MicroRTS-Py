@@ -221,8 +221,11 @@ while global_step < args.total_timesteps:
                 j=0
                 all_probs_categories[i].append(CategoricalMasked(logits=all_logits_categories[i][j], masks=env.unit_location_mask))
             for i in range(num):
-                for j in range(1, len(all_logits_categories[0])):
+                for j in range(1, len(all_logits_categories[0])-1):
                     all_probs_categories[i].append(Categorical(logits=all_logits_categories[i][j]))
+            for i in range(num):
+                j=len(all_logits_categories[0])-1
+                all_probs_categories[i].append(CategoricalMasked(logits=all_logits_categories[i][j], masks=env.target_unit_location_mask))
 
             # action guidence:
             for j in range(0, len(all_logits_categories[0])):
@@ -240,6 +243,15 @@ while global_step < args.total_timesteps:
                 entropys[i,step] = all_probs_entropies[i]
             action = torch.stack(action).transpose(0, 1).tolist()
             actions[step] = action[0]
+            
+        if args.prod_mode and global_step % 20000 == 0:
+            if not os.path.exists(f"models/{experiment_name}"):
+                os.makedirs(f"models/{experiment_name}")
+            for i in range(num):
+                torch.save(pgs[i].state_dict(), f"models/{experiment_name}/pg_{str(env.rfs[i])}.pt")
+                torch.save(vfs[i].state_dict(), f"models/{experiment_name}/vf_{str(env.rfs[i])}.pt")
+                wandb.save(f"models/{experiment_name}/pg_{str(env.rfs[i])}.pt")
+                wandb.save(f"models/{experiment_name}/vf_{str(env.rfs[i])}.pt")
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, reward, done, info = env.step(actions[step])
@@ -265,16 +277,15 @@ while global_step < args.total_timesteps:
     for i in range(num):
         optimizers[i].zero_grad()
     loss.backward()
-    nn.utils.clip_grad_norm_(list(pgs[0].parameters()) + list(vfs[0].parameters()), args.max_grad_norm)
     for i in range(num):
+        nn.utils.clip_grad_norm_(list(pgs[i].parameters()) + list(vfs[i].parameters()), args.max_grad_norm)
         optimizers[i].step()
-
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/epsilon", epsilon, global_step)
     writer.add_scalar("charts/alpha", alpha, global_step)
-    writer.add_scalar("charts/episode_reward/WinLossRewardFunction", rewards.sum(1)[0], global_step)
-    writer.add_scalar("charts/episode_reward/ResourceGatherRewardFunction", rewards.sum(1)[1], global_step)
+    for i in range(len(env.rfs)):
+        writer.add_scalar(f"charts/episode_reward/{str(env.rfs[i])}", rewards.sum(1)[i], global_step)
     
     # writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
     # writer.add_scalar("losses/entropy", entropys[:step].mean().item(), global_step)
