@@ -54,6 +54,16 @@ if __name__ == "__main__":
                        help='the maximum norm for the gradient clipping')
     parser.add_argument('--ent-coef', type=float, default=0.01,
                        help="policy entropy's coefficient the loss function")
+    parser.add_argument('--start-e', type=float, default=1.0,
+                       help="the starting epsilon for exploration")
+    parser.add_argument('--end-e', type=float, default=0.01,
+                       help="the ending epsilon for exploration")
+    parser.add_argument('--start-a', type=float, default=1.0,
+                       help="the starting alpha for exploration")
+    parser.add_argument('--end-a', type=float, default=0.8,
+                       help="the ending alpha for exploration")
+    parser.add_argument('--exploration-fraction', type=float, default=0.10,
+                       help="the fraction of `total-timesteps` it takes from start-e to go end-e")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -177,8 +187,8 @@ while global_step < args.total_timesteps:
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
-        epsilon = linear_schedule(1.0, 0.1, 0.7*args.total_timesteps, global_step)
-        alpha = linear_schedule(1.0, 0.8, 0.7*args.total_timesteps, global_step)
+        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
+        alpha = linear_schedule(args.start_a, args.end_a, args.exploration_fraction*args.total_timesteps, global_step)
 
         # env.render()
         global_step += 1
