@@ -272,13 +272,8 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/epsilon", epsilon, global_step)
     writer.add_scalar("charts/alpha", alpha, global_step)
-    writer.add_scalar("charts/episode_reward/WinLossRewardFunction", rewards.sum(1)[0], global_step)
-    writer.add_scalar("charts/episode_reward/ResourceGatherRewardFunction", rewards.sum(1)[1], global_step)
-    writer.add_scalar("charts/episode_reward/AttackRewardFunction", rewards.sum(1)[2], global_step)
-    writer.add_scalar("charts/episode_reward/ProduceWorkerRewardFunction", rewards.sum(1)[3], global_step)
-    writer.add_scalar("charts/episode_reward/ProduceBuildingRewardFunction", rewards.sum(1)[4], global_step)
-    writer.add_scalar("charts/episode_reward/ProduceCombatUnitRewardFunction", rewards.sum(1)[5], global_step)
-
+    for i in range(len(env.rfs)):
+        writer.add_scalar(f"charts/episode_reward/{str(env.rfs[i])}", rewards.sum(1)[i], global_step)
     
     # writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
     # writer.add_scalar("losses/entropy", entropys[:step].mean().item(), global_step)
