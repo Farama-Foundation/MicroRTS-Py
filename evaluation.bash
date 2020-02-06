@@ -77,14 +77,31 @@ done
 for seed in {1..1}
 do
     (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c_hrl.py \
-    --total-timesteps 4000000 \
+    --total-timesteps 2000000 \
     --wandb-project-name gym-microrts-hrl \
     --gym-id MicrortsGlobalAgentHRLAttackCloserToEnemyBase10x10FrameSkip9-v0 \
     --start-e 1.0\
-    --end-e 0.05\
+    --end-e 0.01\
     --start-a 1.0\
     --end-a 0.8\
-    --exploration-fraction 0.225 \
+    --exploration-fraction 0.04 \
+    --prod-mode True \
+    --capture-video True \
+    --cuda False \
+    --seed $seed) >& /dev/null &
+done
+
+for seed in {1..1}
+do
+    (sleep 0.3 && nohup xvfb-run -a python cleanrl_a2c_hrl_kl.py \
+    --total-timesteps 2000000 \
+    --wandb-project-name gym-microrts-hrl \
+    --gym-id MicrortsGlobalAgentHRLAttackCloserToEnemyBase10x10FrameSkip9-v0 \
+    --start-e 1.0\
+    --end-e 0.01\
+    --start-a 1.0\
+    --end-a 0.8\
+    --exploration-fraction 0.1 \
     --prod-mode True \
     --capture-video True \
     --cuda False \
