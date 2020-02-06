@@ -30,7 +30,7 @@ if __name__ == "__main__":
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=1000,
+    parser.add_argument('--total-timesteps', type=int, default=25000,
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
@@ -62,7 +62,7 @@ if __name__ == "__main__":
                        help="the starting alpha for exploration")
     parser.add_argument('--end-a', type=float, default=0.8,
                        help="the ending alpha for exploration")
-    parser.add_argument('--exploration-fraction', type=float, default=0.10,
+    parser.add_argument('--exploration-fraction', type=float, default=0.8,
                        help="the fraction of `total-timesteps` it takes from start-e to go end-e")
     args = parser.parse_args()
     if not args.seed:
@@ -166,7 +166,7 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     return max(slope * t + start_e, end_e)
 
 num = env.num_reward_function
-pgs = [Policy().to(device) for _ in range(num)] 
+pgs = [Policy().to(device) for _ in range(num)]
 vfs = [Value().to(device) for _ in range(num)]
 optimizers = [optim.Adam(list(pgs[i].parameters()) + list(vfs[i].parameters()), 
     lr=args.learning_rate) for i in range(num)]
@@ -280,7 +280,18 @@ while global_step < args.total_timesteps:
 
     vf_loss = ((torch.Tensor(returns).to(device) - values)**2).mean(1) * args.vf_coef
     pg_loss = torch.Tensor(advantages).to(device) * neglogprobs
-    loss = ((pg_loss - entropys * args.ent_coef).mean(1) + vf_loss).sum()
+    entropy_loss = (-entropys) * args.ent_coef
+    loss = ((pg_loss + entropy_loss).mean(1) + vf_loss).sum()
+    
+    for i in range(num):
+        optimizers[i].zero_grad()
+    pg_loss.mean(1).sum().backward(retain_graph=True)
+    print(list(pgs[0].fc.children())[0].weight.grad.sum())
+    for i in range(num):
+        optimizers[i].zero_grad()
+    entropy_loss.mean(1).sum().backward(retain_graph=True)
+    print(list(pgs[0].fc.children())[0].weight.grad.sum())
+
 
     # HRL: update
     for i in range(num):
@@ -295,6 +306,10 @@ while global_step < args.total_timesteps:
     writer.add_scalar("charts/alpha", alpha, global_step)
     for i in range(len(env.rfs)):
         writer.add_scalar(f"charts/episode_reward/{str(env.rfs[i])}", rewards.sum(1)[i], global_step)
+        writer.add_scalar(f"losses/value_loss/{str(env.rfs[i])}", vf_loss[i], global_step)
+        writer.add_scalar(f"losses/entropy/{str(env.rfs[i])}", entropys.mean(1)[i], global_step)
+        writer.add_scalar(f"losses/policy_loss/{str(env.rfs[i])}", pg_loss.mean(1)[i], global_step)
+    print(global_step, rewards.sum(1)[0], all_logits_categories[0][1], list(pgs[0].fc.children())[0].weight.grad.sum())
     
     # writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
     # writer.add_scalar("losses/entropy", entropys[:step].mean().item(), global_step)
