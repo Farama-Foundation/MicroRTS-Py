@@ -59,6 +59,20 @@ if V0NAME not in gym.envs.registry.env_specs:
     )]
 
     envs += [dict(
+        id=f"MicrortsGlobalAgentRandomEnemy10x10FrameSkip9-v0",
+        entry_point='gym_microrts.envs:GlobalAgentRandomEnemyEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
+            # below are dev properties
+            microrts_path="~/microrts"
+        )},
+        max_episode_steps=200,
+    )]
+
+    envs += [dict(
         id=f"MicrortsGlobalAgentsMaxResources4x4NoFrameSkipProd-v0",
         entry_point='gym_microrts.envs:GlobalAgentMiningEnv',
         kwargs={'config': Config(

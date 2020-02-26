@@ -241,3 +241,12 @@ class GlobalAgentHRLAttackCloserToEnemyBaseEnv(GlobalAgentEnv):
         info["dones"] = done
         info["rewards"] = reward
         return obs, reward[0], done[0], info
+
+class GlobalAgentRandomEnemyEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai import RandomBiasedAI
+        from ai.rewardfunction import RewardFunctionInterface, SimpleEvaluationRewardFunction
+        self.rfs = JArray(RewardFunctionInterface)([SimpleEvaluationRewardFunction()])
+        ai2 = RandomBiasedAI()
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, ai2)
