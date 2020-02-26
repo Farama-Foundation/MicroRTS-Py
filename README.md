@@ -8,7 +8,7 @@ Go to [http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/](h
 
 ```bash
 $ rm ~/microrts -fR && mkdir ~/microrts && \
-wget -O ~/microrts/microrts.zip http://microrts.s3.amazonaws.com/microrts/artifacts/202001310341.microrts.zip && \
+wget -O ~/microrts/microrts.zip http://microrts.s3.amazonaws.com/microrts/artifacts/202002051504.microrts.zip && \
 unzip ~/microrts/microrts.zip -d ~/microrts/ && \
 rm ~/microrts/microrts.zip
 ```
@@ -40,7 +40,6 @@ env.close()
 ## Papers written using gym-microrts
 
 * Comparing Observation and Action Representations for Deep Reinforcement Learning in MicroRTS (https://arxiv.org/abs/1910.12134)
+    * Logged experiments https://app.wandb.ai/costa-huang/MicrortsRL
 
-## Performances of agents on different map sizes
 
-https://app.wandb.ai/costa-huang/MicrortsRL
