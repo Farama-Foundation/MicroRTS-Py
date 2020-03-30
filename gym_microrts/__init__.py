@@ -352,7 +352,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts"
+            microrts_path="~/microrts"
         )},
         max_episode_steps=1,
     )]
@@ -365,7 +365,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts"
+            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
