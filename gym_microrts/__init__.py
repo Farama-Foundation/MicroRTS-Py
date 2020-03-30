@@ -344,6 +344,32 @@ if V0NAME not in gym.envs.registry.env_specs:
         max_episode_steps=200,
     )]
 
+    envs += [dict(
+        id=f"ParamOpEnvSingleStep-v0",
+        entry_point='gym_microrts.envs:ParamOpEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts"
+        )},
+        max_episode_steps=1,
+    )]
+
+    envs += [dict(
+        id=f"ParamOpEnvEpisode-v0",
+        entry_point='gym_microrts.envs:ParamOpEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts"
+        )},
+        max_episode_steps=200,
+    )]
+
     # Additional variants and registration
     for env in envs:
         # Regular
