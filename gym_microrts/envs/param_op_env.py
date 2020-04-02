@@ -28,7 +28,9 @@ class ParamOpEnv(gym.Env):
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second' : 50
     }
-    def __init__(self, config=None):
+    def __init__(self, map_index=0, num_workers=1, config=None):
+        self.map_index = map_index
+        self.num_workers = num_workers
         if config:
             self.init(config)
     
@@ -72,8 +74,7 @@ class ParamOpEnv(gym.Env):
         return PlayoutPolicyOptimization()
 
     def step(self, action, raw=False):
-        # action = softmax(action)
-        response = self.client.computeRandomAIWinrate(JArray(JDouble)(action), 0, 1, os.path.expanduser(self.config.microrts_path))
+        response = self.client.computeRandomAIWinrate(JArray(JDouble)(action), self.map_index, self.num_workers, os.path.expanduser(self.config.microrts_path))
         return self.dummy_obs, response, False, {}
 
     def reset(self, raw=False):

@@ -358,7 +358,7 @@ if V0NAME not in gym.envs.registry.env_specs:
     )]
 
     envs += [dict(
-        id=f"ParamOpEnvEpisode-v0",
+        id=f"ParamOpEnvEpisodeMap-0-v0",
         entry_point='gym_microrts.envs:ParamOpEnv',
         kwargs={'config': Config(
             frame_skip=9,
@@ -366,7 +366,55 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts"
-        )},
+        ), "map_index" :0 },
+        max_episode_steps=200,
+    )]
+    envs += [dict(
+        id=f"ParamOpEnvEpisodeMap-1-v0",
+        entry_point='gym_microrts.envs:ParamOpEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        ), "map_index" :1 },
+        max_episode_steps=200,
+    )]
+    envs += [dict(
+        id=f"ParamOpEnvEpisodeMap-2-v0",
+        entry_point='gym_microrts.envs:ParamOpEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        ), "map_index" :2 },
+        max_episode_steps=200,
+    )]
+    envs += [dict(
+        id=f"ParamOpEnvEpisodeMap-3-v0",
+        entry_point='gym_microrts.envs:ParamOpEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        ), "map_index" :3 },
+        max_episode_steps=200,
+    )]
+    envs += [dict(
+        id=f"ParamOpEnvEpisodeMap-4-v0",
+        entry_point='gym_microrts.envs:ParamOpEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        ), "map_index" :4 },
         max_episode_steps=200,
     )]
 
