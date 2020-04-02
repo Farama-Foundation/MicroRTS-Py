@@ -320,5 +320,6 @@ while global_step < args.total_timesteps:
     print(f"global_step={global_step}, episode_reward={rewards.sum()}")
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/td_loss", td_losses[:step+1].mean(), global_step)
-env.close()
+print(np.array([*actions]).mean(0))
+#env.close()
 writer.close()
