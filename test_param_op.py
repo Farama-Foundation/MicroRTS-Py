@@ -10,6 +10,11 @@ from jpype.imports import registerDomain
 import jpype.imports
 from jpype.types import *
 
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0) # only difference
+
 if "ParamOpEnv-v0" not in gym.envs.registry.env_specs:
     register(
         "ParamOpEnv-v0",
@@ -21,13 +26,14 @@ if "ParamOpEnv-v0" not in gym.envs.registry.env_specs:
             map_path="maps/base4x5.xml",
             # below are dev properties
             microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts",
-        )}
+        )},
+        max_episode_steps=1
     )
 
 env = gym.make("ParamOpEnv-v0")
 env.action_space.seed(0)
 try:
-    obs = env.reset(True)
+    obs = env.reset()
 except Exception as e:
     e.printStackTrace()
 

@@ -58,10 +58,11 @@ class ParamOpEnv(gym.Env):
         self.init_properties()
 
     def init_properties(self):
-        self.dummy_obs = np.ones(500)
+        dummy_number = 10
+        self.dummy_obs = np.ones(dummy_number)
         self.observation_space = spaces.Box(low=0.0,
             high=1.0,
-            shape=(500,),)
+            shape=(dummy_number,),)
         self.action_space = spaces.Box(low=0.0,
             high=1.0,
             shape=(6,))
@@ -71,8 +72,8 @@ class ParamOpEnv(gym.Env):
         return PlayoutPolicyOptimization()
 
     def step(self, action, raw=False):
-        action = softmax(action)
-        response = self.client.computeRandomAIWinrate(JArray(JDouble)(action), 0, 3, os.path.expanduser(self.config.microrts_path))
+        # action = softmax(action)
+        response = self.client.computeRandomAIWinrate(JArray(JDouble)(action), 0, 1, os.path.expanduser(self.config.microrts_path))
         return self.dummy_obs, response, False, {}
 
     def reset(self, raw=False):
