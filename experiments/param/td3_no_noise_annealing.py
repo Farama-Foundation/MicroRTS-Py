@@ -13,31 +13,13 @@ import argparse
 import collections
 import numpy as np
 import gym
-
+import gym_microrts
 import pybullet_envs
 from gym.wrappers import TimeLimit, Monitor
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 import os
-
-import gym_microrts
-from gym.envs.registration import register
-from gym_microrts import Config
-if "ParamOpEnv-v0" not in gym.envs.registry.env_specs:
-    register(
-        "ParamOpEnv-v0",
-        entry_point='gym_microrts.envs:ParamOpEnv',
-        kwargs={'config': Config(
-            frame_skip=9,
-            ai1_type="no-penalty",
-            ai2_type="passive",
-            map_path="maps/base4x5.xml",
-            # below are dev properties
-            microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts",
-        )},
-        max_episode_steps=200
-    )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='DDPG agent')
