@@ -166,11 +166,11 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     return max(slope * t + start_e, end_e)
 
 num = env.num_reward_function
+target_vfs = [Value().to(device) for _ in range(num)]
 target_pgs = [Policy().to(device) for _ in range(num)]
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 pgs = [Policy().to(device) for _ in range(num)]
-
 vfs = [Value().to(device) for _ in range(num)]
 optimizers = [optim.Adam(list(pgs[i].parameters()) + list(vfs[i].parameters()), 
     lr=args.learning_rate) for i in range(num)]
@@ -265,10 +265,10 @@ while global_step < args.total_timesteps:
             if not os.path.exists(f"models/{experiment_name}"):
                 os.makedirs(f"models/{experiment_name}")
             for i in range(num):
-                torch.save(pgs[i].state_dict(), f"models/{experiment_name}/pg_{str(env.rfs[i])}.pt")
-                torch.save(vfs[i].state_dict(), f"models/{experiment_name}/vf_{str(env.rfs[i])}.pt")
-                wandb.save(f"models/{experiment_name}/pg_{str(env.rfs[i])}.pt")
-                wandb.save(f"models/{experiment_name}/vf_{str(env.rfs[i])}.pt")
+                torch.save(pgs[i].state_dict(), f"models/{experiment_name}/pg_{str(env.rfs[i])}_{global_step}.pt")
+                torch.save(vfs[i].state_dict(), f"models/{experiment_name}/vf_{str(env.rfs[i])}_{global_step}.pt")
+                wandb.save(f"models/{experiment_name}/pg_{str(env.rfs[i])}_{global_step}.pt")
+                wandb.save(f"models/{experiment_name}/vf_{str(env.rfs[i])}_{global_step}.pt")
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, reward, done, info = env.step(actions[step])
@@ -293,6 +293,7 @@ while global_step < args.total_timesteps:
 
     for i in range(num):
         target_pgs[i].load_state_dict(pgs[i].state_dict())
+        target_vfs[i].load_state_dict(vfs[i].state_dict())
 
     # HRL: update
     for i in range(num):
@@ -338,10 +339,14 @@ while global_step < args.total_timesteps:
         
         for i in range(len(all_neglogprob)):
             new_neglogprobs[i,s] = all_neglogprob[i]
-    approx_kl = (-(neglogprobs[0] - new_neglogprobs[0])).mean().item()
-    print("approx_kl", approx_kl)
-    if approx_kl > 1.5 * 0.01:
-        pgs[0].load_state_dict(target_pgs[0].state_dict())
+    
+    for i in range(len(env.rfs)):
+        approx_kl = (-(neglogprobs[i] - new_neglogprobs[i])).mean().item()
+        writer.add_scalar(f"losses/approx_kl/{str(env.rfs[i])}", approx_kl, global_step)
+        print(f"approx_kl/{str(env.rfs[i])}", approx_kl)
+        if approx_kl > 1.5 * 0.01:
+            pgs[i].load_state_dict(target_pgs[i].state_dict())
+            vfs[i].load_state_dict(target_vfs[i].state_dict())
     ######
     # KL divergence ugly hack end
     ######
