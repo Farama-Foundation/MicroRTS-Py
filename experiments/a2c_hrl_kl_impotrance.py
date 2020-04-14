@@ -52,7 +52,7 @@ if __name__ == "__main__":
                        help="value function's coefficient the loss function")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                        help='the maximum norm for the gradient clipping')
-    parser.add_argument('--ent-coef', type=float, default=0.01,
+    parser.add_argument('--ent-coef', type=float, default=0.00,
                        help="policy entropy's coefficient the loss function")
     parser.add_argument('--start-e', type=float, default=1.0,
                        help="the starting epsilon for exploration")
@@ -256,7 +256,10 @@ while global_step < args.total_timesteps:
                 for j in range(0, len(all_logits_categories[0])):
                     importance_sampling = (all_probs_categories[i][j].probs[0, action[j][0]] / 
                                            behavior_policy[j].probs[0, action[j][0]]).detach()
-                    all_neglogprob[i] -= all_probs_categories[i][j].log_prob(action[j]) * importance_sampling
+                    if i == 0: 
+                        all_neglogprob[i] -= all_probs_categories[i][j].log_prob(action[j]) * importance_sampling
+                    else:
+                        all_neglogprob[i] -= all_probs_categories[i][j].log_prob(action[j])
                     all_probs_entropies[i] += all_probs_categories[i][j].entropy()
             
             for i in range(len(all_neglogprob)):
