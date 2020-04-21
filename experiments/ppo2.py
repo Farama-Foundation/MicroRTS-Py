@@ -371,6 +371,7 @@ while global_step < args.total_timesteps:
     logprobs = torch.zeros((env.action_space.nvec.shape[0], args.batch_size,)).to(device)
 
     rewards = np.zeros((args.batch_size,))
+    raw_rewards = np.zeros((len(env.rfs),args.batch_size,))
     
     real_rewards = []
     returns = np.zeros((args.batch_size,))
@@ -401,6 +402,7 @@ while global_step < args.total_timesteps:
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], info = env.step(action[:,0].data.cpu().numpy())
+        raw_rewards[:,step] = env.raw_reward
         real_rewards += [info['real_reward']]
         next_obs = np.array(next_obs)
 
@@ -408,6 +410,8 @@ while global_step < args.total_timesteps:
             # Computing the discounted returns:
             writer.add_scalar("charts/episode_reward", np.sum(real_rewards), global_step)
             print(f"global_step={global_step}, episode_reward={np.sum(real_rewards)}")
+            for i in range(len(env.rfs)):
+                writer.add_scalar(f"charts/episode_reward/{str(env.rfs[i])}", raw_rewards.sum(1)[i], global_step)
             real_rewards = []
             next_obs = np.array(env.reset())
 
