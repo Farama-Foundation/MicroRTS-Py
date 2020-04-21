@@ -88,7 +88,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsGlobalAgentMining10x10FrameSkip9-v0",
+    parser.add_argument('--gym-id', type=str, default="MicrortsCombinedReward10x10F9FightRandomBiased-v0",
                        help='the id of the gym environment')
     parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
@@ -371,8 +371,8 @@ while global_step < args.total_timesteps:
     logprobs = torch.zeros((env.action_space.nvec.shape[0], args.batch_size,)).to(device)
 
     rewards = np.zeros((args.batch_size,))
+    
     real_rewards = []
-    test_reward = []
     returns = np.zeros((args.batch_size,))
 
     dones = np.zeros((args.batch_size,))
@@ -412,6 +412,7 @@ while global_step < args.total_timesteps:
             next_obs = np.array(env.reset())
 
     # bootstrap reward if not done. reached the batch limit
+    # raise
     last_value = 0
     if not dones[step]:
         last_value = vf.forward(next_obs.reshape((1,)+next_obs.shape))[0].detach().cpu().numpy()[0]
@@ -506,7 +507,6 @@ while global_step < args.total_timesteps:
         # nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
         v_optimizer.step()
 
-    # raise
     ep_ratio = 1 - (global_step / args.total_timesteps)
     clip_now = args.clip_coef * ep_ratio
     
