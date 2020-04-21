@@ -42,5 +42,10 @@ for _ in range(10):
 
 
 assert env.step([8, 4, 0, 0, 0, 1, 6, 0, 0], True)[1] > 0
+env.render()
+
+for _ in range(10):
+    env.step([0, 0, 0, 0, 0, 0, 0, 0, 0], True)
+    env.render()
 
 env.close()
