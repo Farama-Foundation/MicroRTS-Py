@@ -127,6 +127,52 @@ class GlobalAgentCloserToEnemyBaseRewardEnv(GlobalAgentEnv):
         self.rfs = JArray(RewardFunctionInterface)([CloserToEnemyBaseRewardFunction()])
         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
+# class GlobalAgentCombinedRewardEnv(GlobalAgentEnv):
+#     def start_client(self):
+#         print("haha")
+#         from ts import JNIClient
+#         from ai.rewardfunction import RewardFunctionInterface, CombinedRewardFunction
+#         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
+#         self.rfs = JArray(RewardFunctionInterface)([CombinedRewardFunction(
+#             0.4, 0.05, 1.0, 0.5, 0.1, 0.1, 5.0
+#         )])
+#         print(self.config.ai2)
+#         if self.config.ai2 is not None:
+#             print(self.config.ai2)
+#             return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2())
+#         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+class GlobalAgentCombinedRewardEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
+        self.rfs = JArray(RewardFunctionInterface)([
+            WinLossRewardFunction(), 
+            ResourceGatherRewardFunction(),  
+            ProduceWorkerRewardFunction(),
+            ProduceBuildingRewardFunction(),
+            AttackRewardFunction(),
+            ProduceCombatUnitRewardFunction(),
+            CloserToEnemyBaseRewardFunction(),])
+        print(self.config.ai2)
+        if self.config.ai2 is not None:
+            print(self.config.ai2)
+            return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2())
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+    def step(self, action, raw=False):
+        obs, reward, done, info = super(GlobalAgentEnv, self).step(action, True)
+        # obs[3] - obs[4].clip(max=1) means mask busy units
+        # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
+        self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
+        if not raw:
+            obs = self._encode_obs(obs)
+        reward[-1] = np.clip(reward[-1], -1, 1)
+        self.raw_reward = reward
+        self.raw_done = done
+        return obs, (np.array(reward) * self.config.reward_weight).sum(), done[0], info # win loss as done
+
 class GlobalAgentHRLEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient

@@ -3,6 +3,7 @@ from gym.envs.registration import register
 import gym
 import uuid
 from .types import Config
+import numpy as np
 
 # enable repeated experiments
 # https://github.com/openai/gym/issues/1172
@@ -417,6 +418,100 @@ if V0NAME not in gym.envs.registry.env_specs:
         ), "map_index" :4 },
         max_episode_steps=200,
     )]
+
+    envs += [dict(
+        id=f"MicrortsAttack10x10F9-v0",
+        entry_point='gym_microrts.envs:GlobalAgentAttackEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        )},
+        max_episode_steps=200,
+    )]
+    envs += [dict(
+        id=f"MicrortsCloserToEnemyBase10x10F9-v0",
+        entry_point='gym_microrts.envs:GlobalAgentCloserToEnemyBaseRewardEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        )},
+        max_episode_steps=200,
+    )]
+    envs += [dict(
+        id=f"MicrortsCombinedReward10x10F9-v0",
+        entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        )},
+        max_episode_steps=200,
+    )]
+
+
+    """
+    WinLossRewardFunction(), 
+    ResourceGatherRewardFunction(),  
+    ProduceWorkerRewardFunction(),
+    ProduceBuildingRewardFunction(),
+    AttackRewardFunction(),
+    ProduceCombatUnitRewardFunction(),
+    CloserToEnemyBaseRewardFunction(),
+    reward_weight corresponds to above
+    """
+    def ai2():
+        from ai import RandomBiasedSingleUnitAI
+        return RandomBiasedSingleUnitAI()
+    envs += [dict(
+        id=f"MicrortsCombinedReward10x10F9FightRandomBiased-v0",
+        entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            ai2=ai2,
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts",
+            reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 3.0, 0.2])
+        )},
+        max_episode_steps=400,
+    )]
+    envs += [dict(
+        id=f"MicrortsCombinedReward10x10F9FightRandomBiasedW1-v0",
+        entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            ai2=ai2,
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts",
+            reward_weight=np.array([10.0, 1.0, 1.0, 2.0, 1.0, 7.0, 0.2])
+        )},
+        max_episode_steps=400,
+    )]
+
+    
+    # envs += [dict(
+    #     id=f"MicrortsCloserToEnemyBase10x10F9-v0",
+    #     entry_point='gym_microrts.envs:GlobalAgentCloserToEnemyBaseRewardEnv',
+    #     kwargs={'config': Config(
+    #         frame_skip=9,
+    #         ai1_type="no-penalty",
+    #         ai2_type="passive",
+    #         map_path="maps/10x10/basesWorkers10x10.xml",
+    #         microrts_path="~/microrts"
+    #     )},
+    #     max_episode_steps=200,
+    # )]
 
     # Additional variants and registration
     for env in envs:
