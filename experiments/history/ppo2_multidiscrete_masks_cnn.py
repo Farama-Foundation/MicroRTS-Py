@@ -448,7 +448,7 @@ while global_step < args.total_timesteps:
         entropy = - (resampled_logprobs.exp() * resampled_logprobs).mean(0).mean()
         entropys.append(entropy.item())
 
-        policy_loss = - torch.min(ratio * advantages, clip_adv) # + args.ent_coef * entropy
+        policy_loss = - torch.min(ratio * advantages, clip_adv) + args.ent_coef * entropy
         policy_loss = policy_loss.mean()
 
         pg_optimizer.zero_grad()
