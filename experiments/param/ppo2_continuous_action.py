@@ -86,7 +86,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="ParamOpEnvEpisodeMap-1-v0",
+    parser.add_argument('--gym-id', type=str, default="ParamOpEnvEpisode-v0",
                        help='the id of the gym environment')
     parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
