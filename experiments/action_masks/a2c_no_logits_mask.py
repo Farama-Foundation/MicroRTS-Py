@@ -1,3 +1,10 @@
+"""
+this file does action masking by masking out the logits, creating the masked categorical distribution
+and then use the *unmasked* categorical distribution to generate the log probabilities
+
+use CategoricalMasked to sample, but use Categorical to get log probs
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -22,7 +29,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsGlobalAgentBinary10x10-v0",
+    parser.add_argument('--gym-id', type=str, default="MicrortsGlobalAgentMining10x10FrameSkip9-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -30,7 +37,7 @@ if __name__ == "__main__":
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=2000,
+    parser.add_argument('--total-timesteps', type=int, default=200000,
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
@@ -154,15 +161,6 @@ class CategoricalMasked(Categorical):
 
 pg = Policy().to(device)
 vf = Value().to(device)
-pg.load_state_dict(torch.load("pg_CloserToEnemyBaseRewardFunction_980000.pt"))
-pg.eval()
-vf.load_state_dict(torch.load("vf_CloserToEnemyBaseRewardFunction_980000.pt"))
-vf.eval()
-
-# pg.load_state_dict(torch.load("pg_CloserToEnemyBaseRewardFunction.pt"))
-# pg.eval()
-# vf.load_state_dict(torch.load("vf_CloserToEnemyBaseRewardFunction.pt"))
-# vf.eval()
 optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
 
@@ -204,28 +202,21 @@ while global_step < args.total_timesteps:
             
             # Gym-microrts logic: unit selection masking
             i=0
-            probs_categories.append(CategoricalMasked(logits=logits_categories[i], masks=env.unit_location_mask))
+            # use CategoricalMasked to sample, but use Categorical to get log probs
+            temp = CategoricalMasked(logits=logits_categories[i], masks=env.unit_location_mask)
+            probs_categories.append(Categorical(logits=logits_categories[i]))
             if len(action) != env.action_space.shape:
-                action.append(probs_categories[i].sample())
+                action.append(temp.sample())
             neglogprob -= probs_categories[i].log_prob(action[i])
             probs_entropies += probs_categories[i].entropy()
             
 
-            for i in range(1, len(logits_categories)-1):
+            for i in range(1, len(logits_categories)):
                 probs_categories.append(Categorical(logits=logits_categories[i]))
                 if len(action) != env.action_space.shape:
                     action.append(probs_categories[i].sample())
                 neglogprob -= probs_categories[i].log_prob(action[i])
                 probs_entropies += probs_categories[i].entropy()
-
-            i=len(logits_categories)-1
-            probs_categories.append(CategoricalMasked(logits=logits_categories[i], masks=env.target_unit_location_mask))
-            if len(action) != env.action_space.shape:
-                action.append(probs_categories[i].sample())
-            neglogprob -= probs_categories[i].log_prob(action[i])
-            probs_entropies += probs_categories[i].entropy()
-
-
             action = torch.stack(action).transpose(0, 1).tolist()
             actions[step], neglogprobs[step], entropys[step] = action[0], neglogprob, probs_entropies
 
@@ -237,25 +228,27 @@ while global_step < args.total_timesteps:
 
     # ALGO LOGIC: training.
     # calculate the discounted rewards, or namely, returns
-    # returns = np.zeros_like(rewards)
-    # for t in reversed(range(rewards.shape[0]-1)):
-    #     returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-    # # advantages are returns - baseline, value estimates in our case
-    # advantages = returns - values.detach().cpu().numpy()
+    returns = np.zeros_like(rewards)
+    for t in reversed(range(rewards.shape[0]-1)):
+        returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
+    # advantages are returns - baseline, value estimates in our case
+    advantages = returns - values.detach().cpu().numpy()
 
-    # vf_loss = loss_fn(torch.Tensor(returns).to(device), values) * args.vf_coef
-    # pg_loss = torch.Tensor(advantages).to(device) * neglogprobs
-    # loss = (pg_loss - entropys * args.ent_coef).mean() + vf_loss
+    vf_loss = loss_fn(torch.Tensor(returns).to(device), values) * args.vf_coef
+    pg_loss = torch.Tensor(advantages).to(device) * neglogprobs
+    loss = (pg_loss - entropys * args.ent_coef).mean() + vf_loss
 
-    # optimizer.zero_grad()
-    # loss.backward()
-    # nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
-    # optimizer.step()
+    print(neglogprobs.sum())
+    optimizer.zero_grad()
+    loss.backward()
+    nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
+    optimizer.step()
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
-    # writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
-    # writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
-    # writer.add_scalar("losses/entropy", entropys[:step].mean().item(), global_step)
-    # writer.add_scalar("losses/policy_loss", pg_loss.mean().item(), global_step)
+    print(f"global_step={global_step}, episode_reward={rewards.sum()}")
+    writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
+    writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
+    writer.add_scalar("losses/entropy", entropys[:step].mean().item(), global_step)
+    writer.add_scalar("losses/policy_loss", pg_loss.mean().item(), global_step)
 # env.close()
 writer.close()
