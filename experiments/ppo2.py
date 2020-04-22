@@ -254,14 +254,6 @@ class Policy(nn.Module):
             action = torch.stack([categorical.sample() for categorical in multi_categoricals])
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         return action, logprob, [], multi_categoricals
-    
-    def get_logprob_entropy(self, x, action=None):
-        logits = self.forward(x)
-        probs = Categorical(logits=logits)
-        if action is None:
-            action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy()
-
 
 class Value(nn.Module):
     def __init__(self):
