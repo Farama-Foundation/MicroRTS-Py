@@ -88,7 +88,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsCombinedReward10x10F9FightRandomBiased-v0",
+    parser.add_argument('--gym-id', type=str, default="MicrortsMining10x10F9-v0",
                        help='the id of the gym environment')
     parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
@@ -199,10 +199,6 @@ output_shape = preprocess_ac_space(env.action_space)
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
-def layer_norm(layer, std=1.0, bias_const=0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
-
 # ALGO LOGIC: initialize agent here:
 class CategoricalMasked(Categorical):
     def __init__(self, probs=None, logits=None, validate_args=None, masks=[]):
@@ -237,20 +233,6 @@ class Policy(nn.Module):
             nn.Linear(128, output_shape)
         )
 
-        # if args.pol_layer_norm:
-        #     self.ln1 = torch.nn.LayerNorm(120)
-        #     self.ln2 = torch.nn.LayerNorm(84)
-        # if args.weights_init == "orthogonal":
-        #     torch.nn.init.orthogonal_(self.fc1.weight)
-        #     torch.nn.init.orthogonal_(self.fc2.weight)
-        #     torch.nn.init.orthogonal_(self.fc3.weight)
-        # elif args.weights_init == "xavier":
-        #     torch.nn.init.xavier_uniform_(self.fc1.weight)
-        #     torch.nn.init.xavier_uniform_(self.fc2.weight)
-        #     torch.nn.init.xavier_uniform_(self.fc3.weight)
-        # else:
-        #     raise NotImplementedError
-
     def forward(self, x):
         x = torch.Tensor(np.moveaxis(x, -1, 1)).to(device)
         x = self.features(x)
@@ -271,8 +253,6 @@ class Policy(nn.Module):
         if action is None:
             action = torch.stack([categorical.sample() for categorical in multi_categoricals])
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
-        # entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
-
         return action, logprob, [], multi_categoricals
     
     def get_logprob_entropy(self, x, action=None):
@@ -298,17 +278,6 @@ class Value(nn.Module):
             nn.ReLU(),
             nn.Linear(128, 1)
         )
-
-        # if args.weights_init == "orthogonal":
-        #     torch.nn.init.orthogonal_(self.fc1.weight)
-        #     torch.nn.init.orthogonal_(self.fc2.weight)
-        #     torch.nn.init.orthogonal_(self.fc3.weight)
-        # elif args.weights_init == "xavier":
-        #     torch.nn.init.xavier_uniform_(self.fc1.weight)
-        #     torch.nn.init.xavier_uniform_(self.fc2.weight)
-        #     torch.nn.init.orthogonal_(self.fc3.weight)
-        # else:
-        #     raise NotImplementedError
 
     def forward(self, x):
         x = torch.Tensor(np.moveaxis(x, -1, 1)).to(device)
@@ -397,12 +366,10 @@ while global_step < args.total_timesteps:
         
         actions[step] = action[:,0].data.cpu().numpy()
         logprobs[:,[step]] = logproba
-        # SUGGESTION: Find a better way to constrain policy actions to action low and higher bounds
-        clipped_action = action.tolist()[0] # np.clip(, env.action_space.low, env.action_space.high)[0]
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], info = env.step(action[:,0].data.cpu().numpy())
-        raw_rewards[:,step] = env.raw_reward
+        raw_rewards[:,step] = info["rewards"]
         real_rewards += [info['real_reward']]
         next_obs = np.array(next_obs)
 
@@ -416,7 +383,6 @@ while global_step < args.total_timesteps:
             next_obs = np.array(env.reset())
 
     # bootstrap reward if not done. reached the batch limit
-    # raise
     last_value = 0
     if not dones[step]:
         last_value = vf.forward(next_obs.reshape((1,)+next_obs.shape))[0].detach().cpu().numpy()[0]
@@ -441,8 +407,7 @@ while global_step < args.total_timesteps:
         advantages = (advantages - advantages.mean()) / (advantages.std() + EPS)
 
     # Optimizaing policy network
-    # First Tensorize all that is need to be so, clears up the loss computation part
-    logprobs = torch.Tensor(logprobs).to(device) # Called 2 times: during policy update and KL bound checked
+    logprobs = torch.Tensor(logprobs).to(device)
     approx_kls = []
     entropys = []
     target_pg = Policy().to(device)
@@ -462,7 +427,6 @@ while global_step < args.total_timesteps:
                                 (1.-clip_now) * advantages[minibatch_ind]).to(device)
 
         # Entropy computation with resampled actions
-        # _, resampled_logprobs = pg.get_action(obs[minibatch_ind])
         entropy = -(newlogproba.exp() * newlogproba).mean()
         entropys.append(entropy.item())
 
@@ -471,11 +435,9 @@ while global_step < args.total_timesteps:
         
         pg_optimizer.zero_grad()
         policy_loss.backward()
-        # nn.utils.clip_grad_norm_(pg.parameters(), args.max_grad_norm)
+        nn.utils.clip_grad_norm_(pg.parameters(), args.max_grad_norm)
         pg_optimizer.step()
 
-        # KEY TECHNIQUE: This will stop updating the policy once the KL has been breached
-        # TODO: Roll back the policy to before at breaches the KL trust region
         approx_kl = (logprobs[:,minibatch_ind] - newlogproba).mean()
         approx_kls.append(approx_kl.item())
         if args.kle_stop:
@@ -491,9 +453,6 @@ while global_step < args.total_timesteps:
                 break
 
     # Optimizing value network
-    # for i_epoch in range(args.update_epochs):
-    #     minibatch_ind = np.random.choice(len(advantages), args.minibatch_size, replace=False)
-        # Resample values
         new_values = vf.forward(obs[minibatch_ind]).view(-1)
 
         # Value loss clipping
@@ -508,7 +467,7 @@ while global_step < args.total_timesteps:
 
         v_optimizer.zero_grad()
         v_loss.backward()
-        # nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
+        nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
         v_optimizer.step()
 
     ep_ratio = 1 - (global_step / args.total_timesteps)
@@ -519,8 +478,6 @@ while global_step < args.total_timesteps:
         pg_lr_scheduler.step()
         vf_lr_scheduler.step()
 
-    # print(pg.mean.weight.sum().item())
-    # print(vf.fc3.weight.sum().item())
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
