@@ -66,6 +66,8 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
         self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
+        info["dones"] = done
+        info["rewards"] = reward
         if len(reward)==1:
             return obs, reward[0], done[0], info
         return obs, reward, done, info
