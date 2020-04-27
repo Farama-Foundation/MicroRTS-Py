@@ -312,6 +312,59 @@ if args.anneal_lr:
 
 loss_fn = nn.MSELoss()
 
+def evaluate_with_no_mask():
+    evaluate_rewards = []
+    evaluate_invalid_action_stats = []
+    if args.capture_video:
+        env.stats_recorder.done=True
+    next_obs = np.array(env.reset())
+
+    # ALGO Logic: Storage for epoch data
+    obs = np.empty((args.batch_size,) + env.observation_space.shape)
+
+    actions = np.empty((args.batch_size,) + env.action_space.shape)
+    logprobs = torch.zeros((env.action_space.nvec.shape[0], args.batch_size,)).to(device)
+
+    rewards = np.zeros((args.batch_size,))
+    raw_rewards = np.zeros((len(env.rfs),args.batch_size,))
+    
+    real_rewards = []
+    invalid_action_stats = []
+
+    dones = np.zeros((args.batch_size,))
+    values = torch.zeros((args.batch_size,)).to(device)
+
+    # TRY NOT TO MODIFY: prepare the execution of the game.
+    for step in range(args.batch_size):
+        env.render()
+        obs[step] = next_obs.copy()
+
+        # ALGO LOGIC: put action logic here
+        with torch.no_grad():
+            values[step] = vf.forward(obs[step:step+1])
+            action, logproba, _, probs = pg.get_action(obs[step:step+1])
+        
+        actions[step] = action[:,0].data.cpu().numpy()
+        logprobs[:,[step]] = logproba
+
+        # TRY NOT TO MODIFY: execute the game and log data.
+        next_obs, rewards[step], dones[step], info = env.step(action[:,0].data.cpu().numpy())
+        raw_rewards[:,step] = info["rewards"]
+        real_rewards += [info['real_reward']]
+        invalid_action_stats += [info['invalid_action_stats']]
+        next_obs = np.array(next_obs)
+
+        if dones[step]:
+            # Computing the discounted returns:
+            writer.add_scalar("charts/episode_reward", np.sum(real_rewards), global_step)
+            evaluate_rewards += [np.sum(real_rewards)]
+            real_rewards = []
+            evaluate_invalid_action_stats += [pd.DataFrame(invalid_action_stats).sum(0)]
+            invalid_action_stats = []
+            next_obs = np.array(env.reset())
+    
+    return np.average(evaluate_rewards), pd.DataFrame(evaluate_invalid_action_stats).mean(0)
+
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 while global_step < args.total_timesteps:
@@ -475,6 +528,13 @@ while global_step < args.total_timesteps:
     writer.add_scalar("losses/approx_kl", np.mean(approx_kls), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
+        
+    # evaluate no mask
+    average_reward, average_invalid_action_stats = evaluate_with_no_mask()
+    writer.add_scalar("evals/charts/episode_reward", average_reward, global_step)
+    print(f"global_step={global_step}, eval_reward={average_reward}")
+    for key, idx in zip(info['invalid_action_stats'], range(len(info['invalid_action_stats']))):
+        writer.add_scalar(f"evals/stats/{key}", average_invalid_action_stats[idx], global_step)
 
 env.close()
 writer.close()
