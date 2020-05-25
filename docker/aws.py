@@ -56,5 +56,5 @@ for run_match in runs_match:
 #     )
 #     if response['ResponseMetadata']['HTTPStatusCode'] != 200:
 #         print(response)
-#         raise Exception("jobs submit failure")docker run -d --shm-size="500m" --cpuset-cpus="13" -e WANDB=6603a1e99a016ac5002729a06b08e13931d4ee02 vwxyzjn/gym-microrts_shared_memory:latest python mask/ppo_no_mask_10x10.py --exp-name ppo_no_mask --total-timesteps 500000 --wandb-project-name gym-microrts-mask2 --gym-id MicrortsMining10x10F9-v0 --no-cuda --gae --norm-obs --norm-adv --anneal-lr --clip-vloss --invalid-action-penalty -0.01 --prod-mode --capture-video --seed 2
+#         raise Exception("jobs submit failure")
 

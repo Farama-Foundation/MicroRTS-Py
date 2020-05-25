@@ -139,21 +139,21 @@ if __name__ == "__main__":
                         help="the learning rate of the policy optimizer")
     parser.add_argument('--value-lr', type=float, default=3e-4,
                         help="the learning rate of the critic optimizer")
-    parser.add_argument('--norm-obs', action='store_true', default=True,
+    parser.add_argument('--norm-obs', action='store_true', default=False,
                         help="Toggles observation normalization")
     parser.add_argument('--norm-returns', action='store_true', default=False,
                         help="Toggles returns normalization")
-    parser.add_argument('--norm-adv', action='store_true', default=True,
+    parser.add_argument('--norm-adv', action='store_true', default=False,
                         help="Toggles advantages normalization")
     parser.add_argument('--obs-clip', type=float, default=10.0,
                         help="Value for reward clipping, as per the paper")
     parser.add_argument('--rew-clip', type=float, default=10.0,
                         help="Value for observation clipping, as per the paper")
-    parser.add_argument('--anneal-lr', action='store_true', default=True,
+    parser.add_argument('--anneal-lr', action='store_true', default=False,
                         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--weights-init', default="orthogonal", choices=["xavier", 'orthogonal'],
                         help='Selects the scheme to be used for weights initialization'),
-    parser.add_argument('--clip-vloss', action="store_true", default=True,
+    parser.add_argument('--clip-vloss', action="store_true", default=False,
                         help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
     parser.add_argument('--pol-layer-norm', action='store_true', default=False,
                        help='Enables layer normalization in the policy network')
