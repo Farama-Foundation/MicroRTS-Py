@@ -68,6 +68,8 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
             obs = self._encode_obs(obs)
         info["dones"] = done
         info["rewards"] = reward
+        info["raw_reward"] = reward
+        info["raw_dones"] = done
         if len(reward)==1:
             return obs, reward[0], done[0], info
         return obs, reward, done, info
@@ -129,21 +131,6 @@ class GlobalAgentCloserToEnemyBaseRewardEnv(GlobalAgentEnv):
         self.rfs = JArray(RewardFunctionInterface)([CloserToEnemyBaseRewardFunction()])
         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
-# class GlobalAgentCombinedRewardEnv(GlobalAgentEnv):
-#     def start_client(self):
-#         print("haha")
-#         from ts import JNIClient
-#         from ai.rewardfunction import RewardFunctionInterface, CombinedRewardFunction
-#         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
-#         self.rfs = JArray(RewardFunctionInterface)([CombinedRewardFunction(
-#             0.4, 0.05, 1.0, 0.5, 0.1, 0.1, 5.0
-#         )])
-#         print(self.config.ai2)
-#         if self.config.ai2 is not None:
-#             print(self.config.ai2)
-#             return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2())
-#         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
-
 class GlobalAgentCombinedRewardEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient
@@ -156,23 +143,13 @@ class GlobalAgentCombinedRewardEnv(GlobalAgentEnv):
             AttackRewardFunction(),
             ProduceCombatUnitRewardFunction(),
             CloserToEnemyBaseRewardFunction(),])
-        print(self.config.ai2)
         if self.config.ai2 is not None:
-            print(self.config.ai2)
             return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2())
         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
     def step(self, action, raw=False):
-        obs, reward, done, info = super(GlobalAgentEnv, self).step(action, True)
-        # obs[3] - obs[4].clip(max=1) means mask busy units
-        # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
-        self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
-        self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
-        if not raw:
-            obs = self._encode_obs(obs)
+        obs, reward, done, info = super(GlobalAgentCombinedRewardEnv, self).step(action, raw)
         reward[-1] = np.clip(reward[-1], -1, 1)
-        self.raw_reward = reward
-        self.raw_done = done
         return obs, (np.array(reward) * self.config.reward_weight).sum(), done[0], info # win loss as done
 
 class GlobalAgentHRLEnv(GlobalAgentEnv):
@@ -290,6 +267,41 @@ class GlobalAgentHRLAttackCloserToEnemyBaseEnv(GlobalAgentEnv):
         info["rewards"] = reward
         return obs, reward[0], done[0], info
 
+class GlobalAgentHRLProduceCombatUnitEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
+        self.rfs = JArray(RewardFunctionInterface)([
+            ProduceCombatUnitRewardFunction(),
+            ProduceBuildingRewardFunction(),
+            ResourceGatherRewardFunction(),])
+        self.num_reward_function = 2
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+    def step(self, action, raw=False):
+        obs, reward, done, info = super(GlobalAgentHRLProduceCombatUnitEnv, self).step(action, raw)
+        info["dones"] = done
+        info["rewards"] = [reward[0], np.array(reward[1:]).sum()]
+        return obs, reward[0], done[0], info
+
+class GlobalAgentHRLProduceCombatUnitPerfectEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
+        self.rfs = JArray(RewardFunctionInterface)([
+            ProduceCombatUnitRewardFunction(),
+            ResourceGatherRewardFunction(),
+            ProduceBuildingRewardFunction(),])
+        self.num_reward_function = 2
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+    def step(self, action, raw=False):
+        obs, reward, done, info = super(GlobalAgentHRLProduceCombatUnitPerfectEnv, self).step(action, raw)
+        # info["dones"] = done
+        # info["rewards"] = [reward[0], 
+        #     np.array(reward)*np.array([7.0,1.0,1.0])]
+        return obs, reward[0], done[0], info
+
 class GlobalAgentRandomEnemyEnv(GlobalAgentEnv):
     def start_client(self):
         from ts import JNIClient
@@ -298,3 +310,35 @@ class GlobalAgentRandomEnemyEnv(GlobalAgentEnv):
         self.rfs = JArray(RewardFunctionInterface)([SimpleEvaluationRewardFunction()])
         ai2 = RandomBiasedAI()
         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, ai2)
+
+class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNIClient
+        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
+        self.rfs = JArray(RewardFunctionInterface)([
+            WinLossRewardFunction(), 
+            ResourceGatherRewardFunction(),  
+            ProduceWorkerRewardFunction(),
+            ProduceBuildingRewardFunction(),
+            AttackRewardFunction(),
+            ProduceCombatUnitRewardFunction(),
+            CloserToEnemyBaseRewardFunction(),])
+        if self.config.ai2 is not None:
+            return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2())
+        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+    def step(self, action, raw=False):
+        action = np.array(action)
+        response = self.client.step(action, self.config.frame_skip)
+        obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
+        # obs[3] - obs[4].clip(max=1) means mask busy units
+        # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
+        self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
+        self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
+        if not raw:
+            obs = self._encode_obs(obs)
+        info["dones"] = done
+        info["rewards"] = reward
+        info["raw_reward"] = reward
+        info["raw_dones"] = done
+        return obs, (np.array(reward) * self.config.reward_weight).sum(), done[0], info # win loss as done

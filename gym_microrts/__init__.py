@@ -344,6 +344,18 @@ if V0NAME not in gym.envs.registry.env_specs:
         )},
         max_episode_steps=200,
     )]
+    envs += [dict(
+        id=f"MicrortsGlobalAgentMining10x10FrameSkip5-v0",
+        entry_point='gym_microrts.envs:GlobalAgentMiningEnv',
+        kwargs={'config': Config(
+            frame_skip=5,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        )},
+        max_episode_steps=200,
+    )]
 
     envs += [dict(
         id=f"ParamOpEnvSingleStep-v0",
@@ -548,6 +560,59 @@ if V0NAME not in gym.envs.registry.env_specs:
         max_episode_steps=400,
     )]
 
+    # produce combat units
+    envs += [dict(
+        id=f"MicrortsCombinedReward10x10F9BuildCombatUnits-v0",
+        entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts",
+            reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
+        )},
+        max_episode_steps=400,
+    )]
+    envs += [dict(
+        id=f"MicrortsGlobalAgentHRLProduceCombatUnit10x10FrameSkip9-v0",
+        entry_point='gym_microrts.envs:GlobalAgentHRLProduceCombatUnitEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        )},
+        max_episode_steps=200,
+    )]
+    envs += [dict(
+        id=f"MicrortsGlobalAgentHRLProduceCombatUnitPerfect10x10FrameSkip9-v0",
+        entry_point='gym_microrts.envs:GlobalAgentHRLProduceCombatUnitPerfectEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts"
+        )},
+        max_episode_steps=200,
+    )]
+
+    # multi-actions
+    envs += [dict(
+        id=f"MicrortsCombinedReward10x10F5MultiActionsBuildCombatUnits-v0",
+        entry_point='gym_microrts.envs:GlobalAgentMultiActionsCombinedRewardEnv',
+        kwargs={'config': Config(
+            frame_skip=5,
+            ai1_type="no-penalty",
+            ai2_type="passive",
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts",
+            reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
+        )},
+        max_episode_steps=400,
+    )]
     
     # envs += [dict(
     #     id=f"MicrortsCloserToEnemyBase10x10F9-v0",

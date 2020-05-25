@@ -98,5 +98,5 @@ class Config:
     window_size: Optional[int] = 1
     evaluation_filename: Optional[str] = ""
     frame_skip: Optional[int] = 0
-    ai2: Optional['typing.Any'] = object()
-    reward_weight: Optional['typing.Any'] = object()
+    ai2: Optional['typing.Any'] = None
+    reward_weight: Optional['typing.Any'] = None
