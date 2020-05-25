@@ -303,7 +303,7 @@ v_optimizer = optim.Adam(list(vf.parameters()), lr=args.value_lr)
 
 # MODIFIED: Initializing learning rate anneal scheduler when need
 if args.anneal_lr:
-    anneal_fn = lambda f: 1-f / args.total_timesteps
+    anneal_fn = lambda f: max(0, 1-f / args.total_timesteps)
     pg_lr_scheduler = optim.lr_scheduler.LambdaLR(pg_optimizer, lr_lambda=anneal_fn)
     vf_lr_scheduler = optim.lr_scheduler.LambdaLR(v_optimizer, lr_lambda=anneal_fn)
 
@@ -356,6 +356,11 @@ while global_step < args.total_timesteps:
         next_obs, rewards[step], dones[step], info = env.step(action[:,0].data.cpu().numpy())
         real_rewards[step] = info['real_reward']
         next_obs = np.array(next_obs)
+
+        # Annealing the rate if instructed to do so.
+        if args.anneal_lr:
+            pg_lr_scheduler.step()
+            vf_lr_scheduler.step()
 
         if dones[step]:
             # Computing the discounted returns:
@@ -415,6 +420,7 @@ while global_step < args.total_timesteps:
     approx_kls = []
     entropys = []
     target_pg = Policy().to(device)
+    inds = np.arange(args.batch_size,)
     for i_epoch_pi in range(args.update_epochs):
         # raise
         target_pg.load_state_dict(pg.state_dict())
@@ -471,17 +477,13 @@ while global_step < args.total_timesteps:
         v_loss.backward()
         nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
         v_optimizer.step()
-
-    # Annealing the rate if instructed to do so.
-    if args.anneal_lr:
-        pg_lr_scheduler.step()
-        vf_lr_scheduler.step()
-
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
+    writer.add_scalar("charts/policy_learning_rate", pg_optimizer.param_groups[0]['lr'], global_step)
+    writer.add_scalar("charts/value_learning_rate", v_optimizer.param_groups[0]['lr'], global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
     writer.add_scalar("losses/entropy", np.mean(entropys), global_step)
-    writer.add_scalar("losses/approx_kl", np.mean(approx_kls), global_step)
+    writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
 

@@ -195,8 +195,6 @@ torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
 env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
-input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
-output_shape = preprocess_ac_space(env.action_space)
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
@@ -228,7 +226,7 @@ class Policy(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(16*3*3, 128),
             nn.ReLU(),
-            nn.Linear(128, output_shape)
+            nn.Linear(128, env.action_space.nvec.sum())
         )
     def forward(self, x):
         x = torch.Tensor(np.moveaxis(x, -1, 1)).to(device)
@@ -298,15 +296,13 @@ def discount_cumsum(x, dones, gamma):
 pg = Policy().to(device)
 vf = Value().to(device)
 
-clip_now = args.clip_coef
-
 # MODIFIED: Separate optimizer and learning rates
 pg_optimizer = optim.Adam(list(pg.parameters()), lr=args.policy_lr)
 v_optimizer = optim.Adam(list(vf.parameters()), lr=args.value_lr)
 
 # MODIFIED: Initializing learning rate anneal scheduler when need
 if args.anneal_lr:
-    anneal_fn = lambda f: 1-f / args.total_timesteps
+    anneal_fn = lambda f: max(0, 1-f / args.total_timesteps)
     pg_lr_scheduler = optim.lr_scheduler.LambdaLR(pg_optimizer, lr_lambda=anneal_fn)
     vf_lr_scheduler = optim.lr_scheduler.LambdaLR(v_optimizer, lr_lambda=anneal_fn)
 
@@ -387,7 +383,7 @@ while global_step < args.total_timesteps:
     dones = np.zeros((args.batch_size,))
     values = torch.zeros((args.batch_size,)).to(device)
 
-    invalid_action_masks = torch.zeros((args.batch_size, output_shape))
+    invalid_action_masks = torch.zeros((args.batch_size, env.action_space.nvec.sum()))
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.batch_size):
         env.render()
@@ -395,7 +391,7 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
-        invalid_action_mask = torch.ones(output_shape)
+        invalid_action_mask = torch.ones(env.action_space.nvec.sum())
         invalid_action_mask[0:env.action_space.nvec[0]] = torch.tensor(env.unit_location_mask)
         invalid_action_mask[-env.action_space.nvec[-1]:] = torch.tensor(env.target_unit_location_mask)
         invalid_action_masks[step] = invalid_action_mask
@@ -412,6 +408,11 @@ while global_step < args.total_timesteps:
         real_rewards += [info['real_reward']]
         invalid_action_stats += [info['invalid_action_stats']]
         next_obs = np.array(next_obs)
+
+        # Annealing the rate if instructed to do so.
+        if args.anneal_lr:
+            pg_lr_scheduler.step()
+            vf_lr_scheduler.step()
 
         if dones[step]:
             # Computing the discounted returns:
@@ -450,39 +451,58 @@ while global_step < args.total_timesteps:
         advantages = (advantages - advantages.mean()) / (advantages.std() + EPS)
 
     # Optimizaing policy network
-    logprobs = torch.Tensor(logprobs).to(device)
-    approx_kls = []
     entropys = []
     target_pg = Policy().to(device)
-    for i_epoch_pi in range(int(args.update_epochs * args.batch_size / args.minibatch_size)):
-        minibatch_ind = np.random.choice(args.batch_size, args.minibatch_size, replace=False)
-        target_pg.load_state_dict(pg.state_dict())
-        
-        _, newlogproba, _, _ = pg.get_action(
-            obs[minibatch_ind],
-            torch.LongTensor(actions[minibatch_ind].astype(np.int)).to(device).T,
-            invalid_action_masks[minibatch_ind])
-        ratio = (newlogproba - logprobs[:,minibatch_ind]).exp()
+    inds = np.arange(args.batch_size,)
+    for i_epoch_pi in range(args.update_epochs):
+        np.random.shuffle(inds)
+        for start in range(0, args.batch_size, args.minibatch_size):
+            end = start + args.minibatch_size
+            minibatch_ind = inds[start:end]
+            target_pg.load_state_dict(pg.state_dict())
+            
+            _, newlogproba, _, _ = pg.get_action(
+                obs[minibatch_ind],
+                torch.LongTensor(actions[minibatch_ind].astype(np.int)).to(device).T,
+                invalid_action_masks[minibatch_ind])
+            ratio = (newlogproba - logprobs[:,minibatch_ind]).exp()
 
-        # Policy loss as in OpenAI SpinUp
-        clip_adv = torch.where(advantages[minibatch_ind] > 0,
-                                (1.+clip_now) * advantages[minibatch_ind],
-                                (1.-clip_now) * advantages[minibatch_ind]).to(device)
+            # Policy loss as in OpenAI SpinUp
+            clip_adv = torch.where(advantages[minibatch_ind] > 0,
+                                    (1.+args.clip_coef) * advantages[minibatch_ind],
+                                    (1.-args.clip_coef) * advantages[minibatch_ind]).to(device)
 
-        # Entropy computation with resampled actions
-        entropy = -(newlogproba.exp() * newlogproba).mean()
-        entropys.append(entropy.item())
+            # Entropy computation with resampled actions
+            entropy = -(newlogproba.exp() * newlogproba).mean()
+            entropys.append(entropy.item())
 
-        policy_loss = -torch.min(ratio * advantages[minibatch_ind], clip_adv) + args.ent_coef * entropy
-        policy_loss = policy_loss.mean()
-        
-        pg_optimizer.zero_grad()
-        policy_loss.backward()
-        nn.utils.clip_grad_norm_(pg.parameters(), args.max_grad_norm)
-        pg_optimizer.step()
+            policy_loss = -torch.min(ratio * advantages[minibatch_ind], clip_adv) + args.ent_coef * entropy
+            policy_loss = policy_loss.mean()
+            
+            pg_optimizer.zero_grad()
+            policy_loss.backward()
+            nn.utils.clip_grad_norm_(pg.parameters(), args.max_grad_norm)
+            pg_optimizer.step()
 
-        approx_kl = (logprobs[:,minibatch_ind] - newlogproba).mean()
-        approx_kls.append(approx_kl.item())
+            approx_kl = (logprobs[:,minibatch_ind] - newlogproba).mean()
+            # Optimizing value network
+            new_values = vf.forward(obs[minibatch_ind]).view(-1)
+
+            # Value loss clipping
+            if args.clip_vloss:
+                v_loss_unclipped = ((new_values - returns[minibatch_ind]) ** 2)
+                v_clipped = values[minibatch_ind] + torch.clamp(new_values - values[minibatch_ind], -args.clip_coef, args.clip_coef)
+                v_loss_clipped = (v_clipped - returns[minibatch_ind])**2
+                v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
+                v_loss = 0.5 * v_loss_max.mean()
+            else:
+                v_loss = torch.mean((returns[minibatch_ind]- new_values).pow(2))
+
+            v_optimizer.zero_grad()
+            v_loss.backward()
+            nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
+            v_optimizer.step()
+
         if args.kle_stop:
             if approx_kl > args.target_kl:
                 break
@@ -495,37 +515,13 @@ while global_step < args.total_timesteps:
                 pg.load_state_dict(target_pg.state_dict())
                 break
 
-    # Optimizing value network
-        new_values = vf.forward(obs[minibatch_ind]).view(-1)
-
-        # Value loss clipping
-        if args.clip_vloss:
-            v_loss_unclipped = ((new_values - returns[minibatch_ind]) ** 2)
-            v_clipped = values[minibatch_ind] + torch.clamp(new_values - values[minibatch_ind], -args.clip_coef, args.clip_coef)
-            v_loss_clipped = (v_clipped - returns[minibatch_ind])**2
-            v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-            v_loss = 0.5 * v_loss_max.mean()
-        else:
-            v_loss = torch.mean((returns[minibatch_ind]- new_values).pow(2))
-
-        v_optimizer.zero_grad()
-        v_loss.backward()
-        nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
-        v_optimizer.step()
-
-    ep_ratio = 1 - (global_step / args.total_timesteps)
-    clip_now = args.clip_coef * ep_ratio
-    
-    # Annealing the rate if instructed to do so.
-    if args.anneal_lr:
-        pg_lr_scheduler.step()
-        vf_lr_scheduler.step()
-
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
+    writer.add_scalar("charts/policy_learning_rate", pg_optimizer.param_groups[0]['lr'], global_step)
+    writer.add_scalar("charts/value_learning_rate", v_optimizer.param_groups[0]['lr'], global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
     writer.add_scalar("losses/entropy", np.mean(entropys), global_step)
-    writer.add_scalar("losses/approx_kl", np.mean(approx_kls), global_step)
+    writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
         
