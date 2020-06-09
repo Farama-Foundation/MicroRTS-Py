@@ -64,12 +64,16 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
         # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
         self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
         self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
+        self.action_mask = np.ones(self.action_space.nvec.sum())
+        self.action_mask[0:self.action_space.nvec[0]] = self.unit_location_mask
+        self.action_mask[-self.action_space.nvec[-1]:] = self.target_unit_location_mask
+
         if not raw:
             obs = self._encode_obs(obs)
-        info["dones"] = done
-        info["rewards"] = reward
-        info["raw_reward"] = reward
-        info["raw_dones"] = done
+        info["dones"] = np.array(done)
+        info["rewards"] = np.array(reward)
+        info["raw_reward"] = np.array(reward)
+        info["raw_dones"] = np.array(done)
         if len(reward)==1:
             return obs, reward[0], done[0], info
         return obs, reward, done, info
@@ -78,6 +82,9 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
         raw_obs = super(GlobalAgentEnv, self).reset(True)
         self.unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==2,0, (raw_obs[2]))).flatten()
         self.target_unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==1,0, (raw_obs[2]).clip(max=1))).flatten()
+        self.action_mask = np.ones(self.action_space.nvec.sum())
+        self.action_mask[0:self.action_space.nvec[0]] = self.unit_location_mask
+        self.action_mask[-self.action_space.nvec[-1]:] = self.target_unit_location_mask
         if raw:
             return raw_obs
         return self._encode_obs(raw_obs)
@@ -174,8 +181,8 @@ class GlobalAgentHRLEnv(GlobalAgentEnv):
         self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
-        info["dones"] = done
-        info["rewards"] = reward
+        info["dones"] = np.array(done)
+        info["rewards"] = np.array(reward)
         return obs, reward[0], done[0], info
 
 class GlobalAgentHRLMiningEnv(GlobalAgentEnv):
@@ -196,8 +203,8 @@ class GlobalAgentHRLMiningEnv(GlobalAgentEnv):
         self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
-        info["dones"] = done
-        info["rewards"] = reward
+        info["dones"] = np.array(done)
+        info["rewards"] = np.array(reward)
         return obs, reward[0], done[0], info
 
 class GlobalAgentHRLProduceWorkerEnv(GlobalAgentEnv):
@@ -218,8 +225,8 @@ class GlobalAgentHRLProduceWorkerEnv(GlobalAgentEnv):
         self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
-        info["dones"] = done
-        info["rewards"] = reward
+        info["dones"] = np.array(done)
+        info["rewards"] = np.array(reward)
         return obs, reward[0], done[0], info
 
 class GlobalAgentHRLAttackEnv(GlobalAgentEnv):
@@ -240,8 +247,8 @@ class GlobalAgentHRLAttackEnv(GlobalAgentEnv):
         self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
-        info["dones"] = done
-        info["rewards"] = reward
+        info["dones"] = np.array(done)
+        info["rewards"] = np.array(reward)
         return obs, reward[0], done[0], info
 
 
@@ -263,8 +270,8 @@ class GlobalAgentHRLAttackCloserToEnemyBaseEnv(GlobalAgentEnv):
         self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
-        info["dones"] = done
-        info["rewards"] = reward
+        info["dones"] = np.array(done)
+        info["rewards"] = np.array(reward)
         return obs, reward[0], done[0], info
 
 class GlobalAgentHRLProduceCombatUnitEnv(GlobalAgentEnv):
@@ -280,7 +287,7 @@ class GlobalAgentHRLProduceCombatUnitEnv(GlobalAgentEnv):
 
     def step(self, action, raw=False):
         obs, reward, done, info = super(GlobalAgentHRLProduceCombatUnitEnv, self).step(action, raw)
-        info["dones"] = done
+        info["dones"] = np.array(done)
         info["rewards"] = [reward[0], np.array(reward[1:]).sum()]
         return obs, reward[0], done[0], info
 
@@ -297,7 +304,7 @@ class GlobalAgentHRLProduceCombatUnitPerfectEnv(GlobalAgentEnv):
 
     def step(self, action, raw=False):
         obs, reward, done, info = super(GlobalAgentHRLProduceCombatUnitPerfectEnv, self).step(action, raw)
-        # info["dones"] = done
+        # info["dones"] = np.array(done)
         # info["rewards"] = [reward[0], 
         #     np.array(reward)*np.array([7.0,1.0,1.0])]
         return obs, reward[0], done[0], info
@@ -337,8 +344,8 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
         self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
         if not raw:
             obs = self._encode_obs(obs)
-        info["dones"] = done
-        info["rewards"] = reward
+        info["dones"] = np.array(done)
+        info["rewards"] = np.array(reward)
         info["raw_reward"] = reward
         info["raw_dones"] = done
         return obs, (np.array(reward) * self.config.reward_weight).sum(), done[0], info # win loss as done

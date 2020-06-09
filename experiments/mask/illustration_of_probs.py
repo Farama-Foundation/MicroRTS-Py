@@ -1,4 +1,15 @@
-# suppose action 1 is invalid
+
+
+
+
+
+
+
+
+
+
+
+
 
 import torch
 import torch.nn as nn
@@ -17,6 +28,7 @@ print(target_probs.probs)
 # invalid action masking via logits
 print("==================invalid action masking=============")
 target_logits = torch.tensor([1., 1., 1., 1.,] , requires_grad=True)
+# suppose action 1 is invalid
 invalid_action_masks = torch.tensor([1., 1., 0., 1.,])
 invalid_action_masks = invalid_action_masks.type(torch.BoolTensor)
 adjusted_logits = torch.where(invalid_action_masks, 

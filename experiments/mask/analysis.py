@@ -4,7 +4,7 @@ import pandas as pd
 api = wandb.Api()
 
 # Project is specified by <entity/project-name>
-runs = api.runs("costa-huang/gym-microrts-mask2")
+runs = api.runs("costa-huang/gym-microrts-mask3")
 analysis = True
 summary_list = [] 
 config_list = [] 
@@ -16,22 +16,22 @@ for run in runs:
     if analysis:
         summary_json_dict = summary_json_dict.copy()
         history = pd.DataFrame(run.scan_history())
-        history['rollling_e'] = history['charts/episode_reward'].rolling(10).mean()
-        first_best_reward_idx = history["rollling_e"].idxmax()
+        history['rollling_e'] = history['charts/episode_reward'].dropna().rolling(10).mean()
+        first_best_reward_idx = (history["rollling_e"] >= 40.0).idxmax()
         if history.iloc[first_best_reward_idx]["rollling_e"] >= 40.0:
             summary_json_dict["first_learned_timestep"] = history.iloc[first_best_reward_idx]["global_step"] / 500000
         else:
             summary_json_dict["first_learned_timestep"] = 1
         summary_json_dict["first_reward_timestep"] = history.iloc[(history['charts/episode_reward'] > 0).idxmax()]["global_step"] / 500000
-        
+
         # mask removed logic
         if run.config["exp_name"] == "ppo":
             history['evals_rollling_e'] = history['evals/charts/episode_reward'].dropna().rolling(10).mean()
-            first_best_reward_idx = history["evals_rollling_e"].idxmax()
+            first_best_reward_idx = (history["evals_rollling_e"] >= 40.0).idxmax()
             if history.iloc[first_best_reward_idx]["evals_rollling_e"] >= 40.0:
                 summary_json_dict["evals_first_learned_timestep"] = history.iloc[first_best_reward_idx]["global_step"] / 500000
             else:
-                summary_json_dict["evals_first_learned_timestep"] = 0
+                summary_json_dict["evals_first_learned_timestep"] = 1
             summary_json_dict["evals_first_reward_timestep"] = history.iloc[(history['charts/episode_reward'] > 0).idxmax()]["global_step"] / 500000
             
         
@@ -81,6 +81,11 @@ final_all_df.loc[(final_all_df["gym_id"]=="MicrortsMining10x10F9-v0"), "gym_id"]
 final_all_df.loc[final_all_df["gym_id"]=="MicrortsMining16x16F9-v0", "gym_id"] = '16x16'
 final_all_df.loc[final_all_df["gym_id"]=="MicrortsMining24x24F9-v0", "gym_id"] = '24x24'
 
+final_all_df.loc[final_all_df["exp_name"]=="masking removed", "exp_name"] = 'Masking removed'
+final_all_df.loc[(final_all_df["exp_name"]=="ppo"), "exp_name"] = 'Invalid action masking'
+final_all_df.loc[final_all_df["exp_name"]=="ppo_no_adj", "exp_name"] = 'Naive invalid action masking'
+final_all_df.loc[final_all_df["exp_name"]=="ppo_no_mask", "exp_name"] = 'Invalid action penalty'
+
 results_df = final_all_df.fillna(0).groupby(
     ['exp_name','gym_id',"invalid_action_penalty"]
 ).mean()[[
@@ -100,6 +105,7 @@ final_print_df['first_learned_timestep'] = pd.Series(["{0:.2f}%".format(val * 10
 final_print_df['first_reward_timestep'] = pd.Series(["{0:.2f}%".format(val * 100) for val in results_df['first_reward_timestep'].round(4)], index = results_df.index)
 print(final_print_df.to_latex())
 
+print(final_print_df.drop(columns=['losses/approx_kl']).to_latex())
 
 
 # calculate the first time the algorithm solves the environment
