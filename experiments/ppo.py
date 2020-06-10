@@ -126,6 +126,24 @@ class VecPyTorch(VecEnvWrapper):
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
 
+class MicroRTSStatsRecorder(gym.Wrapper):
+
+    def reset(self, **kwargs):
+        observation = super(MicroRTSStatsRecorder, self).reset(**kwargs)
+        self.raw_rewards = []
+        return observation
+
+    def step(self, action):
+        observation, reward, done, info = super(MicroRTSStatsRecorder, self).step(action)
+        self.raw_rewards += [info["raw_reward"]]
+        if done:
+            raw_rewards = np.array(self.raw_rewards).sum(0)
+            raw_names = [str(rf) for rf in self.rfs]
+            info['microrts_stats'] = dict(zip(raw_names, raw_rewards))
+            self.raw_rewards = []
+        return observation, reward, done, info
+
+
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
@@ -147,6 +165,7 @@ def make_env(gym_id, seed, idx):
         env = gym.make(gym_id)
         env = ImageToPyTorch(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
+        env = MicroRTSStatsRecorder(env)
         if args.capture_video:
             if idx == 0:
                 env = Monitor(env, f'videos/{experiment_name}')
@@ -282,6 +301,8 @@ for update in range(1, num_updates+1):
             if 'episode' in info.keys():
                 print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
                 writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+                for key in info['microrts_stats']:
+                    writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
                 break
 
     # bootstrap reward if not done. reached the batch limit
