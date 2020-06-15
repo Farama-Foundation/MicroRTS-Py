@@ -28,7 +28,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsMining10x10F9-v0",
+    parser.add_argument('--gym-id', type=str, default="MicrortsCombinedReward10x10F9BuildCombatUnits-v0",
                         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
                         help='the learning rate of the optimizer')
@@ -135,7 +135,7 @@ class MicroRTSStatsRecorder(gym.Wrapper):
 
     def step(self, action):
         observation, reward, done, info = super(MicroRTSStatsRecorder, self).step(action)
-        self.raw_rewards += [info["raw_reward"]]
+        self.raw_rewards += [info["raw_rewards"]]
         if done:
             raw_rewards = np.array(self.raw_rewards).sum(0)
             raw_names = [str(rf) for rf in self.rfs]
