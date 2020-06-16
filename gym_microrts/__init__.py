@@ -596,7 +596,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts"
         )},
-        max_episode_steps=200,
+        max_episode_steps=400,
     )]
     envs += [dict(
         id=f"MicrortsCombinedReward10x10F9ProduceCombatUnitsRandomBiased-v0",
