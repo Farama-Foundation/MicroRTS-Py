@@ -352,7 +352,6 @@ def evaluate_with_no_mask():
 
         if dones[step]:
             # Computing the discounted returns:
-            writer.add_scalar("charts/episode_reward", np.sum(real_rewards), global_step)
             evaluate_rewards += [np.sum(real_rewards)]
             real_rewards = []
             evaluate_invalid_action_stats += [pd.DataFrame(invalid_action_stats).sum(0)]
