@@ -84,8 +84,9 @@ class BaseSingleAgentEnv(gym.Env):
             return np.array(image)
 
     def close(self):
-        self.client.close()
-        jpype.shutdownJVM()
+        if jpype._jpype.isStarted():
+            self.client.close()
+            jpype.shutdownJVM()
     
     def _encode_obs(self, observation: List):
         raise NotImplementedError
