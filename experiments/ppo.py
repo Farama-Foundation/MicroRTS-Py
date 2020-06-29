@@ -18,11 +18,6 @@ import random
 import os
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-import pandas as pd
-from PIL import Image
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments

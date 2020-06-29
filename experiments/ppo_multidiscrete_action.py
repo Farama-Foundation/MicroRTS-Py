@@ -18,17 +18,12 @@ import random
 import os
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-import pandas as pd
-from PIL import Image
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsMining10x10F9-v0",
+    parser.add_argument('--gym-id', type=str, default="MicrortsCombinedReward10x10F9BuildCombatUnits-v0",
                         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
                         help='the learning rate of the optimizer')
@@ -126,6 +121,24 @@ class VecPyTorch(VecEnvWrapper):
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
 
+class MicroRTSStatsRecorder(gym.Wrapper):
+
+    def reset(self, **kwargs):
+        observation = super(MicroRTSStatsRecorder, self).reset(**kwargs)
+        self.raw_rewards = []
+        return observation
+
+    def step(self, action):
+        observation, reward, done, info = super(MicroRTSStatsRecorder, self).step(action)
+        self.raw_rewards += [info["raw_rewards"]]
+        if done:
+            raw_rewards = np.array(self.raw_rewards).sum(0)
+            raw_names = [str(rf) for rf in self.rfs]
+            info['microrts_stats'] = dict(zip(raw_names, raw_rewards))
+            self.raw_rewards = []
+        return observation, reward, done, info
+
+
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
@@ -147,6 +160,7 @@ def make_env(gym_id, seed, idx):
         env = gym.make(gym_id)
         env = ImageToPyTorch(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
+        env = MicroRTSStatsRecorder(env)
         if args.capture_video:
             if idx == 0:
                 env = Monitor(env, f'videos/{experiment_name}')
@@ -164,23 +178,6 @@ envs = VecPyTorch(DummyVecEnv([make_env(args.gym_id, args.seed+i, i) for i in ra
 assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
-class CategoricalMasked(Categorical):
-    def __init__(self, probs=None, logits=None, validate_args=None, masks=[]):
-        self.masks = masks
-        if len(self.masks) == 0:
-            super(CategoricalMasked, self).__init__(probs, logits, validate_args)
-        else:
-            self.masks = masks.type(torch.BoolTensor).to(device)
-            logits = torch.where(self.masks, logits, torch.tensor(-1e+8).to(device))
-            super(CategoricalMasked, self).__init__(probs, logits, validate_args)
-    
-    def entropy(self):
-        if len(self.masks) == 0:
-            return super(CategoricalMasked, self).entropy()
-        p_log_p = self.logits * self.probs
-        p_log_p = torch.where(self.masks, p_log_p, torch.tensor(0.).to(device))
-        return -p_log_p.sum(-1)
-
 class Scale(nn.Module):
     def __init__(self, scale):
         super().__init__()
@@ -198,14 +195,12 @@ class Agent(nn.Module):
     def __init__(self, frames=4):
         super(Agent, self).__init__()
         self.network = nn.Sequential(
-            layer_init(nn.Conv2d(27, 16, kernel_size=3,)),
-            nn.MaxPool2d(1),
+            layer_init(nn.Conv2d(27, 16, kernel_size=3, stride=2)),
             nn.ReLU(),
-            layer_init(nn.Conv2d(16, 32, kernel_size=3)),
-            nn.MaxPool2d(1),
+            layer_init(nn.Conv2d(16, 32, kernel_size=2)),
             nn.ReLU(),
             nn.Flatten(),
-            layer_init(nn.Linear(32*6*6, 128)),
+            layer_init(nn.Linear(32*3*3, 128)),
             nn.ReLU(),)
         self.actor = layer_init(nn.Linear(128, envs.action_space.nvec.sum()), std=0.01)
         self.critic = layer_init(nn.Linear(128, 1), std=1)
@@ -213,16 +208,10 @@ class Agent(nn.Module):
     def forward(self, x):
         return self.network(x)
 
-    def get_action(self, x, action=None, invalid_action_masks=None):
+    def get_action(self, x, action=None):
         logits = self.actor(self.forward(x))
         split_logits = torch.split(logits, envs.action_space.nvec.tolist(), dim=1)
-        
-        if invalid_action_masks is not None:
-            split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_space.nvec.tolist(), dim=1)
-            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
-        else:
-            multi_categoricals = [Categorical(logits=logits) for logits in split_logits]
-        
+        multi_categoricals = [Categorical(logits=logits) for logits in split_logits]
         if action is None:
             action = torch.stack([categorical.sample() for categorical in multi_categoricals])
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
@@ -245,7 +234,6 @@ logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
 rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
 dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
 values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 # Note how `next_obs` and `next_done` are used; their usage is equivalent to
@@ -283,6 +271,8 @@ for update in range(1, num_updates+1):
             if 'episode' in info.keys():
                 print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
                 writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+                for key in info['microrts_stats']:
+                    writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
                 break
 
     # bootstrap reward if not done. reached the batch limit
@@ -334,7 +324,9 @@ for update in range(1, num_updates+1):
             if args.norm_adv:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
-            _, newlogproba, entropy = agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind].T)
+            _, newlogproba, entropy = agent.get_action(
+                b_obs[minibatch_ind],
+                b_actions.long()[minibatch_ind].T)
             ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
 
             # Stats
@@ -368,7 +360,9 @@ for update in range(1, num_updates+1):
             if approx_kl > args.target_kl:
                 break
         if args.kle_rollback:
-            if (b_logprobs[minibatch_ind] - agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind].T)[1]).mean() > args.target_kl:
+            if (b_logprobs[minibatch_ind] - agent.get_action(
+                    b_obs[minibatch_ind],
+                    b_actions.long()[minibatch_ind].T)[1]).mean() > args.target_kl:
                 agent.load_state_dict(target_agent.state_dict())
                 break
 
