@@ -169,40 +169,16 @@ class GlobalAgentHRLEnv(GlobalAgentEnv):
             ProduceWorkerRewardFunction(),
             ProduceBuildingRewardFunction(),
             AttackRewardFunction(),
-            ProduceCombatUnitRewardFunction(),])
-        self.num_reward_function = len(self.rfs)
+            ProduceCombatUnitRewardFunction(),
+            CloserToEnemyBaseRewardFunction(),])
+        self.num_reward_function = len(self.config.hrl_reward_weights)
         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
-class GlobalAgentHRLMiningEnv(GlobalAgentEnv):
-    def start_client(self):
-        from ts import JNIClient
-        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
-        self.rfs = JArray(RewardFunctionInterface)([
-            WinLossRewardFunction(), 
-            ResourceGatherRewardFunction(),])
-        self.num_reward_function = len(self.rfs)
-        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
-
-class GlobalAgentHRLProduceWorkerEnv(GlobalAgentEnv):
-    def start_client(self):
-        from ts import JNIClient
-        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
-        self.rfs = JArray(RewardFunctionInterface)([
-            WinLossRewardFunction(), 
-            ProduceWorkerRewardFunction(),])
-        self.num_reward_function = len(self.rfs)
-        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
-
-class GlobalAgentHRLAttackEnv(GlobalAgentEnv):
-    def start_client(self):
-        from ts import JNIClient
-        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
-        self.rfs = JArray(RewardFunctionInterface)([
-            WinLossRewardFunction(), 
-            AttackRewardFunction(),])
-        self.num_reward_function = len(self.rfs)
-        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
-
+    def step(self, action, raw=False):
+        obs, reward, done, info = super(GlobalAgentHRLEnv, self).step(action, raw, True)
+        info["dones"] = np.array(done)
+        info["rewards"] = (np.array(reward).clip(min=-1, max=1) * self.config.hrl_reward_weights).sum(1)
+        return obs, info["rewards"][0], done[0], info
 
 class GlobalAgentHRLAttackCloserToEnemyBaseEnv(GlobalAgentEnv):
     def start_client(self):

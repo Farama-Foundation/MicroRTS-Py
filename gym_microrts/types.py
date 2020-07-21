@@ -87,9 +87,9 @@ class GameState:
 
 @dataclass
 class Config:
-    ai1_type: str
-    ai2_type: str
     map_path: str
+    ai1_type: Optional[str] = ""
+    ai2_type: Optional[str] = ""
     microrts_path: Optional[str] = ""
     maximum_t: Optional[int] = 2000
     client_ip: Optional[str] = "127.0.0.1"
@@ -100,3 +100,4 @@ class Config:
     frame_skip: Optional[int] = 0
     ai2: Optional['typing.Any'] = None
     reward_weight: Optional['typing.Any'] = None
+    hrl_reward_weights: Optional['typing.Any'] = None
