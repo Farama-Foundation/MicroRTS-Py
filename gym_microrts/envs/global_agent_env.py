@@ -172,6 +172,8 @@ class GlobalAgentHRLEnv(GlobalAgentEnv):
             ProduceCombatUnitRewardFunction(),
             CloserToEnemyBaseRewardFunction(),])
         self.num_reward_function = len(self.config.hrl_reward_weights)
+        if self.config.ai2 is not None:
+            return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2())
         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
     def step(self, action, raw=False):
