@@ -45,6 +45,7 @@ envs += [dict(
     )},
     max_episode_steps=200,
 )]
+
 envs += [dict(
     id=f"MicrortsAttackSparseReward-v1",
     entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
@@ -57,6 +58,19 @@ envs += [dict(
     )},
     max_episode_steps=200,
 )]
+if shaped_reward_envs:
+    envs += [dict(
+        id=f"MicrortsAttackShapedReward-v1",
+        entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
+        kwargs={'config': Config(
+            frame_skip=9,
+            ai2=passiveAI,
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts",
+            reward_weight=np.array([0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0])
+        )},
+        max_episode_steps=400,
+    )]
 if hrl_envs:
     envs += [dict(
         id=f"MicrortsAttackHRL-v1",
@@ -73,8 +87,9 @@ if hrl_envs:
         )},
         max_episode_steps=200,
     )]
+
 envs += [dict(
-    id=f"MicrortsProduceCombatUnits-v1",
+    id=f"MicrortsProduceCombatUnitsSparseReward-v1",
     entry_point='gym_microrts.envs:GlobalAgentProduceCombatUnitEnv',
     kwargs={'config': Config(
         frame_skip=9,
@@ -114,30 +129,6 @@ if hrl_envs:
         max_episode_steps=400,
     )]
 
-# envs += [dict(
-#     id="MicrortsSparseRewardPassiveEnemy-v1",
-#     entry_point='gym_microrts.envs:GlobalAgentBinaryEnv',
-#     kwargs={'config': Config(
-#         frame_skip=9,
-#         ai2=passiveAI,
-#         map_path="maps/10x10/basesWorkers10x10.xml",
-#         microrts_path="~/microrts"
-#     )},
-#     max_episode_steps=600,
-# )]
-# if shaped_reward_envs:
-#     envs += [dict(
-#         id=f"MicrortsShapedReward1PassiveEnemy-v1",
-#         entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
-#         kwargs={'config': Config(
-#             frame_skip=9,
-#             ai2=passiveAI,
-#             map_path="maps/10x10/basesWorkers10x10.xml",
-#             microrts_path="~/microrts",
-#             reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.2])
-#         )},
-#         max_episode_steps=600,
-#     )]
 
 envs += [dict(
     id="MicrortsRandomEnemySparseReward-v1",
@@ -233,6 +224,32 @@ if hrl_envs:
         )},
         max_episode_steps=600,
     )]
+
+
+# envs += [dict(
+#     id="MicrortsSparseRewardPassiveEnemy-v1",
+#     entry_point='gym_microrts.envs:GlobalAgentBinaryEnv',
+#     kwargs={'config': Config(
+#         frame_skip=9,
+#         ai2=passiveAI,
+#         map_path="maps/10x10/basesWorkers10x10.xml",
+#         microrts_path="~/microrts"
+#     )},
+#     max_episode_steps=600,
+# )]
+# if shaped_reward_envs:
+#     envs += [dict(
+#         id=f"MicrortsShapedReward1PassiveEnemy-v1",
+#         entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
+#         kwargs={'config': Config(
+#             frame_skip=9,
+#             ai2=passiveAI,
+#             map_path="maps/10x10/basesWorkers10x10.xml",
+#             microrts_path="~/microrts",
+#             reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.2])
+#         )},
+#         max_episode_steps=600,
+#     )]
 # envs += [dict(
 #     id=f"MicrortsGlobalAgentHRLProduceCombatUnitPerfect10x10FrameSkip9-v1",
 #     entry_point='gym_microrts.envs:GlobalAgentHRLProduceCombatUnitPerfectEnv',
