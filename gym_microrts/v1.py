@@ -184,7 +184,7 @@ if hrl_envs:
         entry_point='gym_microrts.envs:GlobalAgentHRLEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=passiveAI,
+            ai2=randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             hrl_reward_weights=np.array([
@@ -199,7 +199,7 @@ if hrl_envs:
         entry_point='gym_microrts.envs:GlobalAgentHRLEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=passiveAI,
+            ai2=randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             hrl_reward_weights=np.array([
@@ -214,7 +214,7 @@ if hrl_envs:
         entry_point='gym_microrts.envs:GlobalAgentHRLEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=passiveAI,
+            ai2=randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             hrl_reward_weights=np.array([
