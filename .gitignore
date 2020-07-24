@@ -3,6 +3,7 @@
 openaigym.*
 *.pt
 *.pth
+experiments/mask/*
 
 **/wandb/*
 
