@@ -42,4 +42,9 @@ env.render()
 assert env.step([7, 1, 2, 0, 0, 0, 0, 0, 0], True)[1] > 0
 env.render()
 
+# attack
+for i in range(5):
+    env.step([11, 5, 0, 0, 0, 0, 0, 15], True)
+    env.render()
+
 # env.close()
