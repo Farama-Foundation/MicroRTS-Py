@@ -5,6 +5,7 @@ import uuid
 from .types import Config
 import numpy as np
 from .v1 import envs as v1_envs
+from .v2 import envs as v2_envs
 
 # enable repeated experiments
 # https://github.com/openai/gym/issues/1172
@@ -17,6 +18,7 @@ if V0NAME not in gym.envs.registry.env_specs:
     
     envs = []
     envs += v1_envs
+    envs += v2_envs
     
     envs += [dict(
         id="MicrortsGlobalAgentsProd-v0",

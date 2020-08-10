@@ -251,7 +251,7 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
         num_source_units = self.unit_location_mask.sum()
         # `simulated_rewards` should be subtracted in the end
         simulated_rewards = 0
-        while num_source_units != 0:
+        while num_source_units >= 1:
             source_unit_selected = action[0]
             self.actions += [action]
             self.unit_location_mask[source_unit_selected] = 0
@@ -273,6 +273,7 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
             simulated_rewards += new_reward
             return return_tuple
 
+        print(len(np.array(self.actions)), np.array(self.actions))
         response = self.client.step(np.array(self.actions), self.config.frame_skip)
         self.actions = []
         obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
