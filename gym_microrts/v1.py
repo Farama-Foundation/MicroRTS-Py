@@ -19,6 +19,10 @@ def passiveAI():
     from ai import PassiveAI
     return PassiveAI()
 
+def workerRushAI(utt):
+    from ai.abstraction import WorkerRush
+    return WorkerRush(utt)
+
 shaped_reward_envs = True
 hrl_envs = True
 
@@ -225,6 +229,18 @@ if hrl_envs:
         max_episode_steps=600,
     )]
 
+envs += [dict(
+    id=f"MicrortsWorkerRush-v1",
+    entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
+    kwargs={'config': Config(
+        frame_skip=9,
+        ai2=workerRushAI,
+        map_path="maps/10x10/basesWorkers10x10.xml",
+        microrts_path="~/microrts",
+        reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 1.0, 7.0, 0.0])
+    )},
+    max_episode_steps=600,
+)]
 
 # envs += [dict(
 #     id="MicrortsSparseRewardPassiveEnemy-v1",

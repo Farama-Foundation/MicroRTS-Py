@@ -151,7 +151,7 @@ class GlobalAgentCombinedRewardEnv(GlobalAgentEnv):
             ProduceCombatUnitRewardFunction(),
             CloserToEnemyBaseRewardFunction(),])
         if self.config.ai2 is not None:
-            return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2())
+            return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2(self.real_utt), self.real_utt)
         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
     def step(self, action, raw=False):
@@ -246,9 +246,35 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
             return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2())
         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
-    def step(self, action, raw=False):
-        action = np.array(action)
-        response = self.client.step(action, self.config.frame_skip)
+    def step(self, action, raw=False, customize=False):
+        # action = np.array(action)
+        num_source_units = self.unit_location_mask.sum()
+        # `simulated_rewards` should be subtracted in the end
+        simulated_rewards = 0
+        while num_source_units != 0:
+            source_unit_selected = action[0]
+            self.actions += [action]
+            self.unit_location_mask[source_unit_selected] = 0
+            self.action_mask = np.ones(self.action_space.nvec.sum())
+            self.action_mask[0:self.action_space.nvec[0]] = self.unit_location_mask
+            self.action_mask[-self.action_space.nvec[-1]:] = self.target_unit_location_mask
+            info = {}
+            response = self.client.simulateStep(np.array(self.actions), self.config.frame_skip)
+            obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
+            info["dones"] = np.array(done)
+            info["rewards"] = np.array(reward).clip(min=-1, max=1)
+            info["raw_rewards"] = np.array(reward).clip(min=-1, max=1)
+            info["raw_dones"] = np.array(done)
+            if not raw:
+                obs = self._encode_obs(obs)
+            
+            new_reward = (np.array(reward).clip(min=-1, max=1) * self.config.reward_weight).sum()
+            return_tuple = (obs, new_reward - simulated_rewards, done[0], info)
+            simulated_rewards += new_reward
+            return return_tuple
+
+        response = self.client.step(np.array(self.actions), self.config.frame_skip)
+        self.actions = []
         obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
         # obs[3] - obs[4].clip(max=1) means mask busy units
         # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
@@ -263,15 +289,12 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
         info["rewards"] = np.array(reward).clip(min=-1, max=1)
         info["raw_rewards"] = np.array(reward).clip(min=-1, max=1)
         info["raw_dones"] = np.array(done)
-        return obs, (np.array(reward).clip(min=-1, max=1) * self.config.reward_weight).sum(), done[0], info # win loss as done
+        if customize:
+            return obs, reward, done, info
+        new_reward = (np.array(reward).clip(min=-1, max=1) * self.config.reward_weight).sum()
+        return (obs, new_reward - simulated_rewards, done[0], info)
+        # return obs, (np.array(reward).clip(min=-1, max=1) * self.config.reward_weight).sum(), done[0], info
 
     def reset(self, raw=False):
-        raw_obs = super(GlobalAgentEnv, self).reset(True)
-        self.unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==2,0, (raw_obs[2]))).flatten()
-        self.target_unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==1,0, (raw_obs[2]).clip(max=1))).flatten()
-        self.action_mask = np.ones(self.action_space.nvec.sum())
-        self.action_mask[0:self.action_space.nvec[0]] = self.unit_location_mask
-        self.action_mask[-self.action_space.nvec[-1]:] = self.target_unit_location_mask
-        if raw:
-            return raw_obs
-        return self._encode_obs(raw_obs)
+        self.actions = []
+        return super(GlobalAgentMultiActionsCombinedRewardEnv, self).reset(raw)

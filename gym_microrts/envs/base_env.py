@@ -48,6 +48,8 @@ class BaseSingleAgentEnv(gym.Env):
             jpype.addClassPath(os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")))
             jpype.startJVM(convertStrings=False)
 
+        from rts.units import UnitTypeTable
+        self.real_utt = UnitTypeTable()
         self.client = self.start_client()
         
         # get the unit type table
