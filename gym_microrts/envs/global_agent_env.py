@@ -231,6 +231,11 @@ class GlobalAgentRandomEnemyEnv(GlobalAgentEnv):
         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, ai2)
 
 class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+        'video.frames_per_second' : 150
+    }
+
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
@@ -273,7 +278,6 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
             simulated_rewards += new_reward
             return return_tuple
 
-        print(len(np.array(self.actions)), np.array(self.actions))
         response = self.client.step(np.array(self.actions), self.config.frame_skip)
         self.actions = []
         obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))

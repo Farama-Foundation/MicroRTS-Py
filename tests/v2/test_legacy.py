@@ -17,7 +17,7 @@ class NoAvailableActionThenSkipEnv(gym.Wrapper):
                 break
         return obs, reward, done, info
 
-env = NoAvailableActionThenSkipEnv(gym.make('MicrortsTwoWorkersMining-v2').env)
+env = NoAvailableActionThenSkipEnv(gym.make('MicrortsTwoWorkersMiningLegacy-v2').env)
 env.action_space.seed(0)
 obss = []
 try:
@@ -44,14 +44,14 @@ obs, r, d, info = env.step([12, 4, 0, 0, 0, 1, 3, 0])
 obss += [obs]
 env.render()
 
-# print("unit_locatiuons are at", np.where(env.unit_location_mask==1)[0])
-# obs, r, d, info = env.step([3, 1, 3, 0, 0, 0, 0, 0])
-# obss += [obs]
-# env.render()
-# print("unit_locatiuons are at", np.where(env.unit_location_mask==1)[0])
-# obs, r, d, info = env.step([10, 1, 1, 0, 0, 0, 0, 0])
-# obss += [obs]
-# env.render()
+print("unit_locatiuons are at", np.where(env.unit_location_mask==1)[0])
+obs, r, d, info = env.step([3, 1, 3, 0, 0, 0, 0, 0])
+obss += [obs]
+env.render()
+print("unit_locatiuons are at", np.where(env.unit_location_mask==1)[0])
+obs, r, d, info = env.step([10, 1, 1, 0, 0, 0, 0, 0])
+obss += [obs]
+env.render()
 # print("unit_locatiuons are at", np.where(env.unit_location_mask==1)[0])
 # env.step([2, 1, 1, 0, 0, 0, 0, 0, 0], True)
 # env.render()

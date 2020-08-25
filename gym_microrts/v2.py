@@ -57,6 +57,6 @@ envs += [dict(
         microrts_path="~/microrts",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     )},
-    max_episode_steps=400,
+    max_episode_steps=2000,
 )]
 

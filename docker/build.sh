@@ -1,4 +1,4 @@
-VERSION=1.4-cuda10.1-cudnn7-runtime-gym-microrts-0.0.1
+VERSION=1.4-cuda10.1-cudnn7-runtime-gym-microrts-0.1.0
 
 docker build -t vwxyzjn/gym-microrts:$VERSION  -t vwxyzjn/gym-microrts:latest -f Dockerfile .
 

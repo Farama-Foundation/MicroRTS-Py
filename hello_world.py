@@ -4,8 +4,8 @@ import time
 from gym.wrappers import TimeLimit, Monitor
 
 try:
-    env = gym.make("MicrortsGlobalAgentRandomEnemy10x10FrameSkip9-v0")
-    env = Monitor(env, f'videos')
+    env = gym.make("MicrortsWorkerRush-v1")
+    env = Monitor(env, f'videos', force=True)
     env.action_space.seed(0)
     env.reset()
     for i in range(10000):
