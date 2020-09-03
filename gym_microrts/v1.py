@@ -242,6 +242,20 @@ envs += [dict(
     max_episode_steps=600,
 )]
 
+
+envs += [dict(
+    id=f"MicrortsSelfPlayShapedReward-v1",
+    entry_point='gym_microrts.envs:GlobalAgentCombinedRewardSelfPlayEnv',
+    kwargs={'config': Config(
+        frame_skip=9,
+        map_path="maps/10x10/basesTwoWorkers10x10.xml",
+        microrts_path="~/microrts",
+        reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.2])
+    )},
+    max_episode_steps=600,
+)]
+
+
 # envs += [dict(
 #     id="MicrortsSparseRewardPassiveEnemy-v1",
 #     entry_point='gym_microrts.envs:GlobalAgentBinaryEnv',

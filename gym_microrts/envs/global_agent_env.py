@@ -303,3 +303,88 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
     def reset(self, raw=False):
         self.actions = []
         return super(GlobalAgentMultiActionsCombinedRewardEnv, self).reset(raw)
+
+
+class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
+    def start_client(self):
+        from ts import JNISelfPlayClient
+        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
+        self.rfs = JArray(RewardFunctionInterface)([
+            WinLossRewardFunction(), 
+            ResourceGatherRewardFunction(),  
+            ProduceWorkerRewardFunction(),
+            ProduceBuildingRewardFunction(),
+            AttackRewardFunction(),
+            ProduceCombatUnitRewardFunction(),
+            CloserToEnemyBaseRewardFunction(),])
+        self.best_model = None
+        return JNISelfPlayClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.real_utt)
+
+    def predict(self, obs, action_mask): # the policy
+        if self.best_model is None:
+            return self.action_space.sample() # return a random action
+        else:
+            return self.best_model.get_action_with_device([np.transpose(obs, axes=(2, 0, 1))], invalid_action_masks=[action_mask])[0].flatten().tolist()
+
+    def set_model(self, model):
+        self.best_model = model
+
+    def set_device(self, device):
+        self.device = device
+
+    def step(self, action, raw=False, customize=False):
+        opponent_action = self.predict(self.opponent_obs, self.opponent_action_mask)
+        response = self.client.step(np.array([action]), np.array([opponent_action]), self.config.frame_skip)
+        obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
+
+        # opponent
+        self.opponent_raw_obs = np.rot90(obs, 2, (1,2))
+        _, self.opponent_action_mask = calculate_mask(self.opponent_raw_obs, self.action_space)
+        self.opponent_obs = self._encode_obs(self.opponent_raw_obs)
+
+        self.unit_location_mask, self.action_mask = calculate_mask(obs, self.action_space)
+        if not raw:
+            
+            obs = self._encode_obs(obs)
+        info["dones"] = np.array(done)
+        info["rewards"] = np.array(reward).clip(min=-1, max=1)
+        info["raw_rewards"] = np.array(reward).clip(min=-1, max=1)
+        info["raw_dones"] = np.array(done)
+        if customize:
+            return obs, reward, done, info
+        return obs, (np.array(reward).clip(min=-1, max=1) * self.config.reward_weight).sum(), done[0], info
+
+    def reset(self, raw=False):
+        raw_obs = super(GlobalAgentEnv, self).reset(True)
+        self.unit_location_mask, self.action_mask = calculate_mask(raw_obs, self.action_space)
+        self.opponent_raw_obs = np.rot90(raw_obs, 2, (1,2))
+        _, self.opponent_action_mask = calculate_mask(self.opponent_raw_obs, self.action_space)
+        self.opponent_obs = self._encode_obs(self.opponent_raw_obs)
+        if raw:
+            return raw_obs
+        return self._encode_obs(raw_obs)
+
+# class GlobalAgentHRLEnv(GlobalAgentEnv):
+#     def start_client(self):
+#         from ts import JNIClient
+#         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
+#         self.rfs = JArray(RewardFunctionInterface)([
+#             WinLossRewardFunction(), 
+#             ResourceGatherRewardFunction(),  
+#             ProduceWorkerRewardFunction(),
+#             ProduceBuildingRewardFunction(),
+#             AttackRewardFunction(),
+#             ProduceCombatUnitRewardFunction(),
+#             CloserToEnemyBaseRewardFunction(),])
+#         self.num_reward_function = len(self.config.hrl_reward_weights)
+#         if self.config.ai2 is not None:
+#             return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2())
+#         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+
+def calculate_mask(raw_obs, action_space):
+    unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==2,0, (raw_obs[2]))).flatten()
+    target_unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==1,0, (raw_obs[2]).clip(max=1))).flatten()
+    action_mask = np.ones(action_space.nvec.sum())
+    action_mask[0:action_space.nvec[0]] = unit_location_mask
+    action_mask[-action_space.nvec[-1]:] = target_unit_location_mask
+    return unit_location_mask, action_mask
