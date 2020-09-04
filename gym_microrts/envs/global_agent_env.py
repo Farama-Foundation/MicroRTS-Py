@@ -319,6 +319,7 @@ class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
             CloserToEnemyBaseRewardFunction(),])
         self.best_model = None
         self.action_reverse_idxs = np.arange((self.config.height * self.config.width)-1,-1,-1).reshape(self.config.height,self.config.width).flatten()
+        self.action_direction_reverse_idxs = np.array([2, 3, 0, 1])
         return JNISelfPlayClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.real_utt)
 
     def predict(self, obs, action_mask): # the policy
@@ -329,6 +330,11 @@ class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
             # now we need to reverse the source and target unit position for 90 degrees
             action[0] = self.action_reverse_idxs[action[0]]
             action[-1] = self.action_reverse_idxs[action[-1]]
+            # and rotate the direction of action parameters
+            action[2] = self.action_direction_reverse_idxs[action[2]]
+            action[3] = self.action_direction_reverse_idxs[action[3]]
+            action[4] = self.action_direction_reverse_idxs[action[4]]
+            action[5] = self.action_direction_reverse_idxs[action[5]]
             return action
 
     def set_model(self, model):
@@ -343,8 +349,12 @@ class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
         obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
 
         # opponent
-        self.opponent_raw_obs = np.rot90(obs, 2, (1,2))
-        _, self.opponent_action_mask = calculate_mask(self.opponent_raw_obs, self.action_space, player=2, opponent_player=1)
+        self.opponent_raw_obs = np.rot90(obs, 2, (1,2)).copy()
+        owner_feature_map = self.opponent_raw_obs[2] - 1
+        owner_feature_map[owner_feature_map==0]=2
+        owner_feature_map[owner_feature_map==-1]=0
+        self.opponent_raw_obs[2] = owner_feature_map
+        _, self.opponent_action_mask = calculate_mask(self.opponent_raw_obs, self.action_space)
         self.opponent_obs = self._encode_obs(self.opponent_raw_obs)
 
         self.unit_location_mask, self.action_mask = calculate_mask(obs, self.action_space)
@@ -362,8 +372,12 @@ class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
     def reset(self, raw=False):
         raw_obs = super(GlobalAgentEnv, self).reset(True)
         self.unit_location_mask, self.action_mask = calculate_mask(raw_obs, self.action_space)
-        self.opponent_raw_obs = np.rot90(raw_obs, 2, (1,2))
-        _, self.opponent_action_mask = calculate_mask(self.opponent_raw_obs, self.action_space, player=2, opponent_player=1)
+        self.opponent_raw_obs = np.rot90(raw_obs, 2, (1,2)).copy()
+        owner_feature_map = self.opponent_raw_obs[2] - 1
+        owner_feature_map[owner_feature_map==0]=2
+        owner_feature_map[owner_feature_map==-1]=0
+        self.opponent_raw_obs[2] = owner_feature_map
+        _, self.opponent_action_mask = calculate_mask(self.opponent_raw_obs, self.action_space)
         self.opponent_obs = self._encode_obs(self.opponent_raw_obs)
         if raw:
             return raw_obs
@@ -386,12 +400,11 @@ class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
 #             return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2())
 #         return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
 
-def calculate_mask(raw_obs, action_space, player=1, opponent_player=2):
+def calculate_mask(raw_obs, action_space):
     # obs[3] - obs[4].clip(max=1) means mask busy units
-    # * np.where((obs[2])==opponent_player,0, (obs[2]))).flatten() means mask units not owned
-    unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==opponent_player,0, (raw_obs[2]))).flatten()
-    unit_location_mask[unit_location_mask==2] = 1
-    target_unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==player,0, (raw_obs[2]).clip(max=1))).flatten()
+    # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
+    unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==2,0, (raw_obs[2]))).flatten()
+    target_unit_location_mask = ((raw_obs[3].clip(max=1) - raw_obs[4].clip(max=1)) * np.where((raw_obs[2])==1,0, (raw_obs[2]).clip(max=1))).flatten()
     action_mask = np.ones(action_space.nvec.sum())
     action_mask[0:action_space.nvec[0]] = unit_location_mask
     action_mask[-action_space.nvec[-1]:] = target_unit_location_mask
