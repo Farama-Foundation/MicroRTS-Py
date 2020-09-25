@@ -12,12 +12,14 @@ RUN pip install stable-baselines3
 
 RUN apt-get -y -q install wget unzip default-jdk
 RUN rm ~/microrts -fR && mkdir ~/microrts && \
-    wget -O ~/microrts/microrts.zip http://microrts.s3.amazonaws.com/microrts/artifacts/202004222224.microrts.zip && \
+    wget -O ~/microrts/microrts.zip http://microrts.s3.amazonaws.com/microrts/artifacts/202009182200.microrts.zip && \
     unzip ~/microrts/microrts.zip -d ~/microrts/ && \
     rm ~/microrts/microrts.zip
 
 RUN cd /workspace/ && git clone https://github.com/vwxyzjn/gym-microrts.git && \
     cd gym-microrts && pip install -e .
+
+RUN pip install wandb==0.9.5
 
 WORKDIR /workspace/gym-microrts/experiments
 

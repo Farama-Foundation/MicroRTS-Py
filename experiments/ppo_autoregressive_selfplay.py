@@ -17,13 +17,14 @@ import time
 import random
 import os
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
+from collections import deque
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsProduceCombatUnitsShapedReward-v1",
+    parser.add_argument('--gym-id', type=str, default="MicrortsSelfPlayShapedReward-v1",
                         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
                         help='the learning rate of the optimizer')
@@ -138,6 +139,17 @@ class MicroRTSStatsRecorder(gym.Wrapper):
             self.raw_rewards = []
         return observation, reward, done, info
 
+class NoAvailableActionThenSkipEnv(gym.Wrapper):
+    """if no source unit can be selected in microrts,
+    automatically execute a NOOP action
+    """
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        while self.unit_location_mask.sum()==0:
+            obs, reward, done, info = self.env.step(action)
+            if done:
+                break
+        return obs, reward, done, info
 
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -158,9 +170,10 @@ torch.backends.cudnn.deterministic = args.torch_deterministic
 def make_env(gym_id, seed, idx):
     def thunk():
         env = gym.make(gym_id)
-        env = ImageToPyTorch(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env = MicroRTSStatsRecorder(env)
+        # env = NoAvailableActionThenSkipEnv(env)
+        env = ImageToPyTorch(env)
         if args.capture_video:
             if idx == 0:
                 env = Monitor(env, f'videos/{experiment_name}')
@@ -225,21 +238,32 @@ class Agent(nn.Module):
     def forward(self, x):
         return self.network(x)
 
-    def get_action(self, x, action=None, invalid_action_masks=None):
+    # Self-play LOGIC:
+    # based on the player argument, we determine the proper masks
+    def get_action(self, x, action=None, invalid_action_masks=None, envs=None, player=1):
         logits = self.actor(self.forward(x))
         split_logits = torch.split(logits, envs.action_space.nvec.tolist(), dim=1)
         
-        if invalid_action_masks is not None:
+        if action is None:
+            # 1. select source unit based on source unit mask
+            source_unit_mask = torch.Tensor(np.array(envs.env_method("get_unit_location_mask", player=player)))
+            multi_categoricals = [CategoricalMasked(logits=split_logits[0], masks=source_unit_mask)]
+            action_components = [multi_categoricals[0].sample()]
+            # 2. select action type and parameter section based on the
+            #    source-unit mask of action type and parameters
+            source_unit_action_mask = torch.Tensor(
+                [envs.env_method("get_unit_action_mask", unit=action_components[0][i], player=player, indices=i)[0]
+            for i in range(envs.num_envs)])
+            split_suam = torch.split(source_unit_action_mask, envs.action_space.nvec.tolist()[1:], dim=1)
+            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits[1:], split_suam)]
+            invalid_action_masks = torch.cat((source_unit_mask, source_unit_action_mask), 1)
+            action = torch.stack([categorical.sample() for categorical in multi_categoricals])
+        else:
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_space.nvec.tolist(), dim=1)
             multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
-        else:
-            multi_categoricals = [Categorical(logits=logits) for logits in split_logits]
-        
-        if action is None:
-            action = torch.stack([categorical.sample() for categorical in multi_categoricals])
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
-        return action, logprob.sum(0), entropy.sum(0)
+        return action, logprob.sum(0), entropy.sum(0), invalid_action_masks
 
     def get_value(self, x):
         return self.critic(self.forward(x))
@@ -265,6 +289,9 @@ global_step = 0
 next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
 num_updates = args.total_timesteps // args.batch_size
+# Self-play LOGIC:
+opponent_agent = Agent().to(device)
+opponent_agent.load_state_dict(agent.state_dict())
 for update in range(1, num_updates+1):
     # Annealing the rate if instructed to do so.
     if args.anneal_lr:
@@ -278,15 +305,23 @@ for update in range(1, num_updates+1):
         global_step += 1 * args.num_envs
         obs[step] = next_obs
         dones[step] = next_done
-        invalid_action_masks[step] = torch.Tensor(np.array(envs.get_attr("action_mask")))
 
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
             values[step] = agent.get_value(obs[step]).flatten()
-            action, logproba, _ = agent.get_action(obs[step], invalid_action_masks=invalid_action_masks[step])
-        
+            action, logproba, _, invalid_action_masks[step] = agent.get_action(obs[step], envs=envs)
+
         actions[step] = action.T
         logprobs[step] = logproba
+
+        # Self-play LOGIC:
+        with torch.no_grad():
+            o_action, _, _, _  = opponent_agent.get_action(
+                torch.Tensor(np.transpose(envs.get_attr("opponent_obs"), axes=(0, 3, 1, 2))).to(device),
+                envs=envs, player=2
+            )
+            for i in range(envs.num_envs):
+                envs.env_method("set_opponent_action", o_action.T[i].tolist(), indices=i)
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rs, ds, infos = envs.step(action.T)
@@ -350,10 +385,11 @@ for update in range(1, num_updates+1):
             if args.norm_adv:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
-            _, newlogproba, entropy = agent.get_action(
+            _, newlogproba, entropy, _ = agent.get_action(
                 b_obs[minibatch_ind],
                 b_actions.long()[minibatch_ind].T,
-                b_invalid_action_masks[minibatch_ind])
+                b_invalid_action_masks[minibatch_ind],
+                envs)
             ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
 
             # Stats
@@ -382,7 +418,6 @@ for update in range(1, num_updates+1):
             loss.backward()
             nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
             optimizer.step()
-            raise
 
         if args.kle_stop:
             if approx_kl > args.target_kl:
@@ -391,7 +426,8 @@ for update in range(1, num_updates+1):
             if (b_logprobs[minibatch_ind] - agent.get_action(
                     b_obs[minibatch_ind],
                     b_actions.long()[minibatch_ind].T,
-                    b_invalid_action_masks[minibatch_ind])[1]).mean() > args.target_kl:
+                    b_invalid_action_masks[minibatch_ind],
+                    envs)[1]).mean() > args.target_kl:
                 agent.load_state_dict(target_agent.state_dict())
                 break
 
@@ -403,6 +439,15 @@ for update in range(1, num_updates+1):
     writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
+
+    # Self-play LOGIC:
+    # all_rewards = np.array([number for item in envs.get_attr("return_queue") for number in item])
+    # if len(all_rewards) >= 0:
+    #     if all_rewards.mean() > 0.5:
+    print(f"replacing model at {global_step}")
+    opponent_agent = Agent().to(device)
+    opponent_agent.load_state_dict(agent.state_dict())
+    envs.set_attr("return_queue", deque(maxlen=100))
 
 envs.close()
 writer.close()

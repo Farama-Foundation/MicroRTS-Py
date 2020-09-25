@@ -1,5 +1,6 @@
 from .types import Config
 import numpy as np
+from . import microrts_ai
 
 """
 WinLossRewardFunction(), 
@@ -11,18 +12,6 @@ ProduceCombatUnitRewardFunction(),
 CloserToEnemyBaseRewardFunction(),
 reward_weight corresponds to above
 """
-def randomAI():
-    from ai import RandomBiasedSingleUnitAI
-    return RandomBiasedSingleUnitAI()
-
-def passiveAI():
-    from ai import PassiveAI
-    return PassiveAI()
-
-def workerRushAI(utt):
-    from ai.abstraction import WorkerRush
-    return WorkerRush(utt)
-
 shaped_reward_envs = True
 hrl_envs = True
 
@@ -32,7 +21,7 @@ envs += [dict(
     entry_point='gym_microrts.envs:GlobalAgentMiningEnv',
     kwargs={'config': Config(
         frame_skip=9,
-        ai2=passiveAI,
+        ai2=microrts_ai.passiveAI,
         map_path="maps/10x10/basesWorkers10x10.xml",
         microrts_path="~/microrts"
     )},
@@ -43,7 +32,7 @@ envs += [dict(
     entry_point='gym_microrts.envs:GlobalAgentProduceWorkerEnv',
     kwargs={'config': Config(
         frame_skip=9,
-        ai2=passiveAI,
+        ai2=microrts_ai.passiveAI,
         map_path="maps/10x10/basesWorkers10x10.xml",
         microrts_path="~/microrts"
     )},
@@ -55,7 +44,7 @@ envs += [dict(
     entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
     kwargs={'config': Config(
         frame_skip=9,
-        ai2=passiveAI,
+        ai2=microrts_ai.passiveAI,
         map_path="maps/10x10/basesWorkers10x10.xml",
         microrts_path="~/microrts",
         reward_weight=np.array([0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0])
@@ -68,7 +57,7 @@ if shaped_reward_envs:
         entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=passiveAI,
+            ai2=microrts_ai.passiveAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             reward_weight=np.array([0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0])
@@ -81,7 +70,7 @@ if hrl_envs:
         entry_point='gym_microrts.envs:GlobalAgentHRLEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=passiveAI,
+            ai2=microrts_ai.passiveAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             hrl_reward_weights=np.array([
@@ -97,7 +86,7 @@ envs += [dict(
     entry_point='gym_microrts.envs:GlobalAgentProduceCombatUnitEnv',
     kwargs={'config': Config(
         frame_skip=9,
-        ai2=passiveAI,
+        ai2=microrts_ai.passiveAI,
         map_path="maps/10x10/basesWorkers10x10.xml",
         microrts_path="~/microrts"
     )},
@@ -109,7 +98,7 @@ if shaped_reward_envs:
         entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=passiveAI,
+            ai2=microrts_ai.passiveAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
@@ -122,7 +111,7 @@ if hrl_envs:
         entry_point='gym_microrts.envs:GlobalAgentHRLEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=passiveAI,
+            ai2=microrts_ai.passiveAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             hrl_reward_weights=np.array([
@@ -139,7 +128,7 @@ envs += [dict(
     entry_point='gym_microrts.envs:GlobalAgentBinaryEnv',
     kwargs={'config': Config(
         frame_skip=9,
-        ai2=randomAI,
+        ai2=microrts_ai.randomAI,
         map_path="maps/10x10/basesWorkers10x10.xml",
         microrts_path="~/microrts"
     )},
@@ -151,7 +140,7 @@ if shaped_reward_envs:
         entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=randomAI,
+            ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 1.0, 7.0, 0.0])
@@ -163,7 +152,7 @@ if shaped_reward_envs:
         entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=randomAI,
+            ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
@@ -175,7 +164,7 @@ if shaped_reward_envs:
         entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=randomAI,
+            ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.2])
@@ -188,7 +177,7 @@ if hrl_envs:
         entry_point='gym_microrts.envs:GlobalAgentHRLEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=randomAI,
+            ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             hrl_reward_weights=np.array([
@@ -203,7 +192,7 @@ if hrl_envs:
         entry_point='gym_microrts.envs:GlobalAgentHRLEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=randomAI,
+            ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             hrl_reward_weights=np.array([
@@ -218,7 +207,7 @@ if hrl_envs:
         entry_point='gym_microrts.envs:GlobalAgentHRLEnv',
         kwargs={'config': Config(
             frame_skip=9,
-            ai2=randomAI,
+            ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
             microrts_path="~/microrts",
             hrl_reward_weights=np.array([
@@ -233,8 +222,8 @@ envs += [dict(
     id=f"MicrortsWorkerRush-v1",
     entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
     kwargs={'config': Config(
-        frame_skip=9,
-        ai2=workerRushAI,
+        frame_skip=0,
+        ai2=microrts_ai.workerRushAI,
         map_path="maps/10x10/basesWorkers10x10.xml",
         microrts_path="~/microrts",
         reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 1.0, 7.0, 0.0])
@@ -250,7 +239,7 @@ envs += [dict(
         frame_skip=9,
         map_path="maps/10x10/basesTwoWorkers10x10.xml",
         microrts_path="~/microrts",
-        reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.2])
+        reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.0])
     )},
     max_episode_steps=600,
 )]
@@ -261,7 +250,7 @@ envs += [dict(
 #     entry_point='gym_microrts.envs:GlobalAgentBinaryEnv',
 #     kwargs={'config': Config(
 #         frame_skip=9,
-#         ai2=passiveAI,
+#         ai2=microrts_ai.passiveAI,
 #         map_path="maps/10x10/basesWorkers10x10.xml",
 #         microrts_path="~/microrts"
 #     )},
@@ -273,7 +262,7 @@ envs += [dict(
 #         entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
 #         kwargs={'config': Config(
 #             frame_skip=9,
-#             ai2=passiveAI,
+#             ai2=microrts_ai.passiveAI,
 #             map_path="maps/10x10/basesWorkers10x10.xml",
 #             microrts_path="~/microrts",
 #             reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.2])
@@ -285,7 +274,7 @@ envs += [dict(
 #     entry_point='gym_microrts.envs:GlobalAgentHRLProduceCombatUnitPerfectEnv',
 #     kwargs={'config': Config(
 #         frame_skip=9,
-#         ai2=passiveAI,
+#         ai2=microrts_ai.passiveAI,
 #         map_path="maps/10x10/basesWorkers10x10.xml",
 #         microrts_path="~/microrts"
 #     )},
@@ -296,7 +285,7 @@ envs += [dict(
 #     entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
 #     kwargs={'config': Config(
 #         frame_skip=9,
-#         ai2=randomAI,
+#         ai2=microrts_ai.randomAI,
 #         map_path="maps/10x10/basesWorkers10x10.xml",
 #         microrts_path="~/microrts",
 #         reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])

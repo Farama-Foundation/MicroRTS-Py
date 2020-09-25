@@ -283,6 +283,10 @@ global_step = 0
 next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
 num_updates = args.total_timesteps // args.batch_size
+
+# Self-play LOGIC:
+opponent_agent = Agent().to(device)
+opponent_agent.load_state_dict(agent.state_dict())
 for update in range(1, num_updates+1):
     # Annealing the rate if instructed to do so.
     if args.anneal_lr:
@@ -302,9 +306,16 @@ for update in range(1, num_updates+1):
         with torch.no_grad():
             values[step] = agent.get_value(obs[step]).flatten()
             action, logproba, _ = agent.get_action(obs[step], invalid_action_masks=invalid_action_masks[step])
-        
+
         actions[step] = action.T
         logprobs[step] = logproba
+
+        # Self-play LOGIC:
+        with torch.no_grad():
+            o_action, _, _  = opponent_agent.get_action(torch.Tensor(np.transpose(envs.get_attr("opponent_obs"), axes=(0, 3, 1, 2))).to(device),
+                             invalid_action_masks=torch.Tensor(np.array(envs.get_attr("opponent_action_mask"))))
+            for i in range(envs.num_envs):
+                envs.env_method("set_opponent_action", o_action.T[i].tolist(), indices=i)
 
         # TRY NOT TO MODIFY: execute the game and log data.
         # print(action.T[0])
@@ -427,9 +438,8 @@ for update in range(1, num_updates+1):
     # if len(all_rewards) >= 0:
     #     if all_rewards.mean() > 0.5:
     print(f"replacing model at {global_step}")
-    current_agent = Agent().to(device)
-    current_agent.load_state_dict(agent.state_dict())
-    envs.env_method("set_model", current_agent)
+    opponent_agent = Agent().to(device)
+    opponent_agent.load_state_dict(agent.state_dict())
     envs.set_attr("return_queue", deque(maxlen=100))
 
 # envs.close()

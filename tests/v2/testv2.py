@@ -4,7 +4,7 @@ import gym_microrts
 from gym.envs.registration import register
 from gym_microrts import Config
 
-env = gym.make('MicrortsTwoWorkersMining-v2').env
+env = gym.make('MicrortsMining-v2').env
 env.action_space.seed(0)
 obss = []
 try:

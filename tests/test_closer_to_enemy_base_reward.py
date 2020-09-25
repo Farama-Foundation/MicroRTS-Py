@@ -15,7 +15,7 @@ if gym_id not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
             # below are dev properties
-            microrts_path="~/Documents/work/go/src/github.com/vwxyzjn/microrts",
+            microrts_path="/home/costa/Documents/work/go/src/github.com/vwxyzjn/microrts",
         )}
     )
 env = gym.make(gym_id+'-v0')
@@ -43,8 +43,8 @@ assert env.step([7, 1, 2, 0, 0, 0, 0, 0, 0], True)[1] > 0
 env.render()
 
 # attack
-for i in range(5):
-    env.step([11, 5, 0, 0, 0, 0, 0, 15], True)
+for i in range(10):
+    print(env.step([11, 5, 0, 0, 0, 0, 0, 15], True))
     env.render()
 
 # env.close()
