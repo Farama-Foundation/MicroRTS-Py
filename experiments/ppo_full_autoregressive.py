@@ -138,18 +138,6 @@ class MicroRTSStatsRecorder(gym.Wrapper):
             self.raw_rewards = []
         return observation, reward, done, info
 
-class NoAvailableActionThenSkipEnv(gym.Wrapper):
-    """if no source unit can be selected in microrts,
-    automatically execute a NOOP action
-    """
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        while self.unit_location_mask.sum()==0:
-            obs, reward, done, info = self.env.step(action)
-            if done:
-                break
-        return obs, reward, done, info
-
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
@@ -171,7 +159,6 @@ def make_env(gym_id, seed, idx):
         env = gym.make(gym_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env = MicroRTSStatsRecorder(env)
-        # env = NoAvailableActionThenSkipEnv(env)
         env = ImageToPyTorch(env)
         if args.capture_video:
             if idx == 0:
@@ -233,31 +220,41 @@ class Agent(nn.Module):
             nn.ReLU(),)
         self.actor = layer_init(nn.Linear(128, envs.action_space.nvec.sum()), std=0.01)
         self.critic = layer_init(nn.Linear(128, 1), std=1)
+        
+        self.actor_source_unit = layer_init(nn.Linear(128, envs.action_space.nvec[0]), std=0.01)
+        self.actor_others = layer_init(nn.Linear(128+envs.action_space.nvec[0], envs.action_space.nvec[1:].sum()), std=0.01)
 
     def forward(self, x):
         return self.network(x)
 
     def get_action(self, x, action=None, invalid_action_masks=None, envs=None):
-        logits = self.actor(self.forward(x))
-        split_logits = torch.split(logits, envs.action_space.nvec.tolist(), dim=1)
-        
+        hidden_output = self.forward(x)
+        su_logits = self.actor_source_unit(hidden_output)
         if action is None:
             # 1. select source unit based on source unit mask
             source_unit_mask = torch.Tensor(np.array(envs.env_method("get_unit_location_mask", player=1)))
-            multi_categoricals = [CategoricalMasked(logits=split_logits[0], masks=source_unit_mask)]
+            multi_categoricals = [CategoricalMasked(logits=su_logits, masks=source_unit_mask)]
             action_components = [multi_categoricals[0].sample()]
             # 2. select action type and parameter section based on the
             #    source-unit mask of action type and parameters
             source_unit_action_mask = torch.Tensor(
                 [envs.env_method("get_unit_action_mask", unit=action_components[0][i], player=1, indices=i)[0]
             for i in range(envs.num_envs)])
+            source_unit_embedding = F.one_hot(action_components[0], envs.action_space.nvec[0])
+            other_logits = self.actor_others(torch.cat((hidden_output, source_unit_embedding), 1))
+            split_logits = torch.split(other_logits, envs.action_space.nvec[1:].tolist(), dim=1)
             split_suam = torch.split(source_unit_action_mask, envs.action_space.nvec.tolist()[1:], dim=1)
-            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits[1:], split_suam)]
+            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_suam)]
             invalid_action_masks = torch.cat((source_unit_mask, source_unit_action_mask), 1)
             action = torch.stack([categorical.sample() for categorical in multi_categoricals])
         else:
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_space.nvec.tolist(), dim=1)
-            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
+            multi_categoricals = [CategoricalMasked(logits=su_logits, masks=split_invalid_action_masks[0])]
+            source_unit_embedding = F.one_hot(action[0], envs.action_space.nvec[0])
+            other_logits = self.actor_others(torch.cat((hidden_output, source_unit_embedding), 1))
+            split_logits = torch.split(other_logits, envs.action_space.nvec[1:].tolist(), dim=1)
+            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks[1:])]
+            # multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
         return action, logprob.sum(0), entropy.sum(0), invalid_action_masks
@@ -286,7 +283,6 @@ global_step = 0
 next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
 num_updates = args.total_timesteps // args.batch_size
-raise
 for update in range(1, num_updates+1):
     # Annealing the rate if instructed to do so.
     if args.anneal_lr:
