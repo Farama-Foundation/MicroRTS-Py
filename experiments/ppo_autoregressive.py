@@ -157,7 +157,7 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True, save_code=True)
+    run = wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True, save_code=True)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
 
 # TRY NOT TO MODIFY: seeding
@@ -286,7 +286,18 @@ global_step = 0
 next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
 num_updates = args.total_timesteps // args.batch_size
-for update in range(1, num_updates+1):
+
+## CRASH AND RESUME LOGIC:
+starting_update = 1
+if args.prod_mode and wandb.run.resumed:
+    starting_update = run.summary['charts/update']
+    api = wandb.Api()
+    run = api.run(run.get_url()[len("https://app.wandb.ai/"):])
+    model = run.file('agent.pt')
+    model.download(f"models/{experiment_name}/")
+    agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt"))
+    agent.eval()
+for update in range(starting_update, num_updates+1):
     # Annealing the rate if instructed to do so.
     if args.anneal_lr:
         frac = 1.0 - (update - 1.0) / num_updates
@@ -416,8 +427,16 @@ for update in range(1, num_updates+1):
                 agent.load_state_dict(target_agent.state_dict())
                 break
 
+    ## CRASH AND RESUME LOGIC:
+    if args.prod_mode:
+        if not os.path.exists(f"models/{experiment_name}"):
+            os.makedirs(f"models/{experiment_name}")
+        torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
+        wandb.save(f"models/{experiment_name}/agent.pt")
+
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
+    writer.add_scalar("charts/update", update, global_step)
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
     writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
