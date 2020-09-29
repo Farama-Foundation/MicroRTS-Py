@@ -297,6 +297,7 @@ if args.prod_mode and wandb.run.resumed:
     model.download(f"models/{experiment_name}/")
     agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt"))
     agent.eval()
+    print(f"resumed at update {starting_update}")
 for update in range(starting_update, num_updates+1):
     # Annealing the rate if instructed to do so.
     if args.anneal_lr:
