@@ -18,15 +18,17 @@ hrl_envs = True
 envs = []
 envs += [dict(
     id=f"MicrortsMining-v1",
-    entry_point='gym_microrts.envs:GlobalAgentMiningEnv',
+    entry_point='gym_microrts.envs:GlobalAgentCombinedRewardEnv',
     kwargs={'config': Config(
         frame_skip=9,
         ai2=microrts_ai.passiveAI,
         map_path="maps/10x10/basesWorkers10x10.xml",
-        microrts_path="~/microrts"
+        microrts_path="~/microrts",
+        reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     )},
     max_episode_steps=200,
 )]
+
 envs += [dict(
     id=f"MicrortsProduceWorker-v1",
     entry_point='gym_microrts.envs:GlobalAgentProduceWorkerEnv',

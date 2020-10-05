@@ -252,3 +252,13 @@ do
     --seed $seed) >& /dev/null &
 done
 
+for seed in {2..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python ppo_full_autoregressive.py \
+    --wandb-project-name gym-microrts \
+    --total-timesteps 100000000 \
+    --gym-id MicrortsDefeatWorkerRushEnemyShaped-v2 \
+    --prod-mode True \
+    --capture-video True \
+    --seed $seed) >& /dev/null &
+done
