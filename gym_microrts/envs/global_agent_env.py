@@ -264,9 +264,8 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
     def step(self, action, raw=False, customize=False):
         # action = np.array(action)
         num_source_units = self.unit_location_mask.sum()
-        # `simulated_rewards` should be subtracted in the end
-        simulated_rewards = 0
-        while num_source_units >= 1:
+
+        while num_source_units >= 2:
             source_unit_selected = action[0]
             self.actions += [action]
             self.unit_location_mask[source_unit_selected] = 0
@@ -277,17 +276,19 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
             response = self.client.simulateStep(np.array(self.actions), self.config.frame_skip)
             obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
             info["dones"] = np.array(done)
-            info["rewards"] = np.array(reward).clip(min=-1, max=1)
-            info["raw_rewards"] = np.array(reward).clip(min=-1, max=1)
+            info["rewards"] = np.array(reward)
+            info["raw_rewards"] = np.array(reward)
             info["raw_dones"] = np.array(done)
             if not raw:
                 obs = self._encode_obs(obs)
             
-            new_reward = (np.array(reward).clip(min=-1, max=1) * self.config.reward_weight).sum()
-            return_tuple = (obs, new_reward - simulated_rewards, done[0], info)
-            simulated_rewards += new_reward
+            new_reward = (np.array(reward) * self.config.reward_weight).sum()
+            reward_difference = new_reward - self.simulated_rewards
+            return_tuple = (obs, reward_difference, done[0], info)
+            self.simulated_rewards += reward_difference
             return return_tuple
 
+        self.actions += [action]
         response = self.client.step(np.array(self.actions), self.config.frame_skip)
         self.actions = []
         obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
@@ -301,16 +302,20 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
         if not raw:
             obs = self._encode_obs(obs)
         info["dones"] = np.array(done)
-        info["rewards"] = np.array(reward).clip(min=-1, max=1)
-        info["raw_rewards"] = np.array(reward).clip(min=-1, max=1)
+        info["rewards"] = np.array(reward)
+        info["raw_rewards"] = np.array(reward)
         info["raw_dones"] = np.array(done)
         if customize:
             return obs, reward, done, info
-        new_reward = (np.array(reward).clip(min=-1, max=1) * self.config.reward_weight).sum()
-        return (obs, new_reward - simulated_rewards, done[0], info)
+        new_reward = (np.array(reward) * self.config.reward_weight).sum()
+        reward_difference = new_reward - self.simulated_rewards
+        self.simulated_rewards = 0
+        return (obs, reward_difference, done[0], info)
 
     def reset(self, raw=False):
         self.actions = []
+        # `simulated_rewards` should be subtracted in the end
+        self.simulated_rewards = 0
         return super(GlobalAgentMultiActionsCombinedRewardEnv, self).reset(raw)
 
 class GlobalAgentMultiActionsHRLEnv(GlobalAgentMultiActionsCombinedRewardEnv):
