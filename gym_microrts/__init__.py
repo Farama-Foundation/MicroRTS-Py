@@ -518,7 +518,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             ai2=ai2,
-            map_path="maps/10x10/basesWorkers10x10.xml",,
+            map_path="maps/10x10/basesWorkers10x10.xml",
             reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 3.0, 0.2])
         )},
         max_episode_steps=400,
@@ -531,7 +531,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             ai2=ai2,
-            map_path="maps/10x10/basesWorkers10x10.xml",,
+            map_path="maps/10x10/basesWorkers10x10.xml",
             reward_weight=np.array([10.0, 1.0, 1.0, 2.0, 1.0, 7.0, 0.2])
         )},
         max_episode_steps=400,
@@ -545,7 +545,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             frame_skip=9,
             ai1_type="no-penalty",
             ai2_type="passive",
-            map_path="maps/10x10/basesWorkers10x10.xml",,
+            map_path="maps/10x10/basesWorkers10x10.xml",
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
         )},
         max_episode_steps=400,
@@ -580,7 +580,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             ai2=ai2,
-            map_path="maps/10x10/basesWorkers10x10.xml",,
+            map_path="maps/10x10/basesWorkers10x10.xml",
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
         )},
         max_episode_steps=2000,
@@ -594,7 +594,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             frame_skip=5,
             ai1_type="no-penalty",
             ai2_type="passive",
-            map_path="maps/10x10/basesWorkers10x10.xml",,
+            map_path="maps/10x10/basesWorkers10x10.xml",
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
         )},
         max_episode_steps=400,
@@ -607,7 +607,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             frame_skip=0,
             ai1_type="no-penalty",
             ai2_type="passive",
-            map_path="maps/10x10/basesWorkers10x10.xml",,
+            map_path="maps/10x10/basesWorkers10x10.xml",
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 1.0, 7.0, 0.0])
         )},
         max_episode_steps=2000,
