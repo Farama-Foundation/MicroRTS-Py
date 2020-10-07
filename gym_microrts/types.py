@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from typing import List, Any, Dict, Optional
 import numpy as np
+from pathlib import Path
+import gym_microrts
+import os
 
 ACTION_TYPE_NONE = 0
 ACTION_TYPE_MOVE = 1
@@ -90,7 +93,7 @@ class Config:
     map_path: str
     ai1_type: Optional[str] = ""
     ai2_type: Optional[str] = ""
-    microrts_path: Optional[str] = ""
+    microrts_path: Optional[str] = os.path.join(Path(gym_microrts.__path__[0]).parent, 'microrts')
     maximum_t: Optional[int] = 2000
     client_ip: Optional[str] = "127.0.0.1"
     height: Optional[int] = 0

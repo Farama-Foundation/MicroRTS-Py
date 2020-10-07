@@ -23,7 +23,6 @@ envs += [dict(
         frame_skip=9,
         ai2=microrts_ai.passiveAI,
         map_path="maps/10x10/basesWorkers10x10.xml",
-        microrts_path="~/microrts",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     )},
     max_episode_steps=200,
@@ -48,7 +47,6 @@ envs += [dict(
         frame_skip=9,
         ai2=microrts_ai.passiveAI,
         map_path="maps/10x10/basesWorkers10x10.xml",
-        microrts_path="~/microrts",
         reward_weight=np.array([0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0])
     )},
     max_episode_steps=200,
@@ -61,7 +59,6 @@ if shaped_reward_envs:
             frame_skip=9,
             ai2=microrts_ai.passiveAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
             reward_weight=np.array([0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0])
         )},
         max_episode_steps=400,
@@ -74,7 +71,6 @@ if hrl_envs:
             frame_skip=9,
             ai2=microrts_ai.passiveAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
             hrl_reward_weights=np.array([
                 [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
                 [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0],
@@ -102,7 +98,6 @@ if shaped_reward_envs:
             frame_skip=9,
             ai2=microrts_ai.passiveAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
         )},
         max_episode_steps=400,
@@ -115,7 +110,6 @@ if hrl_envs:
             frame_skip=9,
             ai2=microrts_ai.passiveAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
             hrl_reward_weights=np.array([
                 [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
                 [0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0],
@@ -144,7 +138,6 @@ if shaped_reward_envs:
             frame_skip=9,
             ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 1.0, 7.0, 0.0])
         )},
         max_episode_steps=600,
@@ -156,7 +149,6 @@ if shaped_reward_envs:
             frame_skip=9,
             ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
         )},
         max_episode_steps=600,
@@ -168,7 +160,6 @@ if shaped_reward_envs:
             frame_skip=9,
             ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
             reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.2])
         )},
         max_episode_steps=600,
@@ -181,7 +172,6 @@ if hrl_envs:
             frame_skip=9,
             ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
             hrl_reward_weights=np.array([
                 [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0, 1.0, 1.0, 7.0, 0.0],
@@ -196,7 +186,6 @@ if hrl_envs:
             frame_skip=9,
             ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
             hrl_reward_weights=np.array([
                 [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0],
@@ -211,7 +200,6 @@ if hrl_envs:
             frame_skip=9,
             ai2=microrts_ai.randomAI,
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
             hrl_reward_weights=np.array([
                 [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.2],
@@ -227,7 +215,6 @@ envs += [dict(
         frame_skip=0,
         ai2=microrts_ai.workerRushAI,
         map_path="maps/10x10/basesWorkers10x10.xml",
-        microrts_path="~/microrts",
         reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 1.0, 7.0, 0.0])
     )},
     max_episode_steps=600,
@@ -240,7 +227,6 @@ envs += [dict(
     kwargs={'config': Config(
         frame_skip=9,
         map_path="maps/10x10/basesTwoWorkers10x10.xml",
-        microrts_path="~/microrts",
         reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.0])
     )},
     max_episode_steps=600,
@@ -266,7 +252,6 @@ envs += [dict(
 #             frame_skip=9,
 #             ai2=microrts_ai.passiveAI,
 #             map_path="maps/10x10/basesWorkers10x10.xml",
-#             microrts_path="~/microrts",
 #             reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 7.0, 0.2])
 #         )},
 #         max_episode_steps=600,
@@ -289,7 +274,6 @@ envs += [dict(
 #         frame_skip=9,
 #         ai2=microrts_ai.randomAI,
 #         map_path="maps/10x10/basesWorkers10x10.xml",
-#         microrts_path="~/microrts",
 #         reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
 #     )},
 #     max_episode_steps=600,

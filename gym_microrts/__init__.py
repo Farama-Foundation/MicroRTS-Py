@@ -29,7 +29,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
             # below are dev properties
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -43,7 +42,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkers4x4.xml",
             # below are prod properties
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -58,7 +56,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
             # below are dev properties
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -72,7 +69,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
             # below are dev properties
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -86,7 +82,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
             # below are dev properties
-            microrts_path="~/microrts"
         )},
         max_episode_steps=2000,
     )]
@@ -100,7 +95,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/6x6/baseTwoWorkersMaxResources6x6.xml",
             # below are dev properties
-            microrts_path="~/microrts"
         )},
         max_episode_steps=300,
     )]
@@ -114,7 +108,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/8x8/baseTwoWorkersMaxResources8x8.xml",
             # below are dev properties
-            microrts_path="~/microrts"
         )},
         max_episode_steps=400,
     )]
@@ -128,8 +121,7 @@ if V0NAME not in gym.envs.registry.env_specs:
                 ai1_type="no-penalty-individual",
                 ai2_type="passive",
                 map_path="maps/4x4/baseTwoWorkersMaxResources4x4.xml",
-                # below are prod properties
-                microrts_path="~/microrts",
+                # below are prod properties,
                 window_size=i
             )},
         max_episode_steps=200,
@@ -143,8 +135,7 @@ if V0NAME not in gym.envs.registry.env_specs:
                 ai1_type="no-penalty-individual",
                 ai2_type="passive",
                 map_path="maps/6x6/baseTwoWorkersMaxResources6x6.xml",
-                # below are prod properties
-                microrts_path="~/microrts",
+                # below are prod properties,
                 window_size=i
             )},
         max_episode_steps=300,
@@ -158,8 +149,7 @@ if V0NAME not in gym.envs.registry.env_specs:
                 ai1_type="no-penalty-individual",
                 ai2_type="passive",
                 map_path="maps/8x8/baseTwoWorkersMaxResources8x8.xml",
-                # below are prod properties
-                microrts_path="~/microrts",
+                # below are prod properties,
                 window_size=i
             )},
         max_episode_steps=400,
@@ -174,7 +164,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/4x4/baseOneWorkerMaxResources4x4.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -187,7 +176,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/8x8/baseOneWorkerMaxResources8x8.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=400,
     )]
@@ -200,7 +188,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/24x24/basesWorkers24x24.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=400,
     )]
@@ -213,7 +200,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/4x4/baseOneWorkerMaxResources4x4.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -226,7 +212,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/8x8/baseOneWorkerMaxResources8x8.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=400,
     )]
@@ -240,7 +225,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
             # below are dev properties
-            microrts_path="~/microrts"
         )},
         max_episode_steps=6000,
     )]
@@ -254,7 +238,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
             # below are dev properties
-            microrts_path="~/microrts"
         )},
         max_episode_steps=3000,
     )]
@@ -267,7 +250,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
             # below are dev properties
-            microrts_path="~/microrts"
         )},
         max_episode_steps=2000,
     )]
@@ -280,7 +262,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -293,7 +274,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -306,7 +286,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -319,7 +298,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -331,7 +309,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=2000,
     )]
@@ -344,7 +321,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -356,7 +332,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=400,
     )]
@@ -370,7 +345,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -383,7 +357,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=1,
     )]
@@ -396,7 +369,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         ), "map_index" :0 },
         max_episode_steps=200,
     )]
@@ -408,7 +380,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         ), "map_index" :1 },
         max_episode_steps=200,
     )]
@@ -420,7 +391,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         ), "map_index" :2 },
         max_episode_steps=200,
     )]
@@ -432,7 +402,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         ), "map_index" :3 },
         max_episode_steps=200,
     )]
@@ -444,7 +413,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         ), "map_index" :4 },
         max_episode_steps=200,
     )]
@@ -457,7 +425,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/4x4/basesWorkers4x4.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -469,7 +436,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -481,7 +447,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/16x16/basesWorkers16x16R20.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -493,7 +458,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/24x24/basesWorkers24x24R20.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -506,7 +470,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -518,7 +481,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -530,7 +492,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -557,8 +518,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             ai2=ai2,
-            map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
+            map_path="maps/10x10/basesWorkers10x10.xml",,
             reward_weight=np.array([5.0, 1.0, 1.0, 0.2, 1.0, 3.0, 0.2])
         )},
         max_episode_steps=400,
@@ -571,8 +531,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             ai2=ai2,
-            map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
+            map_path="maps/10x10/basesWorkers10x10.xml",,
             reward_weight=np.array([10.0, 1.0, 1.0, 2.0, 1.0, 7.0, 0.2])
         )},
         max_episode_steps=400,
@@ -586,8 +545,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             frame_skip=9,
             ai1_type="no-penalty",
             ai2_type="passive",
-            map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
+            map_path="maps/10x10/basesWorkers10x10.xml",,
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
         )},
         max_episode_steps=400,
@@ -600,7 +558,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=200,
     )]
@@ -612,7 +569,6 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts"
         )},
         max_episode_steps=400,
     )]
@@ -624,8 +580,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             ai1_type="no-penalty",
             ai2_type="passive",
             ai2=ai2,
-            map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
+            map_path="maps/10x10/basesWorkers10x10.xml",,
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
         )},
         max_episode_steps=2000,
@@ -639,8 +594,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             frame_skip=5,
             ai1_type="no-penalty",
             ai2_type="passive",
-            map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
+            map_path="maps/10x10/basesWorkers10x10.xml",,
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 7.0, 0.0])
         )},
         max_episode_steps=400,
@@ -653,8 +607,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             frame_skip=0,
             ai1_type="no-penalty",
             ai2_type="passive",
-            map_path="maps/10x10/basesWorkers10x10.xml",
-            microrts_path="~/microrts",
+            map_path="maps/10x10/basesWorkers10x10.xml",,
             reward_weight=np.array([0.0, 1.0, 0.0, 1.0, 1.0, 7.0, 0.0])
         )},
         max_episode_steps=2000,
