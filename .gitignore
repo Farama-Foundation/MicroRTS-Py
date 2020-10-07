@@ -1,3 +1,5 @@
+
+gym_microrts/microrts/*
 *.tfevents.*
 */wandb/*
 openaigym.*
