@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 from gym.utils import seeding
 from PIL import Image
 import io
+from pathlib import Path
 
 import jpype
 from jpype.imports import registerDomain
@@ -46,8 +47,8 @@ class BaseSingleAgentEnv(gym.Env):
         if not jpype._jpype.isStarted():
             registerDomain("ts", alias="tests")
             registerDomain("ai")
-            jpype.addClassPath(os.path.join(gym_microrts.__path__[0], 'microrts', "microrts.jar"))
-            jpype.addClassPath(os.path.join(gym_microrts.__path__[0], 'microrts', "Coac.jar"))
+            jpype.addClassPath(os.path.join(Path(gym_microrts.__path__[0]).parent, 'microrts', "microrts.jar"))
+            jpype.addClassPath(os.path.join(Path(gym_microrts.__path__[0]).parent, 'microrts', "Coac.jar"))
             jpype.startJVM(convertStrings=False)
 
         from rts.units import UnitTypeTable
