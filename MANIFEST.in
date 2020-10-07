@@ -1,1 +1,1 @@
-include gym_microrts/microrts/*
+include microrts/*
