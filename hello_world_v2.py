@@ -4,7 +4,7 @@ import time
 from gym.wrappers import TimeLimit, Monitor
 
 try:
-    env = gym.make("MicrortsDefeatWorkerRushEnemyShaped-v2")
+    env = gym.make("MicrortsDefeatCoacAIShaped-v2")
     env = Monitor(env, f'videos', force=True)
     env.action_space.seed(0)
     env.reset()
