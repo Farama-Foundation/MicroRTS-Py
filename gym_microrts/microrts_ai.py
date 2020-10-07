@@ -17,3 +17,9 @@ def workerRushAI(utt):
 def lightRushAI(utt):
     from ai.abstraction import LightRush
     return LightRush(utt)
+
+# Competition AIs
+
+def coacAI(utt):
+    from ai.coac import CoacAI
+    return CoacAI(utt)

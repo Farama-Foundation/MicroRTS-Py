@@ -124,6 +124,19 @@ if shaped_reward_envs:
         max_episode_steps=20000,
     )]
 
+    envs += [dict(
+        id=f"MicrortsDefeatCoacAIShaped-v2",
+        entry_point='gym_microrts.envs:GlobalAgentMultiActionsCombinedRewardEnv',
+        kwargs={'config': Config(
+            frame_skip=0,
+            ai2=microrts_ai.coacAI,
+            map_path="maps/10x10/basesWorkers10x10.xml",
+            microrts_path="~/microrts",
+            reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0])
+        )},
+        max_episode_steps=20000,
+    )]
+
 if hrl_envs:
     envs += [dict(
         id=f"MicrortsDefeatWorkerRushEnemyHRL-v2",

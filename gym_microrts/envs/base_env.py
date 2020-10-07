@@ -6,6 +6,7 @@ from subprocess import Popen, PIPE
 import os
 from typing import List, Tuple
 from dacite import from_dict
+import gym_microrts
 from gym_microrts.types import MicrortsMessage, Config
 from gym import error, spaces, utils
 import xml.etree.ElementTree as ET
@@ -45,7 +46,8 @@ class BaseSingleAgentEnv(gym.Env):
         if not jpype._jpype.isStarted():
             registerDomain("ts", alias="tests")
             registerDomain("ai")
-            jpype.addClassPath(os.path.expanduser(os.path.join(self.config.microrts_path, "microrts.jar")))
+            jpype.addClassPath(os.path.join(gym_microrts.__path__[0], 'microrts', "microrts.jar"))
+            jpype.addClassPath(os.path.join(gym_microrts.__path__[0], 'microrts', "Coac.jar"))
             jpype.startJVM(convertStrings=False)
 
         from rts.units import UnitTypeTable
