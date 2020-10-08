@@ -432,8 +432,8 @@ for update in range(starting_update, num_updates+1):
     if args.prod_mode:
         if not os.path.exists(f"models/{experiment_name}"):
             os.makedirs(f"models/{experiment_name}")
-        torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
-        wandb.save(f"models/{experiment_name}/agent.pt")
+        torch.save(agent.state_dict(), f"{wandb.run.dir}/agent.pt")
+        wandb.save(f"agent.pt")
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
