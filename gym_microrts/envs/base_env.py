@@ -71,8 +71,8 @@ class BaseSingleAgentEnv(gym.Env):
         action = np.array([action])
         response = self.client.step(action, self.config.frame_skip)
         if raw:
-            return np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
-        return self._encode_obs(np.array(response.observation)), response.reward[:], response.done[:], json.loads(str(response.info))
+            return np.array(response.observation), response.reward[:], response.done[:], {}
+        return self._encode_obs(np.array(response.observation)), response.reward[:], response.done[:], {}
 
     def reset(self, raw=False):
         response = self.client.reset()

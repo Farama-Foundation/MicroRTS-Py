@@ -13,6 +13,9 @@ from gym.utils import seeding
 from gym_microrts.envs.base_env import BaseSingleAgentEnv
 from jpype.types import JArray
 
+# TODO: fix the temporary relacement of all instance of json.loads(str(response.info)) with {}
+# https://github.com/jpype-project/jpype/issues/856
+
 class GlobalAgentEnv(BaseSingleAgentEnv):
     """
     observation space is defined as 
@@ -274,7 +277,7 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
             self.action_mask[-self.action_space.nvec[-1]:] = self.target_unit_location_mask
             info = {}
             response = self.client.simulateStep(np.array(self.actions), self.config.frame_skip)
-            obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
+            obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
             info["dones"] = np.array(done)
             info["rewards"] = np.array(reward)
             info["raw_rewards"] = np.array(reward)
@@ -291,7 +294,7 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
         self.actions += [action]
         response = self.client.step(np.array(self.actions), self.config.frame_skip)
         self.actions = []
-        obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
+        obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
         # obs[3] - obs[4].clip(max=1) means mask busy units
         # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
         self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
@@ -350,7 +353,7 @@ class GlobalAgentMultiActionsHRLEnv(GlobalAgentMultiActionsCombinedRewardEnv):
             self.action_mask[-self.action_space.nvec[-1]:] = self.target_unit_location_mask
             info = {}
             response = self.client.simulateStep(np.array(self.actions), self.config.frame_skip)
-            obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
+            obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
             info["dones"] = np.array(done)
             info["rewards"] = (np.array(reward).clip(min=-1, max=1) * self.config.hrl_reward_weights).sum(1)
             info["raw_rewards"] = np.array(reward).clip(min=-1, max=1)
@@ -364,7 +367,7 @@ class GlobalAgentMultiActionsHRLEnv(GlobalAgentMultiActionsCombinedRewardEnv):
 
         response = self.client.step(np.array(self.actions), self.config.frame_skip)
         self.actions = []
-        obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
+        obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
         # obs[3] - obs[4].clip(max=1) means mask busy units
         # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
         self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
@@ -447,7 +450,7 @@ class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
     def step(self, action, raw=False, customize=False):
         opponent_action = self.transform_action(self.opponent_obs, self.opponent_action_mask)
         response = self.client.step(np.array([action]), np.array([opponent_action]), self.config.frame_skip)
-        obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], json.loads(str(response.info))
+        obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
 
         # opponent
         self.opponent_raw_obs = np.rot90(obs, 2, (1,2)).copy()
