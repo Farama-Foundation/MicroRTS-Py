@@ -28,7 +28,7 @@ envs += [dict(
     kwargs={'config': Config(
         frame_skip=0,
         ai2=microrts_ai.passiveAI,
-        map_path="maps/16x16/basesTwoWorkers16x16.xml",
+        map_path="maps/16x16/basesWorkers16x16A.xml",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     )},
     max_episode_steps=2000,
@@ -40,7 +40,7 @@ envs += [dict(
     kwargs={'config': Config(
         frame_skip=0,
         ai2=microrts_ai.passiveAI,
-        map_path="maps/16x16/basesTwoWorkers16x16.xml",
+        map_path="maps/16x16/basesWorkers16x16A.xml",
         reward_weight=np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0])
     )},
     max_episode_steps=2000,
