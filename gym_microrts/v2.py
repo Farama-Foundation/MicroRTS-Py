@@ -28,7 +28,7 @@ envs += [dict(
     kwargs={'config': Config(
         frame_skip=0,
         ai2=microrts_ai.passiveAI,
-        map_path="maps/16x16/basesTwoWorkers16x16.xml",
+        map_path="maps/10x10/basesTwoWorkers10x10.xml",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     )},
     max_episode_steps=2000,
@@ -40,7 +40,7 @@ envs += [dict(
     kwargs={'config': Config(
         frame_skip=0,
         ai2=microrts_ai.passiveAI,
-        map_path="maps/16x16/basesTwoWorkers16x16.xml",
+        map_path="maps/10x10/basesTwoWorkers10x10.xml",
         reward_weight=np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0])
     )},
     max_episode_steps=2000,
@@ -52,7 +52,7 @@ envs += [dict(
     kwargs={'config': Config(
         frame_skip=0,
         ai2=microrts_ai.passiveAI,
-        map_path="maps/16x16/basesWorkers16x16.xml",
+        map_path="maps/10x10/basesWorkers10x10.xml",
         reward_weight=np.array([0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0])
     )},
     max_episode_steps=2000,
@@ -63,7 +63,7 @@ envs += [dict(
     kwargs={'config': Config(
         frame_skip=0,
         ai2=microrts_ai.passiveAI,
-        map_path="maps/16x16/basesWorkers16x16.xml",
+        map_path="maps/10x10/basesWorkers10x10.xml",
         reward_weight=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0])
     )},
     max_episode_steps=2000,
@@ -74,7 +74,7 @@ envs += [dict(
     kwargs={'config': Config(
         frame_skip=0,
         ai2=microrts_ai.randomBiasedAI,
-        map_path="maps/16x16/basesWorkers16x16.xml",
+        map_path="maps/10x10/basesWorkers10x10.xml",
         reward_weight=np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     )},
     max_episode_steps=20000,
@@ -86,7 +86,7 @@ if shaped_reward_envs:
         kwargs={'config': Config(
             frame_skip=0,
             ai2=microrts_ai.randomBiasedAI,
-            map_path="maps/16x16/basesWorkers16x16.xml",
+            map_path="maps/10x10/basesWorkers10x10.xml",
             reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0])
         )},
         max_episode_steps=20000,
@@ -98,7 +98,7 @@ if shaped_reward_envs:
         kwargs={'config': Config(
             frame_skip=0,
             ai2=microrts_ai.workerRushAI,
-            map_path="maps/16x16/basesWorkers16x16.xml",
+            map_path="maps/10x10/basesWorkers10x10.xml",
             reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0])
         )},
         max_episode_steps=20000,
@@ -110,7 +110,7 @@ if shaped_reward_envs:
         kwargs={'config': Config(
             frame_skip=0,
             ai2=microrts_ai.lightRushAI,
-            map_path="maps/16x16/basesWorkers16x16.xml",
+            map_path="maps/10x10/basesWorkers10x10.xml",
             reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0])
         )},
         max_episode_steps=20000,
@@ -122,7 +122,7 @@ if shaped_reward_envs:
         kwargs={'config': Config(
             frame_skip=0,
             ai2=microrts_ai.coacAI,
-            map_path="maps/16x16/basesWorkers16x16.xml",
+            map_path="maps/10x10/basesWorkers10x10.xml",
             reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0])
         )},
         max_episode_steps=20000,
@@ -135,7 +135,7 @@ if hrl_envs:
         kwargs={'config': Config(
             frame_skip=0,
             ai2=microrts_ai.workerRushAI,
-            map_path="maps/16x16/basesWorkers16x16.xml",
+            map_path="maps/10x10/basesWorkers10x10.xml",
             hrl_reward_weights=np.array([
                 [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0],
