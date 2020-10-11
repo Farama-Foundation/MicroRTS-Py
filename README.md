@@ -6,17 +6,11 @@ This repo contains the source code for the gym wrapper of MicroRTS authored by [
 
 Go to [http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/](http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/) to download the latest version of MicroRTS build. For example:
 
-```bash
-$ rm ~/microrts -fR && mkdir ~/microrts && \
-wget -O ~/microrts/microrts.zip https://microrts.s3.amazonaws.com/microrts/artifacts/202010061950.microrts.zip && \
-unzip ~/microrts/microrts.zip -d ~/microrts/ && \
-rm ~/microrts/microrts.zip
-```
-
 Then clone the repo
 
 ```bash
-$ git clone https://github.com/vwxyzjn/gym-microrts.git && \
+# make sure you have GIT LFS installed https://git-lfs.github.com/
+$ git lfs clone https://github.com/vwxyzjn/gym-microrts.git && \
 cd gym-microrts && \
 pip install dacite && \
 pip install -e .
