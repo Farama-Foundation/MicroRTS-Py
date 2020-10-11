@@ -6,7 +6,7 @@ from .types import Config
 import numpy as np
 from .v1 import envs as v1_envs
 from .v2 import envs as v2_envs
-from .v2 import envs as v3_envs
+from .v3 import envs as v3_envs
 
 # enable repeated experiments
 # https://github.com/openai/gym/issues/1172
