@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsProduceCombatUnitsShapedReward-v1",
+    parser.add_argument('--gym-id', type=str, default="MicrortsDefeatWorkerRushEnemyShaped-v2",
                         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
                         help='the learning rate of the optimizer')
@@ -138,7 +138,6 @@ class MicroRTSStatsRecorder(gym.Wrapper):
             self.raw_rewards = []
         return observation, reward, done, info
 
-
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
@@ -146,7 +145,7 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True, save_code=True)
+    run = wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True, save_code=True)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
 
 # TRY NOT TO MODIFY: seeding
@@ -158,9 +157,9 @@ torch.backends.cudnn.deterministic = args.torch_deterministic
 def make_env(gym_id, seed, idx):
     def thunk():
         env = gym.make(gym_id)
-        env = ImageToPyTorch(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env = MicroRTSStatsRecorder(env)
+        env = ImageToPyTorch(env)
         if args.capture_video:
             if idx == 0:
                 env = Monitor(env, f'videos/{experiment_name}')
@@ -221,25 +220,44 @@ class Agent(nn.Module):
             nn.ReLU(),)
         self.actor = layer_init(nn.Linear(128, envs.action_space.nvec.sum()), std=0.01)
         self.critic = layer_init(nn.Linear(128, 1), std=1)
+        
+        self.actor_source_unit = layer_init(nn.Linear(128, envs.action_space.nvec[0]), std=0.01)
+        self.actor_others = layer_init(nn.Linear(128+envs.action_space.nvec[0], envs.action_space.nvec[1:].sum()), std=0.01)
 
     def forward(self, x):
         return self.network(x)
 
-    def get_action(self, x, action=None, invalid_action_masks=None):
-        logits = self.actor(self.forward(x))
-        split_logits = torch.split(logits, envs.action_space.nvec.tolist(), dim=1)
-        
-        if invalid_action_masks is not None:
-            split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_space.nvec.tolist(), dim=1)
-            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
-        else:
-            multi_categoricals = [Categorical(logits=logits) for logits in split_logits]
-        
+    def get_action(self, x, action=None, invalid_action_masks=None, envs=None):
+        hidden_output = self.forward(x)
+        su_logits = self.actor_source_unit(hidden_output)
         if action is None:
+            # 1. select source unit based on source unit mask
+            source_unit_mask = torch.Tensor(np.array(envs.env_method("get_unit_location_mask", player=1)))
+            multi_categoricals = [CategoricalMasked(logits=su_logits, masks=source_unit_mask)]
+            action_components = [multi_categoricals[0].sample()]
+            # 2. select action type and parameter section based on the
+            #    source-unit mask of action type and parameters
+            source_unit_action_mask = torch.Tensor(
+                [envs.env_method("get_unit_action_mask", unit=action_components[0][i], player=1, indices=i)[0]
+            for i in range(envs.num_envs)])
+            source_unit_embedding = F.one_hot(action_components[0], envs.action_space.nvec[0])
+            other_logits = self.actor_others(torch.cat((hidden_output, source_unit_embedding), 1))
+            split_logits = torch.split(other_logits, envs.action_space.nvec[1:].tolist(), dim=1)
+            split_suam = torch.split(source_unit_action_mask, envs.action_space.nvec.tolist()[1:], dim=1)
+            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_suam)]
+            invalid_action_masks = torch.cat((source_unit_mask, source_unit_action_mask), 1)
             action = torch.stack([categorical.sample() for categorical in multi_categoricals])
+        else:
+            split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_space.nvec.tolist(), dim=1)
+            multi_categoricals = [CategoricalMasked(logits=su_logits, masks=split_invalid_action_masks[0])]
+            source_unit_embedding = F.one_hot(action[0], envs.action_space.nvec[0])
+            other_logits = self.actor_others(torch.cat((hidden_output, source_unit_embedding), 1))
+            split_logits = torch.split(other_logits, envs.action_space.nvec[1:].tolist(), dim=1)
+            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks[1:])]
+            # multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
-        return action, logprob.sum(0), entropy.sum(0)
+        return action, logprob.sum(0), entropy.sum(0), invalid_action_masks
 
     def get_value(self, x):
         return self.critic(self.forward(x))
@@ -265,7 +283,19 @@ global_step = 0
 next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
 num_updates = args.total_timesteps // args.batch_size
-for update in range(1, num_updates+1):
+
+## CRASH AND RESUME LOGIC:
+starting_update = 1
+if args.prod_mode and wandb.run.resumed:
+    starting_update = run.summary['charts/update']
+    api = wandb.Api()
+    run = api.run(run.get_url()[len("https://app.wandb.ai/"):])
+    model = run.file('agent.pt')
+    model.download(f"models/{experiment_name}/")
+    agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt"))
+    agent.eval()
+    print(f"resumed at update {starting_update}")
+for update in range(starting_update, num_updates+1):
     # Annealing the rate if instructed to do so.
     if args.anneal_lr:
         frac = 1.0 - (update - 1.0) / num_updates
@@ -278,13 +308,12 @@ for update in range(1, num_updates+1):
         global_step += 1 * args.num_envs
         obs[step] = next_obs
         dones[step] = next_done
-        invalid_action_masks[step] = torch.Tensor(np.array(envs.get_attr("action_mask")))
 
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
             values[step] = agent.get_value(obs[step]).flatten()
-            action, logproba, _ = agent.get_action(obs[step], invalid_action_masks=invalid_action_masks[step])
-        
+            action, logproba, _, invalid_action_masks[step] = agent.get_action(obs[step], envs=envs)
+
         actions[step] = action.T
         logprobs[step] = logproba
 
@@ -350,10 +379,11 @@ for update in range(1, num_updates+1):
             if args.norm_adv:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
-            _, newlogproba, entropy = agent.get_action(
+            _, newlogproba, entropy, _ = agent.get_action(
                 b_obs[minibatch_ind],
                 b_actions.long()[minibatch_ind].T,
-                b_invalid_action_masks[minibatch_ind])
+                b_invalid_action_masks[minibatch_ind],
+                envs)
             ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
 
             # Stats
@@ -390,12 +420,21 @@ for update in range(1, num_updates+1):
             if (b_logprobs[minibatch_ind] - agent.get_action(
                     b_obs[minibatch_ind],
                     b_actions.long()[minibatch_ind].T,
-                    b_invalid_action_masks[minibatch_ind])[1]).mean() > args.target_kl:
+                    b_invalid_action_masks[minibatch_ind],
+                    envs)[1]).mean() > args.target_kl:
                 agent.load_state_dict(target_agent.state_dict())
                 break
 
+    ## CRASH AND RESUME LOGIC:
+    if args.prod_mode:
+        if not os.path.exists(f"models/{experiment_name}"):
+            os.makedirs(f"models/{experiment_name}")
+        torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
+        wandb.save(f"models/{experiment_name}/agent.pt")
+
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
+    writer.add_scalar("charts/update", update, global_step)
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
     writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
