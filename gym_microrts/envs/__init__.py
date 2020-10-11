@@ -1,18 +1,7 @@
 from gym_microrts.envs.global_agent_env import (
     GlobalAgentEnv, 
-    GlobalAgentHRLAttackCloserToEnemyBaseEnv, 
-    GlobalAgentCloserToEnemyBaseRewardEnv, 
     GlobalAgentHRLEnv,
-    GlobalAgentMiningEnv, 
-    GlobalAgentBinaryEnv, 
-    GlobalAgentAttackEnv, 
-    GlobalAgentProduceWorkerEnv, 
-    GlobalAgentProduceBuildingEnv, 
-    GlobalAgentProduceCombatUnitEnv,
-    GlobalAgentRandomEnemyEnv,
     GlobalAgentCombinedRewardEnv,
-    GlobalAgentHRLProduceCombatUnitEnv,
-    GlobalAgentHRLProduceCombatUnitPerfectEnv,
     GlobalAgentMultiActionsCombinedRewardEnv,
     GlobalAgentCombinedRewardSelfPlayEnv,
     GlobalAgentMultiActionsHRLEnv)

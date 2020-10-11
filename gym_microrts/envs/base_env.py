@@ -68,17 +68,10 @@ class BaseSingleAgentEnv(gym.Env):
         raise NotImplementedError
 
     def step(self, action, raw=False):
-        action = np.array([action])
-        response = self.client.step(action, self.config.frame_skip)
-        if raw:
-            return np.array(response.observation), response.reward[:], response.done[:], {}
-        return self._encode_obs(np.array(response.observation)), response.reward[:], response.done[:], {}
+        raise NotImplementedError
 
     def reset(self, raw=False):
-        response = self.client.reset()
-        if raw:
-            return np.array(response.observation)
-        return self._encode_obs(np.array(response.observation))
+        raise NotImplementedError
 
     def render(self, mode='human'):
         if mode=='human':
