@@ -23,7 +23,7 @@ And run either the `hello_world.py` referenced above or the following file
 import gym
 import gym_microrts
 
-env = gym.make("MicrortsGlobalAgentsProd-v0")
+env = gym.make("MicrortsMining-v1")
 env.reset()
 for _ in range(10000):
     env.render()
