@@ -277,7 +277,9 @@ num_updates = args.total_timesteps // args.batch_size
 ## CRASH AND RESUME LOGIC:
 starting_update = 1
 if args.prod_mode and wandb.run.resumed:
-    starting_update = run.summary['charts/update']
+    print("previous run.summary", run.summary)
+    starting_update = run.summary['charts/update'] + 1
+    global_step = starting_update * args.batch_size
     api = wandb.Api()
     run = api.run(run.get_url()[len("https://app.wandb.ai/"):])
     model = run.file('agent.pt')
