@@ -7,9 +7,7 @@ This repo contains the source code for the gym wrapper of MicroRTS authored by [
 
 # Get Started
 
-Go to [http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/](http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/) to download the latest version of MicroRTS build. For example:
-
-Then clone the repo
+Clone the repo
 
 ```bash
 # make sure you have GIT LFS installed https://git-lfs.github.com/
@@ -25,7 +23,7 @@ And run either the `hello_world.py` referenced above or the following file
 import gym
 import gym_microrts
 
-env = gym.make("MicrortsGlobalAgentsProd-v0")
+env = gym.make("MicrortsMining-v1")
 env.reset()
 for _ in range(10000):
     env.render()
@@ -33,6 +31,10 @@ for _ in range(10000):
 env.close()
 ```
 ![demo.gif](demo.gif)
+
+## All built artifacts
+
+[http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/](http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/)
 
 ## Papers written using gym-microrts
 
