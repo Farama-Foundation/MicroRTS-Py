@@ -8,7 +8,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        submodules: true
+        submodules: recursive 
     - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
@@ -19,7 +19,7 @@ jobs:
         java-version: '8.x' # The JDK version to make available on the path.
         java-package: jdk # (jre, jdk, or jdk+fx) - defaults to jdk
         architecture: x64 # (x64 or x86) - defaults to x64
-    - run: cd microrts && bash build.sh && cd ..
+    - run: ls && cd microrts && bash build.sh && cd ..
     - name: Build a binary wheel and a source tarball
       run: python setup.py sdist
     # - name: Publish distribution 📦 to Test PyPI
