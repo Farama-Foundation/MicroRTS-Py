@@ -8,6 +8,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
+        fetch-depth: 0
         submodules: recursive 
     - name: Set up Python 3.8
       uses: actions/setup-python@v1
