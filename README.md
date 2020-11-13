@@ -7,15 +7,8 @@ This repo contains the source code for the gym wrapper of MicroRTS authored by [
 
 # Get Started
 
-Clone the repo
-
 ```bash
-# make sure you have GIT LFS installed https://git-lfs.github.com/
-$ git lfs clone https://github.com/vwxyzjn/gym-microrts.git && \
-cd gym-microrts && \
-pip install dacite && \
-pip install -e .
-$ python3 hello_world.py
+$ pip install gym_microrts
 ```
 
 And run either the `hello_world.py` referenced above or the following file
@@ -32,9 +25,24 @@ env.close()
 ```
 ![demo.gif](demo.gif)
 
-## All built artifacts
 
-[http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/](http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/)
+# Developer Guide
+
+Clone the repo
+
+```bash
+# install gym-microrts
+$ git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
+cd gym-microrts && \
+pip install -e .
+# build microrts
+$ cd microrts && bash build.sh && cd ..
+$ python hello_world.py
+```
+
+<!-- ## All built artifacts
+
+[http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/](http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/) -->
 
 ## Papers written using gym-microrts
 
