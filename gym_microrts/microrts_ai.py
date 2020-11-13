@@ -23,3 +23,17 @@ def lightRushAI(utt):
 def coacAI(utt):
     from ai.coac import CoacAI
     return CoacAI(utt)
+
+def naiveMCTSAI(utt):
+    from ai.mcts.naivemcts import NaiveMCTS
+    return NaiveMCTS(utt)
+
+ALL_AIS = [
+    randomBiasedAI,
+    randomAI,
+    passiveAI,
+    workerRushAI,
+    lightRushAI,
+    coacAI,
+    naiveMCTSAI,
+]

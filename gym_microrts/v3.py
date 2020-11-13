@@ -6,6 +6,8 @@ The v3 environments support multi actions in one game tick, with frameskip = 0
 from .types import Config
 import numpy as np
 from . import microrts_ai
+from . import microrts_maps
+import copy
 
 """
 WinLossRewardFunction(), 
@@ -28,7 +30,7 @@ envs += [dict(
     kwargs={'config': Config(
         frame_skip=0,
         ai2=microrts_ai.passiveAI,
-        map_path="maps/16x16/basesWorkers16x16A.xml",
+        map_path="maps/16x16/basesWorkers16x16.xml",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     )},
     max_episode_steps=2000,
@@ -40,7 +42,7 @@ envs += [dict(
     kwargs={'config': Config(
         frame_skip=0,
         ai2=microrts_ai.passiveAI,
-        map_path="maps/16x16/basesWorkers16x16A.xml",
+        map_path="maps/16x16/basesWorkers16x16.xml",
         reward_weight=np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0])
     )},
     max_episode_steps=2000,
@@ -128,6 +130,18 @@ if shaped_reward_envs:
         max_episode_steps=20000,
     )]
 
+    envs += [dict(
+        id=f"MicrortsDefeatNaiveMCTSAIShaped-v3",
+        entry_point='gym_microrts.envs:GlobalAgentMultiActionsCombinedRewardEnv',
+        kwargs={'config': Config(
+            frame_skip=0,
+            ai2=microrts_ai.naiveMCTSAI,
+            map_path="maps/16x16/basesWorkers16x16.xml",
+            reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0])
+        )},
+        max_episode_steps=20000,
+    )]
+
 if hrl_envs:
     envs += [dict(
         id=f"MicrortsDefeatWorkerRushEnemyHRL-v3",
@@ -143,3 +157,12 @@ if hrl_envs:
         )},
         max_episode_steps=20000,
     )]
+
+all_maps = []
+for env in envs:
+    for m in microrts_maps.ALL16x16_MAPS:
+        e = copy.deepcopy(env)
+        e['kwargs']['config'].map_path = m
+        e['id'] = m.split("/")[-1][:-4] + "-" + e['id']
+        all_maps += [e]
+envs = envs + all_maps
