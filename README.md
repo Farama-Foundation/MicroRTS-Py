@@ -40,9 +40,6 @@ $ cd microrts && bash build.sh && cd ..
 $ python hello_world.py
 ```
 
-<!-- ## All built artifacts
-
-[http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/](http://microrts.s3-website-us-east-1.amazonaws.com/microrts/artifacts/) -->
 
 ## Papers written using gym-microrts
 
