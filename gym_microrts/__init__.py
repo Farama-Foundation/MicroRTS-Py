@@ -31,3 +31,7 @@ if V0NAME not in gym.envs.registry.env_specs:
             entry_point=env['entry_point'],
             kwargs=env['kwargs'],
             max_episode_steps=env['max_episode_steps'])
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions

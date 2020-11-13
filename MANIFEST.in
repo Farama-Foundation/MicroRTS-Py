@@ -1,1 +1,3 @@
 include microrts/*
+include versioneer.py
+include gym_microrts/_version.py
