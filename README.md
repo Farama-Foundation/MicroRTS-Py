@@ -25,7 +25,7 @@ for _ in range(10000):
     env.step(env.action_space.sample())
 env.close()
 ```
-![demo.gif](demo.gif)
+![demo.gif](static/demo.gif)
 
 ## Environment Specification
 
@@ -44,6 +44,8 @@ Here is a description of gym-microrts's observation and action space:
     
     `[3+2*10,1,2,0,0,0,0,0 ]`
 
+
+![obs_action.svg](static/obs_action.svg)
 
 ## Developer Guide
 
