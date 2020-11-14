@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 from gym.utils import seeding
 from gym_microrts.envs.base_env import BaseSingleAgentEnv
 from jpype.types import JArray
+from gym_microrts import microrts_ai
 
 def calculate_mask(raw_obs, action_space):
     # obs[3] - obs[4].clip(max=1) means mask busy units
@@ -39,12 +40,20 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
     [4]p_return(4), [5]p_produce_direction(4), [6]p_produce_unit_type(z), 
     [7]x_coordinate*y_coordinate(x*y)]
     """
+    def __init__(self,
+        render_theme=2,
+        frame_skip=0, 
+        ai2=microrts_ai.passiveAI,
+        map_path="maps/10x10/basesTwoWorkers10x10.xml",
+        reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0])):
+        self.reward_weight = reward_weight
+        super().__init__(render_theme, frame_skip, ai2, map_path)
 
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, SimpleEvaluationRewardFunction
         self.rfs = JArray(RewardFunctionInterface)([SimpleEvaluationRewardFunction()])
-        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path)
 
     def init_properties(self):
         # [num_planes_hp(5), num_planes_resources(5), num_planes_player(5), 
@@ -52,29 +61,29 @@ class GlobalAgentEnv(BaseSingleAgentEnv):
         self.num_planes = [5, 5, 3, len(self.utt['unitTypes'])+1, 6]
         self.observation_space = spaces.Box(low=0.0,
             high=1.0,
-            shape=(self.config.height, self.config.width,
+            shape=(self.height, self.width,
                    sum(self.num_planes)),
                    dtype=np.int32)
         self.action_space = spaces.MultiDiscrete([
-            self.config.height * self.config.width,
+            self.height * self.width,
             6, 4, 4, 4, 4,
             len(self.utt['unitTypes']),
-            self.config.height * self.config.width
+            self.height * self.width
         ])
 
     def _encode_obs(self, obs: List):
         obs = obs.reshape(len(obs), -1).clip(0, np.array([self.num_planes]).T-1)
-        obs_planes = np.zeros((self.config.height * self.config.width, 
+        obs_planes = np.zeros((self.height * self.width, 
                                sum(self.num_planes)), dtype=np.int)
         obs_planes[np.arange(len(obs_planes)),obs[0]] = 1
 
         for i in range(1, len(self.num_planes)):
             obs_planes[np.arange(len(obs_planes)),obs[i]+sum(self.num_planes[:i])] = 1
-        return obs_planes.reshape(self.config.height, self.config.width, -1)
+        return obs_planes.reshape(self.height, self.width, -1)
 
     def step(self, action, raw=False, customize=False):
         action = np.array([action])
-        response = self.client.step(action, self.config.frame_skip)
+        response = self.client.step(action, self.frame_skip)
         obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
         self.unit_location_mask, self.action_mask = calculate_mask(obs, self.action_space)
         if not raw:
@@ -117,16 +126,29 @@ class GlobalAgentCombinedRewardEnv(GlobalAgentEnv):
             AttackRewardFunction(),
             ProduceCombatUnitRewardFunction(),
             CloserToEnemyBaseRewardFunction(),])
-        if self.config.ai2 is not None:
-            return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2(self.real_utt), self.real_utt)
-        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        if self.ai2 is not None:
+            return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path, self.ai2(self.real_utt), self.real_utt)
+        return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path)
 
     def step(self, action, raw=False):
         obs, reward, done, info = super(GlobalAgentCombinedRewardEnv, self).step(action, raw, True)
         reward[-1] = np.clip(reward[-1], -1, 1)
-        return obs, (np.array(reward) * self.config.reward_weight).sum(), done[0], info # win loss as done
+        return obs, (np.array(reward) * self.reward_weight).sum(), done[0], info # win loss as done
 
 class GlobalAgentHRLEnv(GlobalAgentEnv):
+
+    def __init__(self,
+        render_theme=2,
+        frame_skip=0, 
+        ai2=microrts_ai.passiveAI,
+        map_path="maps/10x10/basesTwoWorkers10x10.xml",
+        hrl_reward_weights=np.array([
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 1.0, 1.0, 7.0, 0.0],
+        ])):
+        self.hrl_reward_weights = hrl_reward_weights
+        super().__init__(render_theme, frame_skip, ai2, map_path)
+
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
@@ -138,15 +160,15 @@ class GlobalAgentHRLEnv(GlobalAgentEnv):
             AttackRewardFunction(),
             ProduceCombatUnitRewardFunction(),
             CloserToEnemyBaseRewardFunction(),])
-        self.num_reward_function = len(self.config.hrl_reward_weights)
-        if self.config.ai2 is not None:
-            return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2(self.real_utt), self.real_utt)
-        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        self.num_reward_function = len(self.hrl_reward_weights)
+        if self.ai2 is not None:
+            return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path, self.ai2(self.real_utt), self.real_utt)
+        return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path)
 
     def step(self, action, raw=False):
         obs, reward, done, info = super(GlobalAgentHRLEnv, self).step(action, raw, True)
         info["dones"] = np.array(done)
-        info["rewards"] = (np.array(reward) * self.config.hrl_reward_weights).sum(1)
+        info["rewards"] = (np.array(reward) * self.hrl_reward_weights).sum(1)
         return obs, info["rewards"][0], done[0], info
 
 class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
@@ -166,9 +188,9 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
             AttackRewardFunction(),
             ProduceCombatUnitRewardFunction(),
             CloserToEnemyBaseRewardFunction(),])
-        if self.config.ai2 is not None:
-            return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2(self.real_utt), self.real_utt)
-        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        if self.ai2 is not None:
+            return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path, self.ai2(self.real_utt), self.real_utt)
+        return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path)
 
     def step(self, action, raw=False, customize=False):
         # action = np.array(action)
@@ -181,7 +203,7 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
             self.action_mask = np.ones(self.action_space.nvec.sum())
             self.action_mask[0:self.action_space.nvec[0]] = self.unit_location_mask
             info = {}
-            response = self.client.simulateStep(np.array(self.actions), self.config.frame_skip)
+            response = self.client.simulateStep(np.array(self.actions), self.frame_skip)
             obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
             if not raw:
                 obs = self._encode_obs(obs)
@@ -192,14 +214,14 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
             if customize:
                 return obs, reward, done, info
             
-            new_reward = (np.array(reward) * self.config.reward_weight).sum()
+            new_reward = (np.array(reward) * self.reward_weight).sum()
             reward_difference = new_reward - self.simulated_rewards
             return_tuple = (obs, reward_difference, done[0], info)
             self.simulated_rewards += reward_difference
             return return_tuple
 
         self.actions += [action]
-        response = self.client.step(np.array(self.actions), self.config.frame_skip)
+        response = self.client.step(np.array(self.actions), self.frame_skip)
         self.actions = []
         obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
         # obs[3] - obs[4].clip(max=1) means mask busy units
@@ -213,7 +235,7 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
         info["raw_dones"] = np.array(done)
         if customize:
             return obs, reward, done, info
-        new_reward = (np.array(reward) * self.config.reward_weight).sum()
+        new_reward = (np.array(reward) * self.reward_weight).sum()
         reward_difference = new_reward - self.simulated_rewards
         self.simulated_rewards = 0
         return (obs, reward_difference, done[0], info)
@@ -237,10 +259,10 @@ class GlobalAgentMultiActionsHRLEnv(GlobalAgentMultiActionsCombinedRewardEnv):
             AttackRewardFunction(),
             ProduceCombatUnitRewardFunction(),
             CloserToEnemyBaseRewardFunction(),])
-        self.num_reward_function = len(self.config.hrl_reward_weights)
-        if self.config.ai2 is not None:
-            return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.config.ai2(self.real_utt), self.real_utt)
-        return JNIClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path)
+        self.num_reward_function = len(self.hrl_reward_weights)
+        if self.ai2 is not None:
+            return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path, self.ai2(self.real_utt), self.real_utt)
+        return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path)
 
     def step(self, action, raw=False, customize=False):
         # action = np.array(action)
@@ -255,10 +277,10 @@ class GlobalAgentMultiActionsHRLEnv(GlobalAgentMultiActionsCombinedRewardEnv):
             self.action_mask[0:self.action_space.nvec[0]] = self.unit_location_mask
             self.action_mask[-self.action_space.nvec[-1]:] = self.target_unit_location_mask
             info = {}
-            response = self.client.simulateStep(np.array(self.actions), self.config.frame_skip)
+            response = self.client.simulateStep(np.array(self.actions), self.frame_skip)
             obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
             info["dones"] = np.array(done)
-            info["rewards"] = (np.array(reward) * self.config.hrl_reward_weights).sum(1)
+            info["rewards"] = (np.array(reward) * self.hrl_reward_weights).sum(1)
             info["raw_rewards"] = np.array(reward)
             info["raw_dones"] = np.array(done)
             if not raw:
@@ -268,7 +290,7 @@ class GlobalAgentMultiActionsHRLEnv(GlobalAgentMultiActionsCombinedRewardEnv):
             simulated_rewards += info["rewards"]
             return return_tuple
 
-        response = self.client.step(np.array(self.actions), self.config.frame_skip)
+        response = self.client.step(np.array(self.actions), self.frame_skip)
         self.actions = []
         obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
         # obs[3] - obs[4].clip(max=1) means mask busy units
@@ -281,7 +303,7 @@ class GlobalAgentMultiActionsHRLEnv(GlobalAgentMultiActionsCombinedRewardEnv):
         if not raw:
             obs = self._encode_obs(obs)
         info["dones"] = np.array(done)
-        info["rewards"] = (np.array(reward) * self.config.hrl_reward_weights).sum(1)
+        info["rewards"] = (np.array(reward) * self.hrl_reward_weights).sum(1)
         info["raw_rewards"] = np.array(reward)
         info["raw_dones"] = np.array(done)
         if customize:
@@ -308,9 +330,9 @@ class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
             ProduceCombatUnitRewardFunction(),
             CloserToEnemyBaseRewardFunction(),])
         self.opponent_action = None
-        self.action_reverse_idxs = np.arange((self.config.height * self.config.width)-1,-1,-1).reshape(self.config.height,self.config.width).flatten()
+        self.action_reverse_idxs = np.arange((self.height * self.width)-1,-1,-1).reshape(self.height,self.width).flatten()
         self.action_direction_reverse_idxs = np.array([2, 3, 0, 1])
-        return JNISelfPlayClient(self.rfs, os.path.expanduser(self.config.microrts_path), self.config.map_path, self.real_utt)
+        return JNISelfPlayClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path, self.real_utt)
 
     def transform_action(self, obs, action_mask): # the policy
         if self.opponent_action is None:
@@ -359,7 +381,7 @@ class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
 
     def step(self, action, raw=False, customize=False):
         opponent_action = self.transform_action(self.opponent_obs, self.opponent_action_mask)
-        response = self.client.step(np.array([action]), np.array([opponent_action]), self.config.frame_skip)
+        response = self.client.step(np.array([action]), np.array([opponent_action]), self.frame_skip)
         obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
 
         # opponent
@@ -381,7 +403,7 @@ class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
         info["raw_dones"] = np.array(done)
         if customize:
             return obs, reward, done, info
-        return obs, (np.array(reward) * self.config.reward_weight).sum(), done[0], info
+        return obs, (np.array(reward) * self.reward_weight).sum(), done[0], info
 
     def reset(self, raw=False):
         raw_obs = super(GlobalAgentEnv, self).reset(True)

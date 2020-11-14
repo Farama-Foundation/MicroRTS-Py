@@ -1,13 +1,9 @@
 import gym
-import socket
 import numpy as np
 import json
 from subprocess import Popen, PIPE
 import os
-from typing import List, Tuple
-from dacite import from_dict
 import gym_microrts
-from gym_microrts.types import MicrortsMessage, Config
 from gym import error, spaces, utils
 import xml.etree.ElementTree as ET
 from gym.utils import seeding
@@ -19,6 +15,7 @@ import jpype
 from jpype.imports import registerDomain
 import jpype.imports
 from jpype.types import *
+from gym_microrts import microrts_ai
 
 class BaseSingleAgentEnv(gym.Env):
     metadata = {
@@ -26,35 +23,34 @@ class BaseSingleAgentEnv(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, config=None):
-        if config:
-            self.init(config)
-    
-    def init(self, config: Config):
-        """
-        if `config.microrts_path` is set, then the script will automatically try 
-        to launch a microrts client instance. Otherwise you need to set the 
-        `config.height` and `config.this script will just wait
-        to listen to the microrts client
-        """
-        self.config = config
-        root = ET.parse(os.path.join(gym_microrts.__path__[0], 'microrts', self.config.map_path)).getroot()
-        self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
-        self.running_first_episode = True
-        self.closed = False
+    def __init__(self,
+        render_theme=2,
+        frame_skip=0, 
+        ai2=microrts_ai.passiveAI,
+        map_path="maps/10x10/basesTwoWorkers10x10.xml"):
+
+        self.render_theme = render_theme
+        self.frame_skip = frame_skip
+        self.ai2 = ai2
+        self.map_path = map_path
+
+        self.microrts_path = os.path.join(gym_microrts.__path__[0], 'microrts')
+        root = ET.parse(os.path.join(self.microrts_path, self.map_path)).getroot()
+        self.height, self.width = int(root.get("height")), int(root.get("width"))
 
         # Launch the JVM
         if not jpype._jpype.isStarted():
             registerDomain("ts", alias="tests")
             registerDomain("ai")
-            jpype.addClassPath(os.path.join(gym_microrts.__path__[0], 'microrts', "microrts.jar"))
-            jpype.addClassPath(os.path.join(gym_microrts.__path__[0], 'microrts', "Coac.jar"))
+            jpype.addClassPath(os.path.join(self.microrts_path, "microrts.jar"))
+            jpype.addClassPath(os.path.join(self.microrts_path, "Coac.jar"))
             jpype.startJVM(convertStrings=False)
 
         from rts.units import UnitTypeTable
         self.real_utt = UnitTypeTable()
         self.client = self.start_client()
-        
+        self.client.renderTheme = self.render_theme
+
         # get the unit type table
         self.utt = json.loads(str(self.client.sendUTT()))
         
@@ -86,7 +82,7 @@ class BaseSingleAgentEnv(gym.Env):
             self.client.close()
             jpype.shutdownJVM()
     
-    def _encode_obs(self, observation: List):
+    def _encode_obs(self, observation):
         raise NotImplementedError
 
     def seed(self, seed=None):
