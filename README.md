@@ -8,6 +8,7 @@ This repo contains the source code for the gym wrapper of MicroRTS authored by [
 # Get Started
 
 ```bash
+# Make sure you have JVM 8.0+ installed
 $ pip install gym_microrts
 ```
 
