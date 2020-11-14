@@ -23,19 +23,13 @@ jobs:
     - run: cd gym_microrts/microrts && bash build.sh && cd .. && cd ..
     - name: Build a binary wheel and a source tarball
       run: python setup.py sdist
-    # - name: Publish distribution 📦 to Test PyPI
-    #   uses: pypa/gh-action-pypi-publish@master
-    #   with:
-    #     password: ${{ secrets.test_pypi_password }}
-    #     repository_url: https://test.pypi.org/legacy/
+    - name: upload built gym-microrts files
+    - uses: actions/upload-artifact@v2
+      with:
+        name: gym-microrts-artifact
+        path: dist
     - name: Publish distribution 📦 to PyPI
-      # if: startsWith(github.ref, 'refs/tags')
+      if: startsWith(github.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@master
       with:
         password: ${{ secrets.pypi_password }}
-
-    # - name: Python Semantic Release
-    #   uses: relekang/python-semantic-release@master
-    #   with:
-    #     github_token: ${{ secrets.token }}
-    #     pypi_token: ${{ secrets.pypi_password }}

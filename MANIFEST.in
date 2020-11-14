@@ -1,3 +1,4 @@
 include gym_microrts/microrts/*
+include gym_microrts/microrts/maps/*/**
 include versioneer.py
 include gym_microrts/_version.py
