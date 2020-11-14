@@ -1,6 +1,7 @@
 import gym
 import gym_microrts
 import time
+import numpy as np
 from gym.wrappers import Monitor
 from gym_microrts import microrts_ai
 
@@ -17,6 +18,7 @@ env = gym.make(
 env.action_space.seed(0)
 env.reset()
 for i in range(10000):
+    env.render()
     next_obs, reward, done, info = env.step(env.action_space.sample())
     if done:
         print("done")
