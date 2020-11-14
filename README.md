@@ -1,7 +1,8 @@
 # Gym-MicroRTS
 
 [<img src="https://img.shields.io/badge/discord-gym%20microrts-green?label=Discord&logo=discord&logoColor=ffffff&labelColor=7289DA&color=2c2f33">](https://discord.gg/5tHykF)
-![build](https://github.com/vwxyzjn/gym-microrts/workflows/build/badge.svg)
+[<img src="https://github.com/vwxyzjn/gym-microrts/workflows/build/badge.svg">](
+https://github.com/vwxyzjn/gym-microrts/actions)
 
 
 This repo contains the source code for the gym wrapper of MicroRTS authored by [Santiago Ontañón](https://github.com/santiontanon/microrts). 
@@ -46,6 +47,23 @@ Here is a description of gym-microrts's observation and action space:
 
 
 ![obs_action.svg](static/obs_action.svg)
+
+## Preset Envs:
+
+Gym-microrts comes with preset environments for common tasks as well as engaging the full game. Feel free to check out the following benchmark:
+
+* [Gym-microrts V1 Benchmark](https://wandb.ai/vwxyzjn/action-guidance/reports/Gym-microrts-V1-Benchmark--VmlldzozMDQ4MTU)
+* [Gym-microrts V2 Benchmark](https://wandb.ai/vwxyzjn/gym-microrts/reports/Gym-microrts-s-V2-Benchmark--VmlldzoyNTg5NTA)
+* [Gym-microrts V3 Benchmark](https://wandb.ai/vwxyzjn/rts-generalization/reports/Gym-microrts-V3-Environments--VmlldzoyNzQwNzM)
+
+
+Below are the difference between the versioned environments
+
+|    | use frame skipping | complete invalid action masking            | issuing actions to all units simultaneously | map size |
+|----|--------------------|--------------------------------------------|---------------------------------------------|----------|
+| v1 | frame skip = 9     | only partial mask on source unit selection | no                                          | 10x10    |
+| v2 | no                 | yes                                        | yes                                         | 10x10    |
+| v3 | no                 | yes                                        | yes                                         | 16x16    |
 
 ## Developer Guide
 
