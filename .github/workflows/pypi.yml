@@ -15,16 +15,17 @@ jobs:
       with:
         python-version: 3.8
     # - uses: actions/checkout@v2
-    - name: Set up JDK 8 and build microrts
+    - name: Set up JDK 8 and 
       uses: actions/setup-java@v1
       with:
         java-version: '8.x' # The JDK version to make available on the path.
         java-package: jdk # (jre, jdk, or jdk+fx) - defaults to jdk
         architecture: x64 # (x64 or x86) - defaults to x64
+    - name: Build microrts
       run: cd gym_microrts/microrts && bash build.sh && cd .. && cd ..
     - name: Build a source tarball
       run: python setup.py sdist
-    - name: upload built gym-microrts files
+    - name: Upload built gym-microrts files
       uses: actions/upload-artifact@v2
       with:
         name: gym-microrts-artifact
