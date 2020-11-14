@@ -1,6 +1,7 @@
 # Gym-MicroRTS
 
 [<img src="https://img.shields.io/badge/discord-gym%20microrts-green?label=Discord&logo=discord&logoColor=ffffff&labelColor=7289DA&color=2c2f33">](https://discord.gg/5tHykF)
+![build](https://github.com/vwxyzjn/gym-microrts/workflows/build/badge.svg)
 
 
 This repo contains the source code for the gym wrapper of MicroRTS authored by [Santiago Ontañón](https://github.com/santiontanon/microrts). 
@@ -8,8 +9,8 @@ This repo contains the source code for the gym wrapper of MicroRTS authored by [
 # Get Started
 
 ```bash
-# Make sure you have JVM 8.0+ installed
-$ pip install gym_microrts
+# Make sure you have Java 8.0+ installed
+$ pip install gym_microrts --upgrade
 ```
 
 And run either the `hello_world.py` referenced above or the following file
