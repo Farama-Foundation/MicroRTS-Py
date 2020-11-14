@@ -1,9 +1,9 @@
-name: Publish Python 🐍 distributions 📦 to PyPI and TestPyPI
+name: build
 
 on: push
 jobs:
   build-n-publish:
-    name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
+    name: Build
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2
