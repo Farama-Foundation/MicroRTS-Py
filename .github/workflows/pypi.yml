@@ -2,10 +2,8 @@ name: build
 
 on:
   push:
-    branches:
-      - master
     paths-ignore:
-      - '**/README.md'
+      - 'README.md'
 jobs:
   build-n-publish:
     name: Build
