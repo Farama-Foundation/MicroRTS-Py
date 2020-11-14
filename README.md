@@ -36,7 +36,7 @@ $ git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
 cd gym-microrts && \
 pip install -e .
 # build microrts
-$ cd microrts && bash build.sh && cd ..
+$ cd gym_microrts/microrts && bash build.sh && cd ..& cd ..
 $ python hello_world.py
 ```
 

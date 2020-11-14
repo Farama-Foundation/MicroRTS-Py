@@ -93,7 +93,7 @@ class Config:
     map_path: str
     ai1_type: Optional[str] = ""
     ai2_type: Optional[str] = ""
-    microrts_path: Optional[str] = os.path.join(Path(gym_microrts.__path__[0]).parent, 'microrts')
+    microrts_path: Optional[str] = os.path.join(gym_microrts.__path__[0], 'microrts')
     maximum_t: Optional[int] = 2000
     client_ip: Optional[str] = "127.0.0.1"
     height: Optional[int] = 0

@@ -38,7 +38,7 @@ class BaseSingleAgentEnv(gym.Env):
         to listen to the microrts client
         """
         self.config = config
-        root = ET.parse(os.path.expanduser(os.path.join(self.config.microrts_path, self.config.map_path))).getroot()
+        root = ET.parse(os.path.join(gym_microrts.__path__[0], 'microrts', self.config.map_path)).getroot()
         self.config.height, self.config.width = int(root.get("height")), int(root.get("width"))
         self.running_first_episode = True
         self.closed = False
@@ -47,8 +47,8 @@ class BaseSingleAgentEnv(gym.Env):
         if not jpype._jpype.isStarted():
             registerDomain("ts", alias="tests")
             registerDomain("ai")
-            jpype.addClassPath(os.path.join(Path(gym_microrts.__path__[0]).parent, 'microrts', "microrts.jar"))
-            jpype.addClassPath(os.path.join(Path(gym_microrts.__path__[0]).parent, 'microrts', "Coac.jar"))
+            jpype.addClassPath(os.path.join(gym_microrts.__path__[0], 'microrts', "microrts.jar"))
+            jpype.addClassPath(os.path.join(gym_microrts.__path__[0], 'microrts', "Coac.jar"))
             jpype.startJVM(convertStrings=False)
 
         from rts.units import UnitTypeTable
