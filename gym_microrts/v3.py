@@ -6,7 +6,6 @@ The v3 environments support multi actions in one game tick, with frameskip = 0
 from .types import Config
 import numpy as np
 from . import microrts_ai
-from . import microrts_maps
 import copy
 
 """
@@ -157,12 +156,3 @@ if hrl_envs:
         )},
         max_episode_steps=20000,
     )]
-
-all_maps = []
-for env in envs:
-    for m in microrts_maps.ALL16x16_MAPS:
-        e = copy.deepcopy(env)
-        e['kwargs']['config'].map_path = m
-        e['id'] = m.split("/")[-1][:-4] + "-" + e['id']
-        all_maps += [e]
-envs = envs + all_maps
