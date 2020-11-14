@@ -24,7 +24,7 @@ jobs:
     - name: Build a binary wheel and a source tarball
       run: python setup.py sdist
     - name: upload built gym-microrts files
-    - uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v2
       with:
         name: gym-microrts-artifact
         path: dist
