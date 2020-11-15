@@ -26,6 +26,14 @@ import numpy as np
 from gym.wrappers import Monitor
 from gym_microrts import microrts_ai
 
+WinLossRewardFunction(), 
+ResourceGatherRewardFunction(),  
+ProduceWorkerRewardFunction(),
+ProduceBuildingRewardFunction(),
+AttackRewardFunction(),
+ProduceCombatUnitRewardFunction(),
+CloserToEnemyBaseRewardFunction(),
+
 env = gym.make(
     "MicrortsDefeatCoacAIShaped-v3",
     render_theme=2, # optional customization
@@ -33,6 +41,10 @@ env = gym.make(
     ai2=microrts_ai.coacAI, # optional customization
     map_path="maps/16x16/basesWorkers16x16.xml", # optional customization
     reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0]) # optional customization
+    # the above `reward_weight` (in order) means +10 for wining, 
+    # +1 for each resource gathered or returned, +1 for each worker produced
+    # +0.2 for each building produced, +1 for each attack action issued
+    # +4 for each combat units produced, +0.0 for getting `closer` to enemy base
 )
 # env = Monitor(env, f'videos', force=True)
 env.action_space.seed(0)
