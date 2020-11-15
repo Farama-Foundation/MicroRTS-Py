@@ -4,6 +4,7 @@ on:
   push:
     paths-ignore:
       - 'README.md'
+      - 'static/**'
 jobs:
   build-n-publish:
     name: Build

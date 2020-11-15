@@ -17,13 +17,16 @@ import time
 import random
 import os
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
+import copy
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsDefeatCoacAIShaped-v2",
+    parser.add_argument('--gym-id', type=str, default="MicrortsDefeatWorkerRushEnemyShaped-v3",
+                        help='the id of the gym environment')
+    parser.add_argument('--microrts-map', type=str, default="maps/16x16/basesWorkers16x16.xml",
                         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
                         help='the learning rate of the optimizer')
@@ -37,7 +40,7 @@ if __name__ == "__main__":
                         help='if toggled, cuda will not be enabled by default')
     parser.add_argument('--prod-mode', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='run the script in production mode and use wandb to log outputs')
-    parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='weather to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                         help="the wandb's project name")
@@ -45,47 +48,18 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--n-minibatch', type=int, default=4,
-                        help='the number of mini batch')
     parser.add_argument('--num-envs', type=int, default=1,
                         help='the number of parallel game environment')
     parser.add_argument('--num-steps', type=int, default=128,
                         help='the number of steps per game environment')
-    parser.add_argument('--gamma', type=float, default=0.99,
-                        help='the discount factor gamma')
-    parser.add_argument('--gae-lambda', type=float, default=0.95,
-                        help='the lambda for the general advantage estimation')
-    parser.add_argument('--ent-coef', type=float, default=0.01,
-                        help="coefficient of the entropy")
-    parser.add_argument('--vf-coef', type=float, default=0.5,
-                        help="coefficient of the value function")
-    parser.add_argument('--max-grad-norm', type=float, default=0.5,
-                        help='the maximum norm for the gradient clipping')
-    parser.add_argument('--clip-coef', type=float, default=0.1,
-                        help="the surrogate clipping coefficient")
-    parser.add_argument('--update-epochs', type=int, default=4,
-                         help="the K epochs to update the policy")
-    parser.add_argument('--kle-stop', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
-    parser.add_argument('--kle-rollback', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                         help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
-    parser.add_argument('--target-kl', type=float, default=0.03,
-                         help='the target-kl variable that is referred by --kl')
-    parser.add_argument('--gae', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                         help='Use GAE for advantage computation')
-    parser.add_argument('--norm-adv', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                          help="Toggles advantages normalization")
-    parser.add_argument('--anneal-lr', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                          help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument('--clip-vloss', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                          help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
+    parser.add_argument('--agent-model-path', type=str, default="agent.pt",
+                        help="the path to the agent's model")
+
 
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
 
-args.batch_size = int(args.num_envs * args.num_steps)
-args.minibatch_size = int(args.batch_size // args.n_minibatch)
 
 class ImageToPyTorch(gym.ObservationWrapper):
     def __init__(self, env):
@@ -138,18 +112,6 @@ class MicroRTSStatsRecorder(gym.Wrapper):
             self.raw_rewards = []
         return observation, reward, done, info
 
-class NoAvailableActionThenSkipEnv(gym.Wrapper):
-    """if no source unit can be selected in microrts,
-    automatically execute a NOOP action
-    """
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        while self.unit_location_mask.sum()==0:
-            obs, reward, done, info = self.env.step(action)
-            if done:
-                break
-        return obs, reward, done, info
-
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
@@ -166,28 +128,24 @@ random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
-def make_env(gym_id, seed, idx):
+def make_env(args, seed, idx):
     def thunk():
-        env = gym.make(gym_id)
+        env = gym.make(args.gym_id, map_path=args.microrts_map, render_theme=2)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env = MicroRTSStatsRecorder(env)
-        # env = NoAvailableActionThenSkipEnv(env)
         env = ImageToPyTorch(env)
         if args.capture_video:
             if idx == 0:
-                env = Monitor(env, f'videos/{experiment_name}')
+                env = Monitor(env, f'videos/{experiment_name}', video_callable=lambda episode_id: True)
         env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
     return thunk
-envs = VecPyTorch(DummyVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]), device)
-# if args.prod_mode:
-#     envs = VecPyTorch(
-#         SubprocVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
-#         device
-#     )
+envs = VecPyTorch(DummyVecEnv([make_env(args, args.seed+i, i) for i in range(args.num_envs)]), device)
 assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
+
+# Change maps
 
 # ALGO LOGIC: initialize agent here:
 class CategoricalMasked(Categorical):
@@ -229,7 +187,7 @@ class Agent(nn.Module):
             layer_init(nn.Conv2d(16, 32, kernel_size=2)),
             nn.ReLU(),
             nn.Flatten(),
-            layer_init(nn.Linear(32*3*3, 128)),
+            layer_init(nn.Linear(32*6*6, 128)),
             nn.ReLU(),)
         self.actor = layer_init(nn.Linear(128, envs.action_space.nvec.sum()), std=0.01)
         self.critic = layer_init(nn.Linear(128, 1), std=1)
@@ -264,69 +222,58 @@ class Agent(nn.Module):
 
     def get_value(self, x):
         return self.critic(self.forward(x))
-try:
-    agent = Agent().to(device)
-    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    if args.anneal_lr:
-        # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
-        lr = lambda f: f * args.learning_rate
-    
-    # ALGO Logic: Storage for epoch data
-    obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
-    actions = torch.zeros((args.num_steps, args.num_envs) + envs.action_space.shape).to(device)
-    logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    invalid_action_masks = torch.zeros((args.num_steps, args.num_envs) + (envs.action_space.nvec.sum(),)).to(device)
-    # TRY NOT TO MODIFY: start the game
-    global_step = 0
-    # Note how `next_obs` and `next_done` are used; their usage is equivalent to
-    # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
-    next_obs = envs.reset()
-    next_done = torch.zeros(args.num_envs).to(device)
-    num_updates = args.total_timesteps // args.batch_size
-    
-    ## CRASH AND RESUME LOGIC:
-    starting_update = 1
-    agent.load_state_dict(torch.load(f"agent.pt_"))
-    agent.eval()
-    for update in range(starting_update, num_updates+1):
-        # Annealing the rate if instructed to do so.
-        if args.anneal_lr:
-            frac = 1.0 - (update - 1.0) / num_updates
-            lrnow = lr(frac)
-            optimizer.param_groups[0]['lr'] = lrnow
-    
-        # TRY NOT TO MODIFY: prepare the execution of the game.
-        for step in range(0, args.num_steps):
-            envs.env_method("render", indices=0)
-            global_step += 1 * args.num_envs
-            obs[step] = next_obs
-            dones[step] = next_done
-    
-            # ALGO LOGIC: put action logic here
-            with torch.no_grad():
-                values[step] = agent.get_value(obs[step]).flatten()
-                action, logproba, _, invalid_action_masks[step] = agent.get_action(obs[step], envs=envs)
-    
-            actions[step] = action.T
-            logprobs[step] = logproba
-    
-            # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, rs, ds, infos = envs.step(action.T)
-            rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
-    
-            for info in infos:
-                if 'episode' in info.keys():
-                    print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                    writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
-                    for key in info['microrts_stats']:
-                        writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
-                    break
-    
-    envs.close()
-    writer.close()
-except Exception as e:
-    print(e)
-    print(e.stacktrace())
+
+agent = Agent().to(device)
+optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+
+# ALGO Logic: Storage for epoch data
+obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
+actions = torch.zeros((args.num_steps, args.num_envs) + envs.action_space.shape).to(device)
+logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
+rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
+dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
+values = torch.zeros((args.num_steps, args.num_envs)).to(device)
+invalid_action_masks = torch.zeros((args.num_steps, args.num_envs) + (envs.action_space.nvec.sum(),)).to(device)
+# TRY NOT TO MODIFY: start the game
+global_step = 0
+# Note how `next_obs` and `next_done` are used; their usage is equivalent to
+# https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
+next_obs = envs.reset()
+next_done = torch.zeros(args.num_envs).to(device)
+num_updates = 10000
+
+## CRASH AND RESUME LOGIC:
+starting_update = 1
+agent.load_state_dict(torch.load(args.agent_model_path))
+agent.eval()
+for update in range(starting_update, num_updates+1):
+
+    # TRY NOT TO MODIFY: prepare the execution of the game.
+    for step in range(0, args.num_steps):
+        envs.env_method("render", indices=0)
+        global_step += 1 * args.num_envs
+        obs[step] = next_obs
+        dones[step] = next_done
+
+        # ALGO LOGIC: put action logic here
+        with torch.no_grad():
+            values[step] = agent.get_value(obs[step]).flatten()
+            action, logproba, _, invalid_action_masks[step] = agent.get_action(obs[step], envs=envs)
+
+        actions[step] = action.T
+        logprobs[step] = logproba
+
+        # TRY NOT TO MODIFY: execute the game and log data.
+        next_obs, rs, ds, infos = envs.step(action.T)
+        rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
+
+        for info in infos:
+            if 'episode' in info.keys():
+                print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+                writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+                for key in info['microrts_stats']:
+                    writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
+                break
+
+envs.close()
+writer.close()
