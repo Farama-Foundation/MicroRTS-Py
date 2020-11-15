@@ -17,7 +17,7 @@ This repo contains the source code for the gym wrapper of MicroRTS authored by [
 $ pip install gym_microrts --upgrade
 ```
 
-And run either the `hello_world_v3.py` referenced above or the following file
+And run either the `hello_world_v3.py` in this repo or the following file
 ```python
 import gym
 import gym_microrts
