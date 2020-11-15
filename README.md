@@ -17,7 +17,7 @@ This repo contains the source code for the gym wrapper of MicroRTS authored by [
 $ pip install gym_microrts --upgrade
 ```
 
-And run either the `hello_world.py` referenced above or the following file
+And run either the `hello_world_v3.py` referenced above or the following file
 ```python
 import gym
 import gym_microrts
@@ -25,14 +25,6 @@ import time
 import numpy as np
 from gym.wrappers import Monitor
 from gym_microrts import microrts_ai
-
-WinLossRewardFunction(), 
-ResourceGatherRewardFunction(),  
-ProduceWorkerRewardFunction(),
-ProduceBuildingRewardFunction(),
-AttackRewardFunction(),
-ProduceCombatUnitRewardFunction(),
-CloserToEnemyBaseRewardFunction(),
 
 env = gym.make(
     "MicrortsDefeatCoacAIShaped-v3",
