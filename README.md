@@ -119,6 +119,7 @@ Below are the difference between the versioned environments
 | v2 | no                 | yes                                        | yes                                         | 10x10    |
 | v3 | no                 | yes                                        | yes                                         | 16x16    |
 
+
 ## Developer Guide
 
 Clone the repo
