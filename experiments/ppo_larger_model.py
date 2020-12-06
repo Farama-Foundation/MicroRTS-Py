@@ -216,10 +216,10 @@ class Agent(nn.Module):
             layer_init(nn.Conv2d(16, 32, kernel_size=2)),
             nn.ReLU(),
             nn.Flatten(),
-            layer_init(nn.Linear(32*6*6, 128)),
+            layer_init(nn.Linear(32*6*6, 256)),
             nn.ReLU(),)
-        self.actor = layer_init(nn.Linear(128, envs.action_space.nvec.sum()), std=0.01)
-        self.critic = layer_init(nn.Linear(128, 1), std=1)
+        self.actor = layer_init(nn.Linear(256, envs.action_space.nvec.sum()), std=0.01)
+        self.critic = layer_init(nn.Linear(256, 1), std=1)
 
     def forward(self, x):
         return self.network(x)
@@ -309,7 +309,7 @@ for update in range(starting_update, num_updates+1):
 
         actions[step] = action.T
         logprobs[step] = logproba
-        raise
+
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rs, ds, infos = envs.step(action.T)
         rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
