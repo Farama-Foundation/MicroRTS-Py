@@ -230,17 +230,18 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
             obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
             if not raw:
                 obs = self._encode_obs(obs)
+            raw_reward_difference = np.array(reward) - self.simulated_raw_rewards
             info["dones"] = np.array(done)
-            info["rewards"] = np.array(reward)
-            info["raw_rewards"] = np.array(reward)
+            info["rewards"] = raw_reward_difference
+            info["raw_rewards"] = raw_reward_difference
             info["raw_dones"] = np.array(done)
-            if customize:
-                return obs, reward, done, info
-            
             new_reward = (np.array(reward) * self.reward_weight).sum()
             reward_difference = new_reward - self.simulated_rewards
-            return_tuple = (obs, reward_difference, done[0], info)
             self.simulated_rewards += reward_difference
+            self.simulated_raw_rewards += raw_reward_difference
+            return_tuple = (obs, reward_difference, done[0], info)
+            if customize:
+                return obs, reward, done, info
             return return_tuple
 
         self.actions += [action]
@@ -250,26 +251,42 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
         self.unit_location_mask, self.action_mask = calculate_mask(obs, self.action_space)
         if not raw:
             obs = self._encode_obs(obs)
+        raw_reward_difference = np.array(reward) - self.simulated_raw_rewards
         info["dones"] = np.array(done)
-        info["rewards"] = np.array(reward)
-        info["raw_rewards"] = np.array(reward)
+        info["rewards"] = raw_reward_difference
+        info["raw_rewards"] = raw_reward_difference
         info["raw_dones"] = np.array(done)
-        if customize:
-            return obs, reward, done, info
         new_reward = (np.array(reward) * self.reward_weight).sum()
         reward_difference = new_reward - self.simulated_rewards
         self.simulated_rewards = 0
+        self.simulated_raw_rewards = np.zeros(len(self.rfs))
+        if customize:
+            return obs, reward, done, info
         return (obs, reward_difference, done[0], info)
 
     def reset(self, raw=False):
         self.actions = []
         # `simulated_rewards` should be subtracted in the end
         self.simulated_rewards = 0
+        self.simulated_raw_rewards = np.zeros(len(self.rfs))
         return super(GlobalAgentMultiActionsCombinedRewardEnv, self).reset(raw)
 
 class GlobalAgentMultiActionsHRLEnv(GlobalAgentMultiActionsCombinedRewardEnv):
 
+    def __init__(self,
+        render_theme=2,
+        frame_skip=0, 
+        ai2=microrts_ai.passiveAI,
+        map_path="maps/10x10/basesTwoWorkers10x10.xml",
+        hrl_reward_weights=np.array([
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 1.0, 1.0, 7.0, 0.0],
+        ])):
+        self.hrl_reward_weights = hrl_reward_weights
+        super().__init__(render_theme, frame_skip, ai2, map_path)
+    
     def start_client(self):
+        self.num_reward_function = len(self.hrl_reward_weights)
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
         self.rfs = JArray(RewardFunctionInterface)([
@@ -280,62 +297,20 @@ class GlobalAgentMultiActionsHRLEnv(GlobalAgentMultiActionsCombinedRewardEnv):
             AttackRewardFunction(),
             ProduceCombatUnitRewardFunction(),
             CloserToEnemyBaseRewardFunction(),])
-        self.num_reward_function = len(self.hrl_reward_weights)
         if self.ai2 is not None:
             return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path, self.ai2(self.real_utt), self.real_utt)
         return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path)
 
     def step(self, action, raw=False, customize=False):
-        # action = np.array(action)
-        num_source_units = self.unit_location_mask.sum()
-        # `simulated_rewards` should be subtracted in the end
-        simulated_rewards = np.zeros(self.num_reward_function)
-        while num_source_units >= 1:
-            source_unit_selected = action[0]
-            self.actions += [action]
-            self.unit_location_mask[source_unit_selected] = 0
-            self.action_mask = np.ones(self.action_space.nvec.sum())
-            self.action_mask[0:self.action_space.nvec[0]] = self.unit_location_mask
-            self.action_mask[-self.action_space.nvec[-1]:] = self.target_unit_location_mask
-            info = {}
-            response = self.client.simulateStep(np.array(self.actions), self.frame_skip)
-            obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
-            info["dones"] = np.array(done)
-            info["rewards"] = (np.array(reward) * self.hrl_reward_weights).sum(1)
-            info["raw_rewards"] = np.array(reward)
-            info["raw_dones"] = np.array(done)
-            if not raw:
-                obs = self._encode_obs(obs)
+        obs, reward, done, info = super().step(action, raw, True)
+        info["rewards"] = (info["rewards"] * self.hrl_reward_weights).sum(1)
+        return obs, info["rewards"][0], done[0], info
 
-            return_tuple = (obs, (info["rewards"] - simulated_rewards)[0], done[0], info)
-            simulated_rewards += info["rewards"]
-            return return_tuple
-
-        response = self.client.step(np.array(self.actions), self.frame_skip)
-        self.actions = []
-        obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
-        # obs[3] - obs[4].clip(max=1) means mask busy units
-        # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
-        self.unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==2,0, (obs[2]))).flatten()
-        self.target_unit_location_mask = ((obs[3].clip(max=1) - obs[4].clip(max=1)) * np.where((obs[2])==1,0, (obs[2]).clip(max=1))).flatten()
-        self.action_mask = np.ones(self.action_space.nvec.sum())
-        self.action_mask[0:self.action_space.nvec[0]] = self.unit_location_mask
-        self.action_mask[-self.action_space.nvec[-1]:] = self.target_unit_location_mask
-        if not raw:
-            obs = self._encode_obs(obs)
-        info["dones"] = np.array(done)
-        info["rewards"] = (np.array(reward) * self.hrl_reward_weights).sum(1)
-        info["raw_rewards"] = np.array(reward)
-        info["raw_dones"] = np.array(done)
-        if customize:
-            return obs, reward, done, info
-        return (obs, (info["rewards"] - simulated_rewards)[0], done[0], info)
-
-    def reset(self, raw=False):
-        self.actions = []
-        # `simulated_rewards` should be subtracted in the end
-        self.simulated_rewards = 0
-        return super(GlobalAgentMultiActionsCombinedRewardEnv, self).reset(raw)
+    # def reset(self, raw=False):
+    #     self.actions = []
+    #     # `simulated_rewards` should be subtracted in the end
+    #     self.simulated_rewards = 0
+    #     return super(GlobalAgentMultiActionsCombinedRewardEnv, self).reset(raw)
 
 
 class GlobalAgentCombinedRewardSelfPlayEnv(GlobalAgentEnv):
