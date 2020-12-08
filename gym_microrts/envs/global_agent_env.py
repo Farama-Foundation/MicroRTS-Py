@@ -177,6 +177,16 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
         'video.frames_per_second' : 150
     }
 
+    def __init__(self,
+        render_theme=2,
+        frame_skip=0, 
+        ai2=microrts_ai.passiveAI,
+        map_path="maps/10x10/basesTwoWorkers10x10.xml",
+        reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+        grid_mode=False):
+        self.grid_mode = grid_mode
+        super().__init__(render_theme, frame_skip, ai2, map_path, reward_weight)
+
     def start_client(self):
         from ts import JNIClient
         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
@@ -193,9 +203,22 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
         return JNIClient(self.rfs, os.path.expanduser(self.microrts_path), self.map_path)
 
     def step(self, action, raw=False, customize=False):
+        if self.grid_mode:
+            action = np.array(action)
+            response = self.client.step(action, self.frame_skip)
+            obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
+            self.unit_location_mask, self.action_mask = calculate_mask(obs, self.action_space)
+            if not raw:
+                obs = self._encode_obs(obs)
+            info["dones"] = np.array(done)
+            info["rewards"] = np.array(reward)
+            info["raw_rewards"] = np.array(reward)
+            info["raw_dones"] = np.array(done)
+            reward[-1] = np.clip(reward[-1], -1, 1)
+            return obs, (np.array(reward) * self.reward_weight).sum(), done[0], info # win loss as done
+
         # action = np.array(action)
         num_source_units = self.unit_location_mask.sum()
-
         while num_source_units >= 2:
             source_unit_selected = action[0]
             self.actions += [action]
@@ -224,8 +247,6 @@ class GlobalAgentMultiActionsCombinedRewardEnv(GlobalAgentEnv):
         response = self.client.step(np.array(self.actions), self.frame_skip)
         self.actions = []
         obs, reward, done, info = np.array(response.observation), response.reward[:], response.done[:], {}
-        # obs[3] - obs[4].clip(max=1) means mask busy units
-        # * np.where((obs[2])==2,0, (obs[2]))).flatten() means mask units not owned
         self.unit_location_mask, self.action_mask = calculate_mask(obs, self.action_space)
         if not raw:
             obs = self._encode_obs(obs)
