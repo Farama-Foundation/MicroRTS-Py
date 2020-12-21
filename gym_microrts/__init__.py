@@ -9,6 +9,7 @@ import numpy as np
 from .v1 import envs as v1_envs
 from .v2 import envs as v2_envs
 from .v3 import envs as v3_envs
+from .v4 import envs as v4_envs
 
 # enable repeated experiments
 # https://github.com/openai/gym/issues/1172
@@ -23,6 +24,7 @@ if V0NAME not in gym.envs.registry.env_specs:
     envs += v1_envs
     envs += v2_envs
     envs += v3_envs
+    envs += v4_envs
 
     for env in envs:
         # Regular

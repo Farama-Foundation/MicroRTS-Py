@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsDefeatWorkerRushEnemyHRL-v3",
+    parser.add_argument('--gym-id', type=str, default="MicrortsDefeatWorkerRushEnemyShaped-v3",
                         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
                         help='the learning rate of the optimizer')
@@ -218,44 +218,74 @@ class Agent(nn.Module):
             nn.Flatten(),
             layer_init(nn.Linear(32*6*6, 256)),
             nn.ReLU(),)
-        self.actor = layer_init(nn.Linear(256, envs.action_space.nvec.sum()), std=0.01)
-        self.critic = layer_init(nn.Linear(256, 1), std=1)
+        self.critic_head = layer_init(nn.Linear(256, 1), std=1)
+        
+        # auto regressive heads
+        self.actor_source_unit_head = layer_init(nn.Linear(256, envs.action_space.nvec[0]), std=0.01)
+        self.actor_source_unit_embedding = layer_init(nn.Linear(256+envs.action_space.nvec[0], 256))
+        self.actor_type_head = layer_init(nn.Linear(256, envs.action_space.nvec[1]), std=0.01)
+        self.actor_type_embedding = layer_init(nn.Linear(256+envs.action_space.nvec[1], 256))
+        self.actor_others_head = layer_init(nn.Linear(256, envs.action_space.nvec[2:].sum()), std=0.01)
 
     def forward(self, x):
         return self.network(x)
 
     def get_action(self, x, action=None, invalid_action_masks=None, envs=None):
-        logits = self.actor(self.forward(x))
-        split_logits = torch.split(logits, envs.action_space.nvec.tolist(), dim=1)
-        
+        hidden_output = self.forward(x)
+        su_logits = self.actor_source_unit_head(hidden_output)
         if action is None:
-            # 1. select source unit based on source unit mask
             source_unit_mask = torch.Tensor(np.array(envs.env_method("get_unit_location_mask", player=1)))
-            multi_categoricals = [CategoricalMasked(logits=split_logits[0], masks=source_unit_mask)]
+            # 1. select source unit
+            multi_categoricals = [CategoricalMasked(logits=su_logits, masks=source_unit_mask)]
             action_components = [multi_categoricals[0].sample()]
-            # 2. select action type and parameter section based on the
-            #    source-unit mask of action type and parameters
+
             source_unit_action_mask = torch.Tensor(
                 [envs.env_method("get_unit_action_mask", unit=action_components[0][i], player=1, indices=i)[0]
             for i in range(envs.num_envs)])
             split_suam = torch.split(source_unit_action_mask, envs.action_space.nvec.tolist()[1:], dim=1)
-            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits[1:], split_suam)]
+            
+            # 2. select action type
+            auto_regressive_embeddings = self.actor_source_unit_embedding(torch.cat(
+                (hidden_output, F.one_hot(action_components[0], envs.action_space.nvec[0])), 1))
+            at_logits = self.actor_type_head(auto_regressive_embeddings)
+            multi_categoricals += [CategoricalMasked(logits=at_logits, masks=split_suam[0])]
+            action_components += [multi_categoricals[1].sample()]
+
+            #  3. select other parameter
+            auto_regressive_embeddings = self.actor_type_embedding(torch.cat(
+                (auto_regressive_embeddings, F.one_hot(action_components[1], envs.action_space.nvec[1])), 1))
+            other_logits = self.actor_others_head(auto_regressive_embeddings)
+            split_logits = torch.split(other_logits, envs.action_space.nvec[2:].tolist(), dim=1)
+            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_suam[1:])]
+            
+            for categorical in multi_categoricals[2:]:
+                action_components += [categorical.sample()]
+
             invalid_action_masks = torch.cat((source_unit_mask, source_unit_action_mask), 1)
-            action_components += [categorical.sample() for categorical in multi_categoricals[1:]]
             action = torch.stack(action_components)
         else:
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_space.nvec.tolist(), dim=1)
-            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
+            multi_categoricals = [CategoricalMasked(logits=su_logits, masks=split_invalid_action_masks[0])]
+            # 2. select action type
+            auto_regressive_embeddings = self.actor_source_unit_embedding(torch.cat(
+                (hidden_output, F.one_hot(action[0], envs.action_space.nvec[0])), 1))
+            at_logits = self.actor_type_head(auto_regressive_embeddings)
+            multi_categoricals += [CategoricalMasked(logits=at_logits, masks=split_invalid_action_masks[1])]
+            #  3. select other parameter
+            auto_regressive_embeddings = self.actor_type_embedding(torch.cat(
+                (auto_regressive_embeddings, F.one_hot(action[1], envs.action_space.nvec[1])), 1))
+            other_logits = self.actor_others_head(auto_regressive_embeddings)
+            split_logits = torch.split(other_logits, envs.action_space.nvec[2:].tolist(), dim=1)
+            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks[2:])]
+
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
         return action, logprob.sum(0), entropy.sum(0), invalid_action_masks
 
     def get_value(self, x):
-        return self.critic(self.forward(x))
+        return self.critic_head(self.forward(x))
 
 agent = Agent().to(device)
-agent.load_state_dict(torch.load("agent_0.pt"))
-agent.eval()
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 if args.anneal_lr:
     # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
@@ -276,7 +306,6 @@ global_step = 0
 next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
 num_updates = args.total_timesteps // args.batch_size
-
 ## CRASH AND RESUME LOGIC:
 starting_update = 1
 if args.prod_mode and wandb.run.resumed:
@@ -303,7 +332,6 @@ for update in range(starting_update, num_updates+1):
         global_step += 1 * args.num_envs
         obs[step] = next_obs
         dones[step] = next_done
-
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
             values[step] = agent.get_value(obs[step]).flatten()
