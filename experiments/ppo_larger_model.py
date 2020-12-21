@@ -253,9 +253,6 @@ class Agent(nn.Module):
     def get_value(self, x):
         return self.critic(self.forward(x))
 
-agent = Agent().to(device)
-agent.load_state_dict(torch.load("agent_0.pt"))
-agent.eval()
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 if args.anneal_lr:
     # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
