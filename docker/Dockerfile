@@ -12,8 +12,11 @@ RUN pip install stable-baselines3
 
 RUN apt-get -y -q install wget unzip default-jdk git-lfs
 
-RUN cd /workspace/ && git lfs clone https://github.com/vwxyzjn/gym-microrts.git && \
-    cd gym-microrts && pip install -e .
+RUN cd /workspace/ && git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
+cd gym-microrts && \
+pip install -e . && \
+export JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8 && \
+cd gym_microrts/microrts && bash build.sh && cd ..&& cd ..
 
 RUN pip install wandb==0.9.5
 
