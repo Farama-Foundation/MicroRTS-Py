@@ -236,7 +236,7 @@ class Agent(nn.Module):
             # 2. select action type and parameter section based on the
             #    source-unit mask of action type and parameters
             source_unit_action_mask = torch.Tensor(
-                [envs.env_method("get_unit_action_mask", unit=action_components[0][i], player=1, indices=i)[0]
+                [envs.env_method("get_unit_action_mask", unit=action_components[0][i].item(), player=1, indices=i)[0]
             for i in range(envs.num_envs)])
             split_suam = torch.split(source_unit_action_mask, envs.action_space.nvec.tolist()[1:], dim=1)
             multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits[1:], split_suam)]

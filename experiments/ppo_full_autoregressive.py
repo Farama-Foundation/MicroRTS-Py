@@ -240,7 +240,7 @@ class Agent(nn.Module):
             action_components = [multi_categoricals[0].sample()]
 
             source_unit_action_mask = torch.Tensor(
-                [envs.env_method("get_unit_action_mask", unit=action_components[0][i], player=1, indices=i)[0]
+                [envs.env_method("get_unit_action_mask", unit=action_components[0][i].item(), player=1, indices=i)[0]
             for i in range(envs.num_envs)])
             split_suam = torch.split(source_unit_action_mask, envs.action_space.nvec.tolist()[1:], dim=1)
             

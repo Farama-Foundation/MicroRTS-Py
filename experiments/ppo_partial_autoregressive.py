@@ -239,7 +239,7 @@ class Agent(nn.Module):
             # 2. select action type and parameter section based on the
             #    source-unit mask of action type and parameters
             source_unit_action_mask = torch.Tensor(
-                [envs.env_method("get_unit_action_mask", unit=action_components[0][i], player=1, indices=i)[0]
+                [envs.env_method("get_unit_action_mask", unit=action_components[0][i].item(), player=1, indices=i)[0]
             for i in range(envs.num_envs)])
             source_unit_embedding = F.one_hot(action_components[0], envs.action_space.nvec[0])
             other_logits = self.actor_others_head(torch.cat((hidden_output, source_unit_embedding), 1))

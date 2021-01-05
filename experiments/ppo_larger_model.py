@@ -47,9 +47,9 @@ if __name__ == "__main__":
     # Algorithm specific arguments
     parser.add_argument('--n-minibatch', type=int, default=4,
                         help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=4,
+    parser.add_argument('--num-envs', type=int, default=8,
                         help='the number of parallel game environment')
-    parser.add_argument('--num-steps', type=int, default=128,
+    parser.add_argument('--num-steps', type=int, default=512,
                         help='the number of steps per game environment')
     parser.add_argument('--gamma', type=float, default=0.99,
                         help='the discount factor gamma')
@@ -236,7 +236,7 @@ class Agent(nn.Module):
             # 2. select action type and parameter section based on the
             #    source-unit mask of action type and parameters
             source_unit_action_mask = torch.Tensor(
-                [envs.env_method("get_unit_action_mask", unit=action_components[0][i], player=1, indices=i)[0]
+                [envs.env_method("get_unit_action_mask", unit=action_components[0][i].item(), player=1, indices=i)[0]
             for i in range(envs.num_envs)])
             split_suam = torch.split(source_unit_action_mask, envs.action_space.nvec.tolist()[1:], dim=1)
             multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits[1:], split_suam)]
@@ -269,6 +269,7 @@ values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 invalid_action_masks = torch.zeros((args.num_steps, args.num_envs) + (envs.action_space.nvec.sum(),)).to(device)
 # TRY NOT TO MODIFY: start the game
 global_step = 0
+start_time = time.time()
 # Note how `next_obs` and `next_done` are used; their usage is equivalent to
 # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
 next_obs = envs.reset()
@@ -434,6 +435,7 @@ for update in range(starting_update, num_updates+1):
     writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
+    print("SPS:", int(global_step / (time.time() - start_time)))
 
 envs.close()
 writer.close()
