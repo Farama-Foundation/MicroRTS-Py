@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsDefeatWorkerRushEnemyHRL-v3",
+    parser.add_argument('--gym-id', type=str, default="MicrortsDefeatCoacAIShaped-v3",
                         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
                         help='the learning rate of the optimizer')
@@ -47,9 +47,9 @@ if __name__ == "__main__":
     # Algorithm specific arguments
     parser.add_argument('--n-minibatch', type=int, default=4,
                         help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=4,
+    parser.add_argument('--num-envs', type=int, default=16,
                         help='the number of parallel game environment')
-    parser.add_argument('--num-steps', type=int, default=128,
+    parser.add_argument('--num-steps', type=int, default=512,
                         help='the number of steps per game environment')
     parser.add_argument('--gamma', type=float, default=0.99,
                         help='the discount factor gamma')
@@ -123,21 +123,29 @@ class VecPyTorch(VecEnvWrapper):
 
 class MicroRTSStatsRecorder(gym.Wrapper):
 
+    def __init__(self, env, gamma):
+        super().__init__(env)
+        self.gamma = gamma
+
     def reset(self, **kwargs):
         observation = super(MicroRTSStatsRecorder, self).reset(**kwargs)
         self.raw_rewards = []
+        self.discounted_rewards = []
+        self.t = 0
         return observation
 
     def step(self, action):
         observation, reward, done, info = super(MicroRTSStatsRecorder, self).step(action)
         self.raw_rewards += [info["raw_rewards"]]
+        self.discounted_rewards += [(self.gamma**self.t)*np.concatenate((info["raw_rewards"], [reward]))]
+        self.t += 1
         if done:
             raw_rewards = np.array(self.raw_rewards).sum(0)
+            discounter_rewards = np.array(self.discounted_rewards).sum(0)
             raw_names = [str(rf) for rf in self.rfs]
-            info['microrts_stats'] = dict(zip(raw_names, raw_rewards))
-            self.raw_rewards = []
+            raw_names_discounted = ["discounted_"+str(rf) for rf in self.rfs] + ["discounted_episode_reward"]
+            info['microrts_stats'] = dict(zip(raw_names+raw_names_discounted, np.concatenate((raw_rewards, discounter_rewards))))
         return observation, reward, done, info
-
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
@@ -158,7 +166,7 @@ def make_env(gym_id, seed, idx):
     def thunk():
         env = gym.make(gym_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
-        env = MicroRTSStatsRecorder(env)
+        env = MicroRTSStatsRecorder(env, args.gamma)
         env = ImageToPyTorch(env)
         if args.capture_video:
             if idx == 0:
