@@ -156,3 +156,17 @@ if hrl_envs:
         ),
         max_episode_steps=20000,
     )]
+    envs += [dict(
+        id=f"MicrortsDefeatCoacAIHRL-v3",
+        entry_point='gym_microrts.envs:GlobalAgentMultiActionsHRLEnv',
+        kwargs=dict(
+            frame_skip=0,
+            ai2=microrts_ai.coacAI,
+            map_path="maps/16x16/basesWorkers16x16.xml",
+            hrl_reward_weights=np.array([
+                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0],
+            ])
+        ),
+        max_episode_steps=20000,
+    )]
