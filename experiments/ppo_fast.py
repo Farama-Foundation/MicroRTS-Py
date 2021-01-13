@@ -18,7 +18,7 @@ from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 import os
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
+from stable_baselines3.common.vec_env import VecEnvWrapper, VecVideoRecorder
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
@@ -142,31 +142,63 @@ class VecPyTorch(VecEnvWrapper):
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
 
-class MicroRTSStatsRecorder(gym.Wrapper):
+class VecMonitor(VecEnvWrapper):
+    def __init__(self, venv):
+        VecEnvWrapper.__init__(self, venv)
+        self.eprets = None
+        self.eplens = None
+        self.epcount = 0
+        self.tstart = time.time()
 
+    def reset(self):
+        obs = self.venv.reset()
+        self.eprets = np.zeros(self.num_envs, 'f')
+        self.eplens = np.zeros(self.num_envs, 'i')
+        return obs
+
+    def step_wait(self):
+        obs, rews, dones, infos = self.venv.step_wait()
+        self.eprets += rews
+        self.eplens += 1
+
+        newinfos = list(infos[:])
+        for i in range(len(dones)):
+            if dones[i]:
+                info = infos[i].copy()
+                ret = self.eprets[i]
+                eplen = self.eplens[i]
+                epinfo = {'r': ret, 'l': eplen, 't': round(time.time() - self.tstart, 6)}
+                info['episode'] = epinfo
+                self.epcount += 1
+                self.eprets[i] = 0
+                self.eplens[i] = 0
+                newinfos[i] = info
+        return obs, rews, dones, newinfos
+
+class MicroRTSStatsRecorder(VecEnvWrapper):
     def __init__(self, env, gamma):
         super().__init__(env)
         self.gamma = gamma
 
-    def reset(self, **kwargs):
-        observation = super(MicroRTSStatsRecorder, self).reset(**kwargs)
-        self.raw_rewards = []
-        self.discounted_rewards = []
-        self.t = 0
-        return observation
+    def reset(self):
+        obs = self.venv.reset()
+        self.raw_rewards = [[] for _ in range(self.num_envs)]
+        return obs
 
-    def step(self, action):
-        observation, reward, done, info = super(MicroRTSStatsRecorder, self).step(action)
-        self.raw_rewards += [info["raw_rewards"]]
-        self.discounted_rewards += [(self.gamma**self.t)*np.concatenate((info["raw_rewards"], [reward]))]
-        self.t += 1
-        if done:
-            raw_rewards = np.array(self.raw_rewards).sum(0)
-            discounter_rewards = np.array(self.discounted_rewards).sum(0)
-            raw_names = [str(rf) for rf in self.rfs]
-            raw_names_discounted = ["discounted_"+str(rf) for rf in self.rfs] + ["discounted_episode_reward"]
-            info['microrts_stats'] = dict(zip(raw_names+raw_names_discounted, np.concatenate((raw_rewards, discounter_rewards))))
-        return observation, reward, done, info
+    def step_wait(self):
+        obs, rews, dones, infos = self.venv.step_wait()
+        for i in range(len(dones)):
+            self.raw_rewards[i] += [infos[i]["raw_rewards"]] 
+        newinfos = list(infos[:])
+        for i in range(len(dones)):
+            if dones[i]:
+                info = infos[i].copy()
+                raw_rewards = np.array(self.raw_rewards[i]).sum(0)
+                raw_names = [str(rf) for rf in self.rfs]
+                info['microrts_stats'] = dict(zip(raw_names, raw_rewards))
+                self.raw_rewards[i] = []
+                newinfos[i] = info
+        return obs, rews, dones, newinfos
 
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -184,34 +216,16 @@ random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
-def make_env(gym_id, seed, idx):
-    def thunk():
-        env = gym.make(gym_id)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        env = MicroRTSStatsRecorder(env, args.gamma)
-        if args.capture_video:
-            if idx == 0:
-                env = Monitor(env, f'videos/{experiment_name}')
-        env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
-    return thunk
-# envs = VecPyTorch(DummyVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]), device)
 envs = MicroRTSVecEnv(
     num_envs=args.num_envs,
     render_theme=2,
     ai2=microrts_ai.coacAI,
     map_path="maps/16x16/basesWorkers16x16.xml",
-    reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0])
+    reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
 )
+envs = MicroRTSStatsRecorder(envs, args.gamma)
 envs = VecMonitor(envs)
 envs = VecPyTorch(envs, device)
-# if args.prod_mode:
-#     envs = VecPyTorch(
-#         SubprocVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
-#         device
-#     )
 assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
@@ -313,10 +327,6 @@ start_time = time.time()
 next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
 num_updates = args.total_timesteps // args.batch_size
-
-
-agent.load_state_dict(torch.load("agent3.pt"))
-agent.eval()
 ## CRASH AND RESUME LOGIC:
 starting_update = 1
 if args.prod_mode and wandb.run.resumed:
@@ -347,26 +357,21 @@ for update in range(starting_update, num_updates+1):
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
             values[step] = agent.get_value(obs[step]).flatten()
-            # raise
             action, logproba, _, invalid_action_masks[step] = agent.get_action(obs[step], envs=envs)
 
         actions[step] = action.T
         logprobs[step] = logproba
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        try:
-            next_obs, rs, ds, infos = envs.step(action.T)
-        except Exception as e:
-            e.printStackTrace()
-            raise
+        next_obs, rs, ds, infos = envs.step(action.T)
         rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
 
         for info in infos:
             if 'episode' in info.keys():
                 print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
                 writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
-                # for key in info['microrts_stats']:
-                #     writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
+                for key in info['microrts_stats']:
+                    writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
                 break
 
     # bootstrap reward if not done. reached the batch limit
