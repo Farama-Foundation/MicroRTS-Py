@@ -193,6 +193,9 @@ envs = MicroRTSVecEnv(
 envs = MicroRTSStatsRecorder(envs, args.gamma)
 envs = VecMonitor(envs)
 envs = VecPyTorch(envs, device)
+if args.capture_video:
+    envs = VecVideoRecorder(envs, f'videos/{experiment_name}',
+                            record_video_trigger=lambda x: x % 1000000 == 0, video_length=2000)
 assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
