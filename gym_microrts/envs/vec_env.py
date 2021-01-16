@@ -3,6 +3,7 @@ import os
 import json
 import xml.etree.ElementTree as ET
 import numpy as np
+from PIL import Image
 
 import gym
 import gym_microrts
@@ -14,6 +15,10 @@ import jpype.imports
 from jpype.types import JArray
 
 class MicroRTSVecEnv:
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+        'video.frames_per_second' : 150
+    }
     """
     Create a baselines VecEnv environment from a gym3 environment.
 
@@ -134,6 +139,10 @@ class MicroRTSVecEnv:
     def render(self, mode="human"):
         if mode == "human":
             self.vec_client.clients[0].render(False)
+        elif mode == 'rgb_array':
+            bytes_array = np.array(self.vec_client.clients[0].render(True))
+            image = Image.frombytes("RGB", (640, 640), bytes_array)
+            return np.array(image)
     #     # gym3 does not have a generic render method but the convention
     #     # is for the info dict to contain an "rgb" entry which could contain
     #     # human or agent observations
