@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # Algorithm specific arguments
     parser.add_argument('--n-minibatch', type=int, default=4,
                         help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=16,
+    parser.add_argument('--num-envs', type=int, default=64,
                         help='the number of parallel game environment')
     parser.add_argument('--num-steps', type=int, default=512,
                         help='the number of steps per game environment')
@@ -141,39 +141,6 @@ class VecPyTorch(VecEnvWrapper):
         obs = torch.from_numpy(obs).float().to(self.device)
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
-
-class VecMonitor(VecEnvWrapper):
-    def __init__(self, venv):
-        VecEnvWrapper.__init__(self, venv)
-        self.eprets = None
-        self.eplens = None
-        self.epcount = 0
-        self.tstart = time.time()
-
-    def reset(self):
-        obs = self.venv.reset()
-        self.eprets = np.zeros(self.num_envs, 'f')
-        self.eplens = np.zeros(self.num_envs, 'i')
-        return obs
-
-    def step_wait(self):
-        obs, rews, dones, infos = self.venv.step_wait()
-        self.eprets += rews
-        self.eplens += 1
-
-        newinfos = list(infos[:])
-        for i in range(len(dones)):
-            if dones[i]:
-                info = infos[i].copy()
-                ret = self.eprets[i]
-                eplen = self.eplens[i]
-                epinfo = {'r': ret, 'l': eplen, 't': round(time.time() - self.tstart, 6)}
-                info['episode'] = epinfo
-                self.epcount += 1
-                self.eprets[i] = 0
-                self.eplens[i] = 0
-                newinfos[i] = info
-        return obs, rews, dones, newinfos
 
 class MicroRTSStatsRecorder(VecEnvWrapper):
     def __init__(self, env, gamma):
@@ -486,6 +453,7 @@ for update in range(starting_update, num_updates+1):
     writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
+    writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
     print("SPS:", int(global_step / (time.time() - start_time)))
 
 envs.close()
