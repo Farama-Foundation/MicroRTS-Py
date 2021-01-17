@@ -27,13 +27,15 @@ class MicroRTSVecEnv:
 
     def __init__(self,
         num_envs=2,
+        max_steps=20000,
         render_theme=2,
-        frame_skip=0, 
+        frame_skip=0,
         ai2=microrts_ai.passiveAI,
         map_path="maps/10x10/basesTwoWorkers10x10.xml",
-        reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0, 0.0])):
+        reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0])):
 
         self.num_envs = num_envs
+        self.max_steps = max_steps
         self.render_theme = render_theme
         self.frame_skip = frame_skip
         self.ai2 = ai2
@@ -67,7 +69,15 @@ class MicroRTSVecEnv:
             ProduceCombatUnitRewardFunction(),
             # CloserToEnemyBaseRewardFunction(),
         ])
-        self.vec_client = JNIVecClient(self.num_envs, self.rfs, os.path.expanduser(self.microrts_path), self.map_path, self.ai2(self.real_utt), self.real_utt)
+        self.vec_client = JNIVecClient(
+            self.num_envs,
+            self.max_steps,
+            self.rfs,
+            os.path.expanduser(self.microrts_path),
+            self.map_path,
+            self.ai2(self.real_utt),
+            self.real_utt
+        )
 
         # get the unit type table
         self.utt = json.loads(str(self.vec_client.clients[0].sendUTT()))
@@ -135,7 +145,6 @@ class MicroRTSVecEnv:
         else:
             return None
 
-
     def render(self, mode="human"):
         if mode == "human":
             self.vec_client.clients[0].render(False)
@@ -143,12 +152,6 @@ class MicroRTSVecEnv:
             bytes_array = np.array(self.vec_client.clients[0].render(True))
             image = Image.frombytes("RGB", (640, 640), bytes_array)
             return np.array(image)
-    #     # gym3 does not have a generic render method but the convention
-    #     # is for the info dict to contain an "rgb" entry which could contain
-    #     # human or agent observations
-    #     info = self.env.get_info()[0]
-    #     if mode == "rgb_array" and "rgb" in info:
-    #         return info["rgb"]
 
-    # def close(self):
-    #     pass
+    def close(self):
+        pass
