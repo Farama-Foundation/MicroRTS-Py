@@ -20,7 +20,7 @@ cd gym_microrts/microrts && bash build.sh && cd ..&& cd ..
 
 RUN pip install wandb==0.9.5
 
-WORKDIR /workspace/gym-microrts/experiments
+WORKDIR /workspace/gym-microrts
 
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod 777 /usr/local/bin/entrypoint.sh
