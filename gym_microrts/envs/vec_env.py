@@ -30,15 +30,16 @@ class MicroRTSVecEnv:
         max_steps=20000,
         render_theme=2,
         frame_skip=0,
-        ai2=microrts_ai.passiveAI,
+        ai2s=[microrts_ai.passiveAI, microrts_ai.passiveAI],
         map_path="maps/10x10/basesTwoWorkers10x10.xml",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0])):
 
+        assert num_envs == len(ai2s), "for each environment, a microrts ai should be provided"
         self.num_envs = num_envs
         self.max_steps = max_steps
         self.render_theme = render_theme
         self.frame_skip = frame_skip
-        self.ai2 = ai2
+        self.ai2s = ai2s
         self.map_path = map_path
         self.reward_weight = reward_weight
 
@@ -51,14 +52,19 @@ class MicroRTSVecEnv:
         if not jpype._jpype.isStarted():
             registerDomain("ts", alias="tests")
             registerDomain("ai")
-            jpype.addClassPath(os.path.join(self.microrts_path, "microrts.jar"))
-            jpype.addClassPath(os.path.join(self.microrts_path, "Coac.jar"))
+            jars = [
+                "microrts.jar", "Coac.jar", "Droplet.jar", "GRojoA3N.jar",
+                "Izanagi.jar", "MixedBot.jar", "RojoBot.jar", "TiamatBot.jar", "UMSBot.jar"
+            ]
+            for jar in jars:
+                jpype.addClassPath(os.path.join(self.microrts_path, jar))
             jpype.startJVM(convertStrings=False)
 
         # start microrts client
         from rts.units import UnitTypeTable
         self.real_utt = UnitTypeTable()
         from ts import JNIVecClient
+        from ai.core import AI
         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
         self.rfs = JArray(RewardFunctionInterface)([
             WinLossRewardFunction(), 
@@ -69,13 +75,14 @@ class MicroRTSVecEnv:
             ProduceCombatUnitRewardFunction(),
             # CloserToEnemyBaseRewardFunction(),
         ])
+
         self.vec_client = JNIVecClient(
             self.num_envs,
             self.max_steps,
             self.rfs,
             os.path.expanduser(self.microrts_path),
             self.map_path,
-            self.ai2(self.real_utt),
+            JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
             self.real_utt
         )
 
