@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # Algorithm specific arguments
     parser.add_argument('--n-minibatch', type=int, default=4,
                         help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=64,
+    parser.add_argument('--num-envs', type=int, default=24,
                         help='the number of parallel game environment')
     parser.add_argument('--num-steps', type=int, default=512,
                         help='the number of steps per game environment')
@@ -187,7 +187,10 @@ envs = MicroRTSVecEnv(
     num_envs=args.num_envs,
     max_steps=20000,
     render_theme=2,
-    ai2s=[microrts_ai.coacAI for _ in range(args.num_envs-1)] + [microrts_ai.randomBiasedAI for _ in range(1)],
+    ai2s=[microrts_ai.coacAI for _ in range(args.num_envs-6)] + \
+        [microrts_ai.randomBiasedAI for _ in range(2)] + \
+        [microrts_ai.lightRushAI for _ in range(2)] + \
+        [microrts_ai.workerRushAI for _ in range(2)],
     map_path="maps/16x16/basesWorkers16x16.xml",
     reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
 )
