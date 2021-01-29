@@ -54,7 +54,7 @@ class MicroRTSVecEnv:
             registerDomain("ai")
             jars = [
                 "microrts.jar", "Coac.jar", "Droplet.jar", "GRojoA3N.jar",
-                "Izanagi.jar", "MixedBot.jar", "RojoBot.jar", "TiamatBot.jar", "UMSBot.jar"
+                "Izanagi.jar", "MixedBot.jar", "RojoBot.jar", "TiamatBot.jar", "UMSBot.jar" # "MindSeal.jar"
             ]
             for jar in jars:
                 jpype.addClassPath(os.path.join(self.microrts_path, jar))
@@ -162,3 +162,13 @@ class MicroRTSVecEnv:
 
     def close(self):
         pass
+
+class MicroRTSGridModeVecEnv(MicroRTSVecEnv):
+    def step_wait(self):
+        responses = self.vec_client.gameStep(self.actions, [0 for _ in range(self.num_envs)])
+        raw_obs, reward, done, info = np.array(responses.observation), np.array(responses.reward), np.array(responses.done), [{} for _ in range(self.num_envs)]
+        obs = []
+        for ro in raw_obs:
+            obs += [self._encode_obs(ro)]
+        infos = [{"raw_rewards": item} for item in reward]
+        return np.array(obs), reward @ self.reward_weight, done[:,0], infos
