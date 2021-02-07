@@ -123,26 +123,6 @@ class VecMonitor(VecEnvWrapper):
                 newinfos[i] = info
         return obs, rews, dones, newinfos
 
-class VecPyTorch(VecEnvWrapper):
-    def __init__(self, venv, device):
-        super(VecPyTorch, self).__init__(venv)
-        self.device = device
-
-    def reset(self):
-        obs = self.venv.reset()
-        obs = torch.from_numpy(obs).float().to(self.device)
-        return obs
-
-    def step_async(self, actions):
-        actions = actions.cpu().numpy()
-        self.venv.step_async(actions)
-
-    def step_wait(self):
-        obs, reward, done, info = self.venv.step_wait()
-        obs = torch.from_numpy(obs).float().to(self.device)
-        reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
-        return obs, reward, done, info
-
 class MicroRTSStatsRecorder(VecEnvWrapper):
     def __init__(self, env, gamma):
         super().__init__(env)
@@ -194,7 +174,6 @@ envs = MicroRTSGridModeVecEnv(
 )
 envs = MicroRTSStatsRecorder(envs, args.gamma)
 envs = VecMonitor(envs)
-envs = VecPyTorch(envs, device)
 if args.capture_video:
     envs = VecVideoRecorder(envs, f'videos/{experiment_name}',
                             record_video_trigger=lambda x: x % 1000000 == 0, video_length=2000)
@@ -305,12 +284,13 @@ global_step = 0
 start_time = time.time()
 # Note how `next_obs` and `next_done` are used; their usage is equivalent to
 # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
-next_obs = envs.reset()
+next_obs = torch.Tensor(envs.reset()).to(device)
 next_done = torch.zeros(args.num_envs).to(device)
 num_updates = args.total_timesteps // args.batch_size
 
 ## CRASH AND RESUME LOGIC:
 starting_update = 1
+from jpype.types import JArray, JInt
 if args.prod_mode and wandb.run.resumed:
     print("previous run.summary", run.summary)
     starting_update = run.summary['charts/update'] + 1
@@ -352,8 +332,30 @@ for update in range(starting_update, num_updates+1):
             torch.stack(
                 [torch.arange(0, mapsize, device=device) for i in range(envs.num_envs)
         ]).unsqueeze(2), action], 2)
-        next_obs, rs, ds, infos = envs.step(real_action)
-        rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
+        
+        # at this point, the `real_action` has shape (num_envs, map_height*map_width, 8)
+        # so as to predict an action for each cell in the map; this obviously include a 
+        # lot of invalid actions at cells for which no source units exist, so the rest of 
+        # the code removes these invalid actions to speed things up
+        real_action = real_action.cpu().numpy()
+        valid_actions = real_action[invalid_action_masks[step][:,:,0].bool().cpu().numpy()]
+        valid_actions_counts = invalid_action_masks[step][:,:,0].sum(1).long().cpu().numpy()
+        java_valid_actions = []
+        valid_action_idx = 0
+        for env_idx, valid_action_count in enumerate(valid_actions_counts):
+            java_valid_action = []
+            for c in range(valid_action_count):
+                java_valid_action += [JArray(JInt)(valid_actions[valid_action_idx])]
+                valid_action_idx += 1
+            java_valid_actions += [JArray(JArray(JInt))(java_valid_action)]
+        java_valid_actions = JArray(JArray(JArray(JInt)))(java_valid_actions)
+        
+        try:
+            next_obs, rs, ds, infos = envs.step(java_valid_actions)
+            next_obs = torch.Tensor(next_obs).to(device)
+        except Exception as e:
+            e.printStackTrace()
+        rewards[step], next_done = torch.Tensor(rs).to(device), torch.Tensor(ds).to(device)
 
         for info in infos:
             if 'episode' in info.keys():
