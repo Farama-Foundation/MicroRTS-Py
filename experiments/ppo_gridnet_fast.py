@@ -186,13 +186,13 @@ assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action 
 
 # ALGO LOGIC: initialize agent here:
 class CategoricalMasked(Categorical):
-    def __init__(self, probs=None, logits=None, validate_args=None, masks=[]):
+    def __init__(self, probs=None, logits=None, validate_args=None, masks=[], sw=None):
         self.masks = masks
         if len(self.masks) == 0:
             super(CategoricalMasked, self).__init__(probs, logits, validate_args)
         else:
-            self.masks = masks.type(torch.BoolTensor).to(device)
-            logits = torch.where(self.masks, logits, torch.tensor(-1e+8).to(device))
+            self.masks = masks.bool()
+            logits = torch.where(self.masks, logits, torch.tensor(-1e+8, device=device))
             super(CategoricalMasked, self).__init__(probs, logits, validate_args)
     
     def entropy(self):
@@ -210,12 +210,46 @@ class Scale(nn.Module):
     def forward(self, x):
         return x * self.scale
 
+class Transpose(nn.Module):
+    def __init__(self, permutation):
+        super().__init__()
+        self.permutation = permutation
+
+    def forward(self, x):
+        return x.permute(self.permutation)
+
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
 class Agent(nn.Module):
+    # def __init__(self):
+    #     super(Agent, self).__init__()
+    #     self.encoder = nn.Sequential(
+    #         Transpose((0, 3, 1, 2)),  # "bhwc" -> "bchw"
+    #         layer_init(nn.Conv2d(27, 16, kernel_size=3, stride=2)),
+    #         nn.ReLU(),
+    #         layer_init(nn.Conv2d(16, 32, kernel_size=2)),
+    #         nn.ReLU(),)
+        
+    #     # decoder
+    #     self.actor = nn.Sequential(
+    #         layer_init(nn.ConvTranspose2d(32, 16, kernel_size=2)),
+    #         nn.ReLU(),
+    #         layer_init(nn.ConvTranspose2d(16, envs.action_space.nvec[1:].sum(), kernel_size=4, stride=2)),
+    #         Transpose((0, 2, 3, 1)),  # "bchw" -> "bhwc"
+    #         nn.Flatten(),)
+
+    #     self.critic = nn.Sequential(
+    #         nn.Flatten(),
+    #         layer_init(nn.Linear(32*6*6, 256)),
+    #         nn.ReLU(),
+    #         layer_init(nn.Linear(256, 1), std=1))
+
+    # def forward(self, x):
+    #     return self.encoder(x)
+
     def __init__(self, mapsize=16*16):
         super(Agent, self).__init__()
         self.mapsize = mapsize
@@ -239,7 +273,7 @@ class Agent(nn.Module):
         split_logits = torch.split(grid_logits, envs.action_space.nvec[1:].tolist(), dim=1)
         
         if action is None:
-            invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0)))
+            invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
             invalid_action_masks = invalid_action_masks.view(-1,invalid_action_masks.shape[-1])
             split_invalid_action_masks = torch.split(invalid_action_masks[:,1:], envs.action_space.nvec[1:].tolist(), dim=1)
             multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
@@ -319,8 +353,6 @@ for update in range(starting_update, num_updates+1):
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
             values[step] = agent.get_value(obs[step]).flatten()
-            # raise
-            # action, logproba, _, invalid_action_masks[step] = agent.get_action(obs[step], envs=envs)
             action, logproba, _, invalid_action_masks[step] = agent.get_action(obs[step], envs=envs)
 
         actions[step] = action
@@ -355,6 +387,7 @@ for update in range(starting_update, num_updates+1):
             next_obs = torch.Tensor(next_obs).to(device)
         except Exception as e:
             e.printStackTrace()
+            raise
         rewards[step], next_done = torch.Tensor(rs).to(device), torch.Tensor(ds).to(device)
 
         for info in infos:
@@ -403,11 +436,9 @@ for update in range(starting_update, num_updates+1):
     b_invalid_action_masks = invalid_action_masks.reshape((-1,)+invalid_action_shape)
 
     # Optimizaing the policy and value network
-    target_agent = Agent().to(device)
     inds = np.arange(args.batch_size,)
     for i_epoch_pi in range(args.update_epochs):
         np.random.shuffle(inds)
-        target_agent.load_state_dict(agent.state_dict())
         for start in range(0, args.batch_size, args.minibatch_size):
             end = start + args.minibatch_size
             minibatch_ind = inds[start:end]
@@ -448,18 +479,6 @@ for update in range(starting_update, num_updates+1):
             loss.backward()
             nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
             optimizer.step()
-
-        if args.kle_stop:
-            if approx_kl > args.target_kl:
-                break
-        if args.kle_rollback:
-            if (b_logprobs[minibatch_ind] - agent.get_action(
-                    b_obs[minibatch_ind],
-                    b_actions.long()[minibatch_ind].T,
-                    b_invalid_action_masks[minibatch_ind],
-                    envs)[1]).mean() > args.target_kl:
-                agent.load_state_dict(target_agent.state_dict())
-                break
 
     ## CRASH AND RESUME LOGIC:
     if args.prod_mode:
