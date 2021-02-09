@@ -164,6 +164,31 @@ class MicroRTSVecEnv:
         pass
 
 class MicroRTSGridModeVecEnv(MicroRTSVecEnv):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        from ts import JNIGridnetVecClient
+        from ai.core import AI
+        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
+        self.rfs = JArray(RewardFunctionInterface)([
+            WinLossRewardFunction(), 
+            ResourceGatherRewardFunction(),  
+            ProduceWorkerRewardFunction(),
+            ProduceBuildingRewardFunction(),
+            AttackRewardFunction(),
+            ProduceCombatUnitRewardFunction(),
+            # CloserToEnemyBaseRewardFunction(),
+        ])        
+        self.vec_client = JNIGridnetVecClient(
+            self.num_envs,
+            self.max_steps,
+            self.rfs,
+            os.path.expanduser(self.microrts_path),
+            self.map_path,
+            JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
+            self.real_utt
+        )
+
     def step_wait(self):
         responses = self.vec_client.gameStep(self.actions, [0 for _ in range(self.num_envs)])
         raw_obs, reward, done, info = np.array(responses.observation), np.array(responses.reward), np.array(responses.done), [{} for _ in range(self.num_envs)]
