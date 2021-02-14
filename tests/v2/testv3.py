@@ -5,7 +5,7 @@ from gym.envs.registration import register
 from gym_microrts import Config
 
 try:
-    env = gym.make('MicrortsMining-v2').env
+    env = gym.make('MicrortsDefeatCoacAIShaped-v3').env
     env = gym.wrappers.RecordEpisodeStatistics(env)
     env.action_space.seed(0)
     obs = env.reset()
@@ -16,12 +16,12 @@ except Exception as e:
 print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
 
 
-# print("reward is", env.step([2, 1, 3, 0, 0, 0, 0, 0, 0])[1])
-# env.render()
-# print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
-# print("reward is", env.step([11, 1, 3, 0, 0, 0, 0, 0, 0])[1])
-# env.render()
-# print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
+print("reward is", env.step([ 17,   2 ,  0 ,  3 ,  0 ,  1 ,  2, 123])[1])
+env.render()
+print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
+print("reward is", env.step([ 34  , 4 ,  1   ,2  , 1 ,  2  , 3 ,109])[1])
+env.render()
+print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
 # print("reward is", env.step([12, 0, 0, 0, 0, 0, 0, 0, 0])[1])
 # env.render()
 # print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
