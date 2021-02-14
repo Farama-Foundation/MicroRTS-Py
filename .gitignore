@@ -4,7 +4,7 @@ openaigym.*
 *.pt
 *.pth
 experiments/mask/*
-
+benchmark/scripts/*
 **/wandb/*
 
 # Byte-compiled / optimized / DLL files
