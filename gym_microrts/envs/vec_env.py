@@ -63,8 +63,6 @@ class MicroRTSVecEnv:
         # start microrts client
         from rts.units import UnitTypeTable
         self.real_utt = UnitTypeTable()
-        from ts import JNIVecClient
-        from ai.core import AI
         from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
         self.rfs = JArray(RewardFunctionInterface)([
             WinLossRewardFunction(), 
@@ -75,20 +73,8 @@ class MicroRTSVecEnv:
             ProduceCombatUnitRewardFunction(),
             # CloserToEnemyBaseRewardFunction(),
         ])
+        self.start_client()
 
-        self.vec_client = JNIVecClient(
-            self.num_envs,
-            self.max_steps,
-            self.rfs,
-            os.path.expanduser(self.microrts_path),
-            self.map_path,
-            JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
-            self.real_utt
-        )
-
-        # get the unit type table
-        self.utt = json.loads(str(self.vec_client.clients[0].sendUTT()))
-        
         # computed properties
         # [num_planes_hp(5), num_planes_resources(5), num_planes_player(5), 
         # num_planes_unit_type(z), num_planes_unit_action(6)]
@@ -102,9 +88,23 @@ class MicroRTSVecEnv:
             self.height * self.width,
             6, 4, 4, 4, 4,
             len(self.utt['unitTypes']),
-            self.height * self.width
+            7 * 7
         ])
 
+    def start_client(self):
+        from ts import JNIVecClient
+        from ai.core import AI
+        self.vec_client = JNIVecClient(
+            self.num_envs,
+            self.max_steps,
+            self.rfs,
+            os.path.expanduser(self.microrts_path),
+            self.map_path,
+            JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
+            self.real_utt
+        )
+        # get the unit type table
+        self.utt = json.loads(str(self.vec_client.clients[0].sendUTT()))
 
     def reset(self):
         responses = self.vec_client.reset([0 for _ in range(self.num_envs)])
@@ -165,21 +165,16 @@ class MicroRTSVecEnv:
 
 class MicroRTSGridModeVecEnv(MicroRTSVecEnv):
 
-    def __init__(self, **kwargs):
+    def __init__(self, num_selfplay_envs=0, **kwargs):
+        self.num_selfplay_envs = num_selfplay_envs
         super().__init__(**kwargs)
+        self.num_envs += self.num_selfplay_envs
+
+    def start_client(self):
         from ts import JNIGridnetVecClient
         from ai.core import AI
-        from ai.rewardfunction import RewardFunctionInterface, WinLossRewardFunction, ResourceGatherRewardFunction, AttackRewardFunction, ProduceWorkerRewardFunction, ProduceBuildingRewardFunction, ProduceCombatUnitRewardFunction, CloserToEnemyBaseRewardFunction
-        self.rfs = JArray(RewardFunctionInterface)([
-            WinLossRewardFunction(), 
-            ResourceGatherRewardFunction(),  
-            ProduceWorkerRewardFunction(),
-            ProduceBuildingRewardFunction(),
-            AttackRewardFunction(),
-            ProduceCombatUnitRewardFunction(),
-            # CloserToEnemyBaseRewardFunction(),
-        ])        
         self.vec_client = JNIGridnetVecClient(
+            self.num_selfplay_envs,
             self.num_envs,
             self.max_steps,
             self.rfs,
@@ -188,12 +183,23 @@ class MicroRTSGridModeVecEnv(MicroRTSVecEnv):
             JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
             self.real_utt
         )
+        self.render_client = self.vec_client.selfPlayClients[0] if len(self.vec_client.selfPlayClients) > 0 else self.vec_client.clients[0]
+        # get the unit type table
+        self.utt = json.loads(str(self.render_client.sendUTT()))
 
     def step_wait(self):
         responses = self.vec_client.gameStep(self.actions, [0 for _ in range(self.num_envs)])
-        raw_obs, reward, done, info = np.array(responses.observation), np.array(responses.reward), np.array(responses.done), [{} for _ in range(self.num_envs)]
+        raw_obs, reward, done, info = np.array(responses.observation), np.array(responses.reward), np.array(responses.done), [{} for _ in range(self.num_selfplay_envs+self.num_envs)]
         obs = []
         for ro in raw_obs:
             obs += [self._encode_obs(ro)]
         infos = [{"raw_rewards": item} for item in reward]
         return np.array(obs), reward @ self.reward_weight, done[:,0], infos
+
+    def render(self, mode="human"):
+        if mode == "human":
+            self.render_client.render(False)
+        elif mode == 'rgb_array':
+            bytes_array = np.array(self.render_client.render(True))
+            image = Image.frombytes("RGB", (640, 640), bytes_array)
+            return np.array(image)

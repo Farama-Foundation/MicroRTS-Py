@@ -38,7 +38,7 @@ if __name__ == "__main__":
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
-    parser.add_argument('--cuda', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--cuda', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, cuda will not be enabled by default')
     parser.add_argument('--prod-mode', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='run the script in production mode and use wandb to log outputs')
@@ -166,11 +166,13 @@ random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
+num_selfplay_envs = 16
 envs = MicroRTSGridModeVecEnv(
-    num_envs=args.num_envs,
+    num_selfplay_envs=num_selfplay_envs,
+    num_envs=args.num_envs-num_selfplay_envs,
     max_steps=2000,
     render_theme=2,
-    ai2s=[microrts_ai.passiveAI for _ in range(args.num_envs)],
+    ai2s=[microrts_ai.coacAI for _ in range(args.num_envs-num_selfplay_envs)],
     map_path="maps/16x16/basesWorkers16x16.xml",
     reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
 )
@@ -249,24 +251,31 @@ class Agent(nn.Module):
         super(Agent, self).__init__()
         self.encoder = nn.Sequential(
             Transpose((0, 3, 1, 2)),  # "bhwc" -> "bchw"
-            layer_init(nn.Conv2d(27, 16, kernel_size=3, stride=2)),
+            layer_init(nn.Conv2d(27, 16, kernel_size=3, padding=1)),
             nn.ReLU(),
-            layer_init(nn.Conv2d(16, 32, kernel_size=2)),
+            layer_init(nn.Conv2d(16, 32, kernel_size=3, padding=1)),
             nn.ReLU(),)
         
         # decoder
         self.actor = nn.Sequential(
-            layer_init(nn.ConvTranspose2d(32, 16, kernel_size=2)),
-            nn.ReLU(),
-            layer_init(nn.ConvTranspose2d(16, envs.action_space.nvec[1:].sum(), kernel_size=4, stride=2)),
+            layer_init(nn.Conv2d(32, envs.action_space.nvec[1:].sum(), kernel_size=1)),
             Transpose((0, 2, 3, 1)),  # "bchw" -> "bhwc"
             nn.Flatten(),)
+        
+        # self.actor = nn.Sequential(
+        #     layer_init(nn.ConvTranspose2d(32, 16, kernel_size=3, padding=1)),
+        #     nn.ReLU(),
+        #     layer_init(nn.ConvTranspose2d(16, envs.action_space.nvec[1:].sum(), kernel_size=3, padding=1)),
+        #     Transpose((0, 2, 3, 1)),  # "bchw" -> "bhwc"
+        #     nn.Flatten(),)
 
         self.critic = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(32*6*6, 256)),
+            layer_init(nn.Linear(32*16*16, 256)),
             nn.ReLU(),
             layer_init(nn.Linear(256, 1), std=1))
+        
+
 
     def forward(self, x):
         return self.encoder(x)
@@ -296,7 +305,7 @@ class Agent(nn.Module):
             with sw.timer('split'):
                 split_invalid_action_masks = torch.split(invalid_action_masks[:,1:], envs.action_space.nvec[1:].tolist(), dim=1)
             with sw.timer('multi_categoricals'):
-                multi_categoricals = [Categorical(logits=logits) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
+                multi_categoricals = [CategoricalMasked(logits=logits, masks=iam, sw=sw) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
         with sw.timer('calculate'):
             logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
             entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
@@ -304,7 +313,7 @@ class Agent(nn.Module):
             logprob = logprob.T.view(-1, 256, num_predicted_parameters)
             entropy = entropy.T.view(-1, 256, num_predicted_parameters)
             action = action.T.view(-1, 256, num_predicted_parameters)
-            invalid_action_masks = invalid_action_masks.view(-1, 256, 286)
+            invalid_action_masks = invalid_action_masks.view(-1, 256, envs.action_space.nvec[1:].sum()+1)
             logprobsum = logprob.sum(1).sum(1)
             entropysum = entropy.sum(1).sum(1)
         return action, logprobsum, entropysum, invalid_action_masks
@@ -414,12 +423,13 @@ for update in range(starting_update, num_updates+1):
                         raise
                 rewards[step], next_done = torch.Tensor(rs).to(device), torch.Tensor(ds).to(device)
         
-                for info in infos:
+                for idx, info in enumerate(infos):
                     if 'episode' in info.keys():
-                        print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+                        print(idx, f"global_step={global_step}, episode_reward={info['episode']['r']}")
                         writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
                         for key in info['microrts_stats']:
                             writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
+                            print(f"charts/episode_reward/{key}", info['microrts_stats'][key])
                         break
         with sw.timer('train'):
             with sw.timer('advantage'):

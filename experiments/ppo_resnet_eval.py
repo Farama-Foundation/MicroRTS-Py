@@ -20,6 +20,9 @@ import random
 import os
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
 
+import matplotlib.pyplot as plt
+import pandas as pd
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
@@ -31,7 +34,7 @@ if __name__ == "__main__":
                         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=2,
                         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=100000000,
+    parser.add_argument('--total-timesteps', type=int, default=1000000,
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -51,16 +54,12 @@ if __name__ == "__main__":
                         help='the number of parallel game environment')
     parser.add_argument('--num-steps', type=int, default=256,
                         help='the number of steps per game environment')
-    parser.add_argument('--agent-model-path', type=str, default="agent012.pt",
+    parser.add_argument('--agent-model-path', type=str, default="agent010.pt",
                         help="the path to the agent's model")
     
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
-
-# args.batch_size = int(args.num_envs * args.num_steps)
-# args.minibatch_size = int(args.batch_size // args.n_minibatch)
-
 
 class VecMonitor(VecEnvWrapper):
     def __init__(self, venv):
@@ -156,17 +155,36 @@ np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 
+
+
+all_ais = {
+    "randomBiasedAI": microrts_ai.randomBiasedAI,
+    "randomAI": microrts_ai.randomAI,
+    "passiveAI": microrts_ai.passiveAI,
+    "workerRushAI": microrts_ai.workerRushAI,
+    "lightRushAI": microrts_ai.lightRushAI,
+    "coacAI": microrts_ai.coacAI,
+    "naiveMCTSAI": microrts_ai.naiveMCTSAI,
+    "mixedBot": microrts_ai.mixedBot,
+    "rojo": microrts_ai.rojo,
+    "izanagi": microrts_ai.izanagi,
+    "tiamat": microrts_ai.tiamat,
+    "droplet": microrts_ai.droplet,
+    "guidedRojoA3N": microrts_ai.guidedRojoA3N
+}
+ai_names, ais = list(all_ais.keys()) ,list(all_ais.values())
+ai_match_stats = dict(zip(ai_names, np.zeros((len(ais), 3))))
+args.num_envs = len(ais)
 envs = MicroRTSVecEnv(
-    num_envs=args.num_envs,
+    num_envs=len(ais),
     render_theme=2,
-    ai2s=[microrts_ai.droplet for _ in range(args.num_envs)],
+    ai2s=ais,
     map_path="maps/16x16/basesWorkers16x16A.xml",
     reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
 )
 envs = MicroRTSStatsRecorder(envs)
 envs = VecMonitor(envs)
 envs = VecPyTorch(envs, device)
-assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 # if args.prod_mode:
 #     envs = VecPyTorch(
 #         SubprocVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
@@ -205,19 +223,81 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv0 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
+
+    def forward(self, x):
+        inputs = x
+        x = nn.functional.relu(x)
+        x = self.conv0(x)
+        x = nn.functional.relu(x)
+        x = self.conv1(x)
+        return x + inputs
+
+class ConvSequence(nn.Module):
+    def __init__(self, input_shape, out_channels):
+        super().__init__()
+        self._input_shape = input_shape
+        self._out_channels = out_channels
+        self.conv = nn.Conv2d(in_channels=self._input_shape[0], out_channels=self._out_channels, kernel_size=3,
+                              padding=1)
+        self.res_block0 = ResidualBlock(self._out_channels)
+        self.res_block1 = ResidualBlock(self._out_channels)
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = nn.functional.max_pool2d(x, kernel_size=3, stride=2, padding=1)
+        x = self.res_block0(x)
+        x = self.res_block1(x)
+        assert x.shape[1:] == self.get_output_shape()
+        return x
+
+    def get_output_shape(self):
+        _c, h, w = self._input_shape
+        return (self._out_channels, (h + 1) // 2, (w + 1) // 2)
+
+
+class ImpalaCNN(nn.Module):
+    def __init__(self):
+        super(ImpalaCNN, self).__init__()
+        h, w, c = 16, 16, 27
+        shape = (c, h, w)
+
+        conv_seqs = []
+        for out_channels in [16, 32, 32]:
+            conv_seq = ConvSequence(shape, out_channels)
+            shape = conv_seq.get_output_shape()
+            conv_seqs.append(conv_seq)
+        self.conv_seqs = nn.ModuleList(conv_seqs)
+        self.hidden_fc = nn.Linear(in_features=shape[0] * shape[1] * shape[2], out_features=256)
+        self.output_dim = 256
+        #self.logits_fc = nn.Linear(in_features=256, out_features=num_outputs)
+        #self.value_fc = nn.Linear(in_features=256, out_features=1)
+
+    def forward(self, input):
+        x = input.float()
+        #x = x / 255.0  # scale to 0-1
+        #x = x.permute(0, 3, 1, 2)  # NHWC => NCHW
+        for conv_seq in self.conv_seqs:
+            x = conv_seq(x)
+        x = torch.flatten(x, start_dim=1)
+        x = nn.functional.relu(x)
+        x = self.hidden_fc(x)
+        x = nn.functional.relu(x)
+        #logits = self.logits_fc(x)
+        #value = self.value_fc(x)
+        #@self._value = value.squeeze(1)
+        return x
+
 class Agent(nn.Module):
     def __init__(self, frames=4):
         super(Agent, self).__init__()
-        self.network = nn.Sequential(
-            layer_init(nn.Conv2d(27, 16, kernel_size=3, stride=2)),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(16, 32, kernel_size=2)),
-            nn.ReLU(),
-            nn.Flatten(),
-            layer_init(nn.Linear(32*6*6, 256)),
-            nn.ReLU(),)
-        self.actor = layer_init(nn.Linear(256, envs.action_space.nvec.sum()), std=0.01)
-        self.critic = layer_init(nn.Linear(256, 1), std=1)
+        self.network = ImpalaCNN()
+        self.actor = layer_init(nn.Linear(self.network.output_dim, envs.action_space.nvec.sum()), std=0.01)
+        self.critic = layer_init(nn.Linear(self.network.output_dim, 1), std=1)
 
     def forward(self, x):
         return self.network(x.permute((0, 3, 1, 2)))
@@ -225,7 +305,7 @@ class Agent(nn.Module):
     def get_action(self, x, action=None, invalid_action_masks=None, envs=None):
         logits = self.actor(self.forward(x))
         split_logits = torch.split(logits, envs.action_space.nvec.tolist(), dim=1)
-        
+
         if action is None:
             # 1. select source unit based on source unit mask
             source_unit_mask = torch.Tensor(np.array(envs.vec_client.getUnitLocationMasks()).reshape(args.num_envs, -1))
@@ -235,22 +315,24 @@ class Agent(nn.Module):
             #    source-unit mask of action type and parameters
             # print(np.array(envs.vec_client.getUnitActionMasks(action_components[0].cpu().numpy())).reshape(args.num_envs, -1))
             source_unit_action_mask = torch.Tensor(
-                np.array(envs.vec_client.getUnitActionMasks(action_components[0].cpu().numpy())).reshape(args.num_envs, -1))
+                np.array(envs.vec_client.getUnitActionMasks(action_components[0].cpu().numpy())).reshape(args.num_envs,
+                                                                                                         -1))
             split_suam = torch.split(source_unit_action_mask, envs.action_space.nvec.tolist()[1:], dim=1)
-            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits[1:], split_suam)]
+            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in
+                                                       zip(split_logits[1:], split_suam)]
             invalid_action_masks = torch.cat((source_unit_mask, source_unit_action_mask), 1)
             action_components += [categorical.sample() for categorical in multi_categoricals[1:]]
             action = torch.stack(action_components)
         else:
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_space.nvec.tolist(), dim=1)
-            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
+            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in
+                                  zip(split_logits, split_invalid_action_masks)]
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
         return action, logprob.sum(0), entropy.sum(0), invalid_action_masks
 
     def get_value(self, x):
         return self.critic(self.forward(x))
-
 agent = Agent().to(device)
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
@@ -329,5 +411,17 @@ for i, var_name in enumerate(ai_names):
 fig.suptitle(args.agent_model_path)
 fig.tight_layout()
 
-envs.close()
-writer.close()
+# def draw_histograms(df, variables, n_rows, n_cols):
+#     fig=plt.figure()
+#     for i, var_name in enumerate(variables):
+#         ax=fig.add_subplot(n_rows,n_cols,i+1)
+#         df[var_name].hist(bins=10,ax=ax)
+#         ax.set_title(var_name+" Distribution")
+#     fig.tight_layout()  # Improves appearance a bit.
+#     plt.show()
+
+# test = pd.DataFrame(np.random.randn(30, 9), columns=map(str, range(9)))
+# draw_histograms(test, test.columns, 3, 3)
+
+# envs.close()
+# writer.close()

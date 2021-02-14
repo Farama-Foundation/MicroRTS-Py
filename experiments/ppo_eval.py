@@ -20,6 +20,9 @@ import random
 import os
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
 
+import matplotlib.pyplot as plt
+import pandas as pd
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
@@ -31,7 +34,7 @@ if __name__ == "__main__":
                         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=2,
                         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=100000000,
+    parser.add_argument('--total-timesteps', type=int, default=1000000,
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -57,10 +60,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
-
-# args.batch_size = int(args.num_envs * args.num_steps)
-# args.minibatch_size = int(args.batch_size // args.n_minibatch)
-
 
 class VecMonitor(VecEnvWrapper):
     def __init__(self, venv):
@@ -156,17 +155,36 @@ np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 
+
+
+all_ais = {
+    "randomBiasedAI": microrts_ai.randomBiasedAI,
+    "randomAI": microrts_ai.randomAI,
+    "passiveAI": microrts_ai.passiveAI,
+    "workerRushAI": microrts_ai.workerRushAI,
+    "lightRushAI": microrts_ai.lightRushAI,
+    "coacAI": microrts_ai.coacAI,
+    "naiveMCTSAI": microrts_ai.naiveMCTSAI,
+    "mixedBot": microrts_ai.mixedBot,
+    "rojo": microrts_ai.rojo,
+    "izanagi": microrts_ai.izanagi,
+    "tiamat": microrts_ai.tiamat,
+    "droplet": microrts_ai.droplet,
+    "guidedRojoA3N": microrts_ai.guidedRojoA3N
+}
+ai_names, ais = list(all_ais.keys()) ,list(all_ais.values())
+ai_match_stats = dict(zip(ai_names, np.zeros((len(ais), 3))))
+args.num_envs = len(ais)
 envs = MicroRTSVecEnv(
-    num_envs=args.num_envs,
+    num_envs=len(ais),
     render_theme=2,
-    ai2s=[microrts_ai.droplet for _ in range(args.num_envs)],
+    ai2s=ais,
     map_path="maps/16x16/basesWorkers16x16A.xml",
     reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
 )
 envs = MicroRTSStatsRecorder(envs)
 envs = VecMonitor(envs)
 envs = VecPyTorch(envs, device)
-assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 # if args.prod_mode:
 #     envs = VecPyTorch(
 #         SubprocVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
@@ -329,5 +347,17 @@ for i, var_name in enumerate(ai_names):
 fig.suptitle(args.agent_model_path)
 fig.tight_layout()
 
-envs.close()
-writer.close()
+# def draw_histograms(df, variables, n_rows, n_cols):
+#     fig=plt.figure()
+#     for i, var_name in enumerate(variables):
+#         ax=fig.add_subplot(n_rows,n_cols,i+1)
+#         df[var_name].hist(bins=10,ax=ax)
+#         ax.set_title(var_name+" Distribution")
+#     fig.tight_layout()  # Improves appearance a bit.
+#     plt.show()
+
+# test = pd.DataFrame(np.random.randn(30, 9), columns=map(str, range(9)))
+# draw_histograms(test, test.columns, 3, 3)
+
+# envs.close()
+# writer.close()
