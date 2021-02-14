@@ -165,10 +165,12 @@ class MicroRTSVecEnv:
 
 class MicroRTSGridModeVecEnv(MicroRTSVecEnv):
 
-    def __init__(self, num_selfplay_envs=0, **kwargs):
+    def __init__(self, num_selfplay_envs, num_bot_envs, **kwargs):
         self.num_selfplay_envs = num_selfplay_envs
+        self.num_bot_envs = num_bot_envs
+        kwargs['num_envs'] = num_bot_envs
         super().__init__(**kwargs)
-        self.num_envs += self.num_selfplay_envs
+        self.num_envs = num_selfplay_envs + num_bot_envs
 
     def start_client(self):
         from ts import JNIGridnetVecClient

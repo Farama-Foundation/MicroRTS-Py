@@ -52,8 +52,10 @@ if __name__ == "__main__":
     # Algorithm specific arguments
     parser.add_argument('--n-minibatch', type=int, default=4,
                         help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=16,
-                        help='the number of parallel game environment')
+    parser.add_argument('--num-bot-envs', type=int, default=0,
+                        help='the number of bot game environment; 16 bot envs measn 16 games')
+    parser.add_argument('--num-selfplay-envs', type=int, default=16,
+                        help='the number of self play envs; 16 self play envs means 8 games')
     parser.add_argument('--num-steps', type=int, default=256,
                         help='the number of steps per game environment')
     parser.add_argument('--gamma', type=float, default=0.99,
@@ -89,6 +91,7 @@ if __name__ == "__main__":
     if not args.seed:
         args.seed = int(time.time())
 
+args.num_envs = args.num_selfplay_envs + args.num_bot_envs
 args.batch_size = int(args.num_envs * args.num_steps)
 args.minibatch_size = int(args.batch_size // args.n_minibatch)
 
@@ -168,11 +171,11 @@ torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 num_selfplay_envs = 16
 envs = MicroRTSGridModeVecEnv(
-    num_selfplay_envs=num_selfplay_envs,
-    num_envs=args.num_envs-num_selfplay_envs,
+    num_selfplay_envs=args.num_selfplay_envs,
+    num_bot_envs=args.num_bot_envs,
     max_steps=2000,
     render_theme=2,
-    ai2s=[microrts_ai.coacAI for _ in range(args.num_envs-num_selfplay_envs)],
+    ai2s=[microrts_ai.coacAI for _ in range(args.num_bot_envs)],
     map_path="maps/16x16/basesWorkers16x16.xml",
     reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
 )
