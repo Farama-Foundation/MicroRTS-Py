@@ -56,7 +56,7 @@ if __name__ == "__main__":
                         help='the number of self play envs; 16 self play envs means 8 games')
     parser.add_argument('--num-steps', type=int, default=256,
                         help='the number of steps per game environment')
-    parser.add_argument('--agent-model-path', type=str, default="agent_selfplay.pt",
+    parser.add_argument('--agent-model-path', type=str, default="agent_selfplay1.pt",
                         help="the path to the agent's model")
 
     args = parser.parse_args()
@@ -154,7 +154,8 @@ ai_names, ais = list(all_ais.keys()) ,list(all_ais.values())
 ai_match_stats = dict(zip(ai_names, np.zeros((len(ais), 3))))
 args.num_envs = len(ais)
 envs = MicroRTSGridModeVecEnv(
-    num_envs=len(ais),
+    num_bot_envs=len(ais),
+    num_selfplay_envs=0,
     render_theme=2,
     ai2s=ais,
     map_path="maps/16x16/basesWorkers16x16A.xml",
