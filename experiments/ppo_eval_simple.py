@@ -159,7 +159,7 @@ torch.backends.cudnn.deterministic = args.torch_deterministic
 envs = MicroRTSVecEnv(
     num_envs=args.num_envs,
     render_theme=2,
-    ai2s=[microrts_ai.droplet for _ in range(args.num_envs)],
+    ai2s=[microrts_ai.coacAI for _ in range(args.num_envs)],
     map_path="maps/16x16/basesWorkers16x16A.xml",
     reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
 )
@@ -304,30 +304,12 @@ for update in range(1, num_updates+1):
                 # print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
                 # writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
                 
-                print("against", ai_names[idx], info['microrts_stats']['WinLossRewardFunction'])
-                if info['microrts_stats']['WinLossRewardFunction'] == -1.0:
-                    ai_match_stats[ai_names[idx]][0] += 1
-                elif info['microrts_stats']['WinLossRewardFunction'] == 0.0:
-                    ai_match_stats[ai_names[idx]][1] += 1
-                elif info['microrts_stats']['WinLossRewardFunction'] == 1.0:
-                    ai_match_stats[ai_names[idx]][2] += 1
-                # raise
-                # print(info['microrts_stats']['WinLossRewardFunction'])
-                assert info['microrts_stats']['WinLossRewardFunction'] != -2.0
-                assert info['microrts_stats']['WinLossRewardFunction'] != 2.0
+
+                print(info['microrts_stats']['WinLossRewardFunction'])
                 # for key in info['microrts_stats']:
                 #     writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
                 # print("=============================================")
                 # break
-
-n_rows, n_cols = 3, 5
-fig=plt.figure(figsize=(5*3, 4*3))
-for i, var_name in enumerate(ai_names):
-    ax=fig.add_subplot(n_rows,n_cols,i+1)
-    ax.bar(["loss", "tie", "win"], ai_match_stats[var_name])
-    ax.set_title(var_name)
-fig.suptitle(args.agent_model_path)
-fig.tight_layout()
 
 envs.close()
 writer.close()

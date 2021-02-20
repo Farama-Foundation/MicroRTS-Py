@@ -55,7 +55,7 @@ for i in range(10000):
         env.reset()
 env.close()
 ```
-![demo.gif](static/demo.gif)
+![demo.gif](static/fullgame.gif)
 
 To train an agent against the built-in WorkerRushAI, run the following
 
