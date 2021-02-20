@@ -10,6 +10,9 @@ https://pypi.org/project/gym-microrts/)
 
 This repo contains the source code for the gym wrapper of MicroRTS authored by [Santiago Ontañón](https://github.com/santiontanon/microrts). 
 
+
+![demo.gif](static/fullgame.gif)
+
 ## Get Started
 
 ```bash
@@ -60,7 +63,6 @@ for i in range(10000):
         env.reset()
 env.close()
 ```
-![demo.gif](static/fullgame.gif)
 
 To train an agent against the built-in WorkerRushAI, run the following
 
