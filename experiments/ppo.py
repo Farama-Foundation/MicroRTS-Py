@@ -184,7 +184,7 @@ torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 envs = MicroRTSVecEnv(
     num_envs=args.num_envs,
-    max_steps=20000,
+    max_steps=2000,
     render_theme=2,
     ai2s=[microrts_ai.coacAI for _ in range(args.num_envs)],
     map_path="maps/16x16/basesWorkers16x16.xml",

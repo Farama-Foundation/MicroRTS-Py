@@ -27,7 +27,7 @@ class MicroRTSVecEnv:
 
     def __init__(self,
         num_envs=2,
-        max_steps=20000,
+        max_steps=2000,
         render_theme=2,
         frame_skip=0,
         ai2s=[microrts_ai.passiveAI, microrts_ai.passiveAI],
