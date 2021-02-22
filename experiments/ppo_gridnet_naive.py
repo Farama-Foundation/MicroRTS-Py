@@ -230,29 +230,22 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 class Agent(nn.Module):
-    def __init__(self):
+    def __init__(self, mapsize=16*16):
         super(Agent, self).__init__()
-        self.encoder = nn.Sequential(
-            Transpose((0, 3, 1, 2)),  # "bhwc" -> "bchw"
-            layer_init(nn.Conv2d(27, 16, kernel_size=3, padding=1)),
+        self.mapsize = mapsize
+        self.network = nn.Sequential(
+            layer_init(nn.Conv2d(27, 16, kernel_size=3, stride=2)),
             nn.ReLU(),
-            layer_init(nn.Conv2d(16, 32, kernel_size=3, padding=1)),
-            nn.ReLU(),)
-        
-        # decoder
-        self.actor = nn.Sequential(
-            layer_init(nn.Conv2d(32, envs.action_space.nvec[1:].sum(), kernel_size=1)),
-            Transpose((0, 2, 3, 1)),  # "bchw" -> "bhwc"
-            nn.Flatten(),)
-
-        self.critic = nn.Sequential(
+            layer_init(nn.Conv2d(16, 32, kernel_size=2)),
+            nn.ReLU(),
             nn.Flatten(),
-            layer_init(nn.Linear(32*16*16, 256)),
-            nn.ReLU(),
-            layer_init(nn.Linear(256, 1), std=1))
-        
+            layer_init(nn.Linear(32*6*6, 256)),
+            nn.ReLU(),)
+        self.actor = layer_init(nn.Linear(256, self.mapsize*envs.action_space.nvec[1:].sum()), std=0.01)
+        self.critic = layer_init(nn.Linear(256, 1), std=1)
+
     def forward(self, x):
-        return self.encoder(x)
+        return self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
 
     def get_action(self, x, action=None, invalid_action_masks=None, envs=None):
         logits = self.actor(self.forward(x))
