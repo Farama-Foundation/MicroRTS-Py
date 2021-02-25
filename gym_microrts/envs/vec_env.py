@@ -161,7 +161,9 @@ class MicroRTSVecEnv:
             return np.array(image)
 
     def close(self):
-        pass
+        if jpype._jpype.isStarted():
+            self.vec_client.close()
+            jpype.shutdownJVM()
 
 class MicroRTSGridModeVecEnv(MicroRTSVecEnv):
 
