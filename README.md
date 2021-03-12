@@ -1,6 +1,6 @@
 # Gym-MicroRTS
 
-[<img src="https://img.shields.io/badge/discord-gym%20microrts-green?label=Discord&logo=discord&logoColor=ffffff&labelColor=7289DA&color=2c2f33">](https://discord.gg/5tHykF)
+[<img src="https://img.shields.io/badge/discord-gym%20microrts-green?label=Discord&logo=discord&logoColor=ffffff&labelColor=7289DA&color=2c2f33">](https://discord.gg/DdJsrdry6F)
 [<img src="https://github.com/vwxyzjn/gym-microrts/workflows/build/badge.svg">](
 https://github.com/vwxyzjn/gym-microrts/actions)
 [<img src="https://badge.fury.io/py/gym-microrts.svg">](
