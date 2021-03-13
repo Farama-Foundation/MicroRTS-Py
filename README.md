@@ -141,6 +141,10 @@ $ cd gym_microrts/microrts && bash build.sh && cd ..&& cd ..
 $ python hello_world.py
 ```
 
+## Known issues
+
+[ ] Rendering does not exactly work in macos. See https://github.com/jpype-project/jpype/issues/906
+
 
 ## Papers written using gym-microrts
 
