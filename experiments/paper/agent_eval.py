@@ -27,7 +27,7 @@ import glob
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
-    parser.add_argument('--exp-name', type=str, default="ppo_diverse_impala",
+    parser.add_argument('--exp-name', type=str, default="ppo_gridnet_diverse_encode_decode",
                         help='the name of this experiment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
                         help='the learning rate of the optimizer')
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                         help='the number of steps per game environment')
     parser.add_argument('--num-eval-runs', type=int, default=10,
                         help='the number of bot game environment; 16 bot envs measn 16 games')
-    parser.add_argument('--agent-model-path', type=str, default="agent017.pt",
+    parser.add_argument('--agent-model-path', type=str, default="trained_models/ppo_gridnet_diverse_encode_decode/agent-1.pt",
                         help="the path to the agent's model")
     parser.add_argument('--max-steps', type=int, default=2000,
                         help="the maximum number of game steps in microrts")
@@ -157,8 +157,9 @@ ai_names, ais = list(all_ais.keys()) ,list(all_ais.values())
 ai_match_stats = dict(zip(ai_names, np.zeros((len(ais), 3))))
 args.num_envs = len(ais)
 ai_envs = []
+gridnet_exps = ["ppo_gridnet_diverse_impala" ,"ppo_gridnet_naive" ,"ppo_gridnet_diverse", "ppo_gridnet_diverse_encode_decode"]
 for i in range(len(ais)):
-    if args.exp_name in ["ppo_gridnet_diverse_impala" ,"ppo_gridnet_naive" ,"ppo_gridnet_diverse"]:
+    if args.exp_name in gridnet_exps:
         envs = MicroRTSGridModeVecEnv(
             num_bot_envs=1,
             num_selfplay_envs=0,
@@ -600,6 +601,108 @@ elif args.exp_name == "ppo_diverse":
 
         def get_value(self, x):
             return self.critic(self.forward(x))
+elif args.exp_name == "ppo_gridnet_diverse_encode_decode":
+
+    class Transpose(nn.Module):
+        def __init__(self, permutation):
+            super().__init__()
+            self.permutation = permutation
+    
+        def forward(self, x):
+            return x.permute(self.permutation)
+    class Encoder(nn.Module):
+        def __init__(self, input_channels):
+            super().__init__()
+            self._encoder = nn.Sequential(
+                Transpose((0, 3, 1, 2)),
+                layer_init(nn.Conv2d(input_channels, 32, kernel_size=3, padding=1)),
+                nn.MaxPool2d(3, stride=2, padding=1),
+                nn.ReLU(),
+                layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
+                nn.MaxPool2d(3, stride=2, padding=1),
+                nn.ReLU(),
+                layer_init(nn.Conv2d(64, 128, kernel_size=3, padding=1)),
+                nn.MaxPool2d(3, stride=2, padding=1),
+                nn.ReLU(),
+                layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
+                nn.MaxPool2d(3, stride=2, padding=1),
+            )
+    
+        def forward(self, x):
+            return self._encoder(x)
+    
+    
+    class Decoder(nn.Module):
+        def __init__(self, output_channels):
+            super().__init__()
+    
+            self.deconv = nn.Sequential(
+                layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
+                nn.ReLU(),
+                layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
+                nn.ReLU(),
+                layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
+                nn.ReLU(),
+                layer_init(nn.ConvTranspose2d(32, output_channels, 3, stride=2, padding=1, output_padding=1)),
+                Transpose((0, 2, 3, 1)),
+            )
+    
+        def forward(self, x):
+            return self.deconv(x)
+    
+    
+    class Agent(nn.Module):
+        def __init__(self, mapsize=16 * 16):
+            super(Agent, self).__init__()
+            self.mapsize = mapsize
+            h, w, c = envs.observation_space.shape
+    
+            self.encoder = Encoder(c)
+    
+            self.actor = Decoder(78)
+    
+            self.critic = nn.Sequential(
+                nn.Flatten(),
+                layer_init(nn.Linear(256, 128), std=1),
+                nn.ReLU(),
+                layer_init(nn.Linear(128, 1), std=1),
+            )
+    
+        def forward(self, x):
+            return self.encoder(x)  # "bhwc" -> "bchw"
+    
+        def get_action(self, x, action=None, invalid_action_masks=None, envs=None):
+            logits = self.actor(self.forward(x))
+            grid_logits = logits.reshape(-1, envs.action_space.nvec[1:].sum())
+            split_logits = torch.split(grid_logits, envs.action_space.nvec[1:].tolist(), dim=1)
+    
+            if action is None:
+                invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
+                invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
+                split_invalid_action_masks = torch.split(invalid_action_masks[:, 1:], envs.action_space.nvec[1:].tolist(),
+                                                         dim=1)
+                multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in
+                                      zip(split_logits, split_invalid_action_masks)]
+                action = torch.stack([categorical.sample() for categorical in multi_categoricals])
+            else:
+                invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
+                action = action.view(-1, action.shape[-1]).T
+                split_invalid_action_masks = torch.split(invalid_action_masks[:, 1:], envs.action_space.nvec[1:].tolist(),
+                                                         dim=1)
+                multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in
+                                      zip(split_logits, split_invalid_action_masks)]
+            logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
+            entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
+            num_predicted_parameters = len(envs.action_space.nvec) - 1
+            logprob = logprob.T.view(-1, 256, num_predicted_parameters)
+            entropy = entropy.T.view(-1, 256, num_predicted_parameters)
+            action = action.T.view(-1, 256, num_predicted_parameters)
+            invalid_action_masks = invalid_action_masks.view(-1, 256, envs.action_space.nvec[1:].sum() + 1)
+            return action, logprob.sum(1).sum(1), entropy.sum(1).sum(1), invalid_action_masks
+    
+        def get_value(self, x):
+            return self.critic(self.forward(x))
+    
 else:
     raise Exception("incorrect agent selected")
 
@@ -641,7 +744,7 @@ for envs_idx, envs in enumerate(ai_envs):
             action, logproba, _, invalid_action_mask = agent.get_action(next_obs, envs=envs)
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        if args.exp_name in ["ppo_gridnet_diverse_impala" ,"ppo_gridnet_naive" ,"ppo_gridnet_diverse"]:
+        if args.exp_name in gridnet_exps:
             # the real action adds the source units
             real_action = torch.cat([
                 torch.stack(
