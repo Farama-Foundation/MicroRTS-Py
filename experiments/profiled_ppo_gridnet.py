@@ -357,11 +357,10 @@ sw = stopwatch.StopWatch()
 starting_update = 1
 from jpype.types import JArray, JInt
 if args.prod_mode and wandb.run.resumed:
-    print("previous run.summary", run.summary)
-    starting_update = run.summary['charts/update'] + 1
+    starting_update = run.summary.get('charts/update') + 1
     global_step = starting_update * args.batch_size
     api = wandb.Api()
-    run = api.run(run.get_url()[len("https://app.wandb.ai/"):])
+    run = api.run(f"{run.entity}/{run.project}/{run.id}")
     model = run.file('agent.pt')
     model.download(f"models/{experiment_name}/")
     agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt"))
