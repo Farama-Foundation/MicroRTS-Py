@@ -268,7 +268,7 @@ class Agent(nn.Module):
             action = torch.stack(action_components)
         else:
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_space.nvec.tolist(), dim=1)
-            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
+            multi_categoricals = [Categorical(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
         return action, logprob.sum(0), entropy.sum(0), invalid_action_masks
