@@ -254,7 +254,7 @@ class Agent(nn.Module):
             invalid_action_masks = invalid_action_masks.view(-1,invalid_action_masks.shape[-1])
             
             # remove the mask on action parameters, which is a similar setup to pysc2
-            invalid_action_masks[:,6:] = 0
+            invalid_action_masks[:,6:] = 1
             
             split_invalid_action_masks = torch.split(invalid_action_masks[:,1:], envs.action_space.nvec[1:].tolist(), dim=1)
             multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]

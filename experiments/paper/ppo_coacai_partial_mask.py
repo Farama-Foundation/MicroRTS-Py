@@ -263,7 +263,7 @@ class Agent(nn.Module):
                 np.array(envs.vec_client.getUnitActionMasks(action_components[0].cpu().numpy())).reshape(args.num_envs, -1))
             
             # remove the mask on action parameters, which is a similar setup to pysc2
-            source_unit_action_mask[:,6:] = 0
+            source_unit_action_mask[:,6:] = 1
             
             split_suam = torch.split(source_unit_action_mask, envs.action_space.nvec.tolist()[1:], dim=1)
             multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits[1:], split_suam)]
