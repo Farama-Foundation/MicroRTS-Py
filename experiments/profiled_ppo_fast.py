@@ -335,7 +335,7 @@ if args.prod_mode and wandb.run.resumed:
     run = api.run(f"{run.entity}/{run.project}/{run.id}")
     model = run.file('agent.pt')
     model.download(f"models/{experiment_name}/")
-    agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt"))
+    agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt", map_location=device))
     agent.eval()
     print(f"resumed at update {starting_update}")
 for update in range(starting_update, num_updates+1):
