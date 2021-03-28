@@ -257,6 +257,7 @@ class Agent(nn.Module):
         if action is None:
             invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
             invalid_action_masks = invalid_action_masks.view(-1,invalid_action_masks.shape[-1])
+            real_invalid_action_masks = invalid_action_masks.clone()
 
             # remove masks
             invalid_action_masks[:] = 1
@@ -265,6 +266,7 @@ class Agent(nn.Module):
             action = torch.stack([categorical.sample() for categorical in multi_categoricals])
         else:
             invalid_action_masks = invalid_action_masks.view(-1,invalid_action_masks.shape[-1])
+            real_invalid_action_masks = invalid_action_masks.clone()
             
             # remove masks
             invalid_action_masks[:] = 1
@@ -278,7 +280,8 @@ class Agent(nn.Module):
         entropy = entropy.T.view(-1, 256, num_predicted_parameters)
         action = action.T.view(-1, 256, num_predicted_parameters)
         invalid_action_masks = invalid_action_masks.view(-1, 256, envs.action_space.nvec[1:].sum()+1)
-        return action, logprob.sum(1).sum(1), entropy.sum(1).sum(1), invalid_action_masks
+        real_invalid_action_masks = real_invalid_action_masks.view(-1, 256, envs.action_space.nvec[1:].sum()+1)
+        return action, logprob.sum(1).sum(1), entropy.sum(1).sum(1), invalid_action_masks, real_invalid_action_masks
 
     def get_value(self, x):
         return self.critic(self.forward(x))
@@ -340,7 +343,7 @@ for update in range(starting_update, num_updates+1):
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
             values[step] = agent.get_value(obs[step]).flatten()
-            action, logproba, _, invalid_action_masks[step] = agent.get_action(obs[step], envs=envs)
+            action, logproba, _, invalid_action_masks[step], real_invalid_action_masks = agent.get_action(obs[step], envs=envs)
 
         actions[step] = action
         logprobs[step] = logproba
@@ -357,8 +360,8 @@ for update in range(starting_update, num_updates+1):
         # lot of invalid actions at cells for which no source units exist, so the rest of 
         # the code removes these invalid actions to speed things up
         real_action = real_action.cpu().numpy()
-        valid_actions = real_action[invalid_action_masks[step][:,:,0].bool().cpu().numpy()]
-        valid_actions_counts = invalid_action_masks[step][:,:,0].sum(1).long().cpu().numpy()
+        valid_actions = real_action[real_invalid_action_masks[:,:,0].bool().cpu().numpy()]
+        valid_actions_counts = real_invalid_action_masks[:,:,0].sum(1).long().cpu().numpy()
         java_valid_actions = []
         valid_action_idx = 0
         for env_idx, valid_action_count in enumerate(valid_actions_counts):
@@ -433,7 +436,7 @@ for update in range(starting_update, num_updates+1):
             if args.norm_adv:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
             # raise
-            _, newlogproba, entropy, _ = agent.get_action(
+            _, newlogproba, entropy, _, _ = agent.get_action(
                 b_obs[minibatch_ind],
                 b_actions.long()[minibatch_ind],
                 b_invalid_action_masks[minibatch_ind],
