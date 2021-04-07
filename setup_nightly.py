@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
     long_description = fh.read()
 
 setup(
-    name='gym_microrts',
+    name='gym_microrts_nightly',
     long_description=long_description,
     long_description_content_type="text/markdown",
     include_package_data=True,
