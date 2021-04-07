@@ -46,3 +46,9 @@ jobs:
       uses: pypa/gh-action-pypi-publish@master
       with:
         password: ${{ secrets.pypi_password }}
+    - name: prepare gym-microrts nightly version
+      run: mv setup_nightly.py setup.py 
+    - name: Publish test distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.pypi_password }}
