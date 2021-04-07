@@ -36,6 +36,7 @@ jobs:
     - name: prepare gym-microrts nightly version
       run: |
         mv setup_nightly.py setup.py
+        rm -rf dist
         python setup.py sdist
     - name: Publish test distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@master
