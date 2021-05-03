@@ -1,4 +1,4 @@
-# Gym-MicroRTS
+# Gym-μRTS (pronounced "gym-micro-RTS")
 
 [<img src="https://img.shields.io/badge/discord-gym%20microrts-green?label=Discord&logo=discord&logoColor=ffffff&labelColor=7289DA&color=2c2f33">](https://discord.gg/DdJsrdry6F)
 [<img src="https://github.com/vwxyzjn/gym-microrts/workflows/build/badge.svg">](
@@ -8,7 +8,7 @@ https://pypi.org/project/gym-microrts/)
 
 
 
-This repo contains the source code for the gym wrapper of MicroRTS authored by [Santiago Ontañón](https://github.com/santiontanon/microrts). 
+This repo contains the source code for the gym wrapper of μRTS authored by [Santiago Ontañón](https://github.com/santiontanon/microrts). 
 
 
 ![demo.gif](static/fullgame.gif)
@@ -91,7 +91,7 @@ which will look like the following
 
 ## Environment Specification
 
-Here is a description of gym-microrts's observation and action space:
+Here is a description of Gym-μRTS's observation and action space:
 
 * **Observation Space.** (`Box(0, 1, (h, w, 27), int32)`) Given a map of size `h x w`, the observation is a tensor of shape `(h, w, n_f)`, where `n_f` is a number of feature planes that have binary values. The observation space used in this paper uses 27 feature planes as shown in the following table. A feature plane can be thought of as a concatenation of multiple one-hot encoded features. As an example, if there is a worker with hit points equal to 1, not carrying any resources, owner being Player 1, and currently not executing any actions, then the one-hot encoding features will look like the following:
 
@@ -111,11 +111,11 @@ Here is a description of gym-microrts's observation and action space:
 
 ## Preset Envs:
 
-Gym-microrts comes with preset environments for common tasks as well as engaging the full game. Feel free to check out the following benchmark:
+Gym-μRTS comes with preset environments for common tasks as well as engaging the full game. Feel free to check out the following benchmark:
 
-* [Gym-microrts V1 Benchmark](https://wandb.ai/vwxyzjn/action-guidance/reports/Gym-microrts-V1-Benchmark--VmlldzozMDQ4MTU)
-* [Gym-microrts V2 Benchmark](https://wandb.ai/vwxyzjn/gym-microrts/reports/Gym-microrts-s-V2-Benchmark--VmlldzoyNTg5NTA)
-* [Gym-microrts V3 Benchmark](https://wandb.ai/vwxyzjn/rts-generalization/reports/Gym-microrts-V3-Environments--VmlldzoyNzQwNzM)
+* [Gym-μRTS V1 Benchmark](https://wandb.ai/vwxyzjn/action-guidance/reports/Gym-microrts-V1-Benchmark--VmlldzozMDQ4MTU)
+* [Gym-μRTS V2 Benchmark](https://wandb.ai/vwxyzjn/gym-microrts/reports/Gym-microrts-s-V2-Benchmark--VmlldzoyNTg5NTA)
+* [Gym-μRTS V3 Benchmark](https://wandb.ai/vwxyzjn/rts-generalization/reports/Gym-microrts-V3-Environments--VmlldzoyNzQwNzM)
 
 
 Below are the difference between the versioned environments
@@ -146,7 +146,7 @@ $ python hello_world.py
 [ ] Rendering does not exactly work in macos. See https://github.com/jpype-project/jpype/issues/906
 
 
-## Papers written using gym-microrts
+## Papers written using Gym-μRTS
 
 * Comparing Observation and Action Representations for Deep Reinforcement Learning in MicroRTS (https://arxiv.org/abs/1910.12134)
     * Logged experiments https://app.wandb.ai/costa-huang/MicrortsRL
