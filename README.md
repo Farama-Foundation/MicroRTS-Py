@@ -11,7 +11,12 @@ https://pypi.org/project/gym-microrts/)
 This repo contains the source code for the gym wrapper of μRTS authored by [Santiago Ontañón](https://github.com/santiontanon/microrts). 
 
 
+
 ![demo.gif](static/fullgame.gif)
+
+## Technical Paper
+
+Before diving into the code, we highly recommend reading the preprint of our paper: [Gym-μRTS: Toward Affordable Deep Reinforcement Learning Research in Real-time Strategy Games](https://arxiv.org/abs/2105.13807)
 
 ## Get Started
 
