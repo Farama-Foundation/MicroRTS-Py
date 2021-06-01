@@ -106,8 +106,7 @@ Here is a description of Gym-μRTS's observation and action space:
     
     `[3+2*10,1,2,0,0,0,0,0 ]`
 
-
-![obs_action.svg](static/obs_action.svg)
+![image](https://user-images.githubusercontent.com/5555347/120344517-a5bf7300-c2c7-11eb-81b6-172813ba8a0b.png)
 
 ## Preset Envs:
 
