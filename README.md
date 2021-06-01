@@ -102,7 +102,7 @@ Here is a description of Gym-μRTS's observation and action space:
     
     `[0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0]`
 
-* **Action Space.** (`MultiDiscrete([hw   6   4   4   4   4   7 hw])`) Given a map of size `h x w`, the action is an 8-dimensional vector of discrete values as specified in the following table. The first component of the action vector represents the unit in the map to issue actions to, the second is the action type, and the rest of components represent the different parameters different action types can take. Depending on which action type is selected, the game engine will use the corresponding parameters to execute the action. As an example, if the RL agent issues a move south action to the worker at $x=3, y=2$ in a 10x10 map, the action will be encoded in the following way:
+* **Action Space.** (`MultiDiscrete([hw   6   4   4   4   4   7 a_r])`) Given a map of size `h x w` and the maximum attack range `a_r=5`, the action is an 8-dimensional vector of discrete values as specified in the following table. The first component of the action vector represents the unit in the map to issue actions to, the second is the action type, and the rest of components represent the different parameters different action types can take. Depending on which action type is selected, the game engine will use the corresponding parameters to execute the action. As an example, if the RL agent issues a move south action to the worker at $x=3, y=2$ in a 10x10 map, the action will be encoded in the following way:
     
     `[3+2*10,1,2,0,0,0,0,0 ]`
 
