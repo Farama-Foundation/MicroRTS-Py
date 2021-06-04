@@ -44,9 +44,10 @@ try:
         map_path="maps/16x16/basesWorkers16x16.xml",
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
     )
-    # env = gym.make('MicrortsDefeatCoacAIShaped-v3').env
-    # env = gym.wrappers.RecordEpisodeStatistics(env)
-    # env.action_space.seed(0)
+    # the above `reward_weight` (in order) means +10 for wining, 
+    # +1 for each resource gathered or returned, +1 for each worker produced
+    # +0.2 for each building produced, +1 for each attack action issued
+    # +4 for each combat units produced
     obs = env.reset()
     env.render()
 except Exception as e:
