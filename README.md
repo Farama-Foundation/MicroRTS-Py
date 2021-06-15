@@ -74,25 +74,11 @@ To train an agent against the built-in WorkerRushAI, run the following
 
 ```bash
 python experiments/ppo.py \
-    --gym-id MicrortsDefeatWorkerRushEnemyShaped-v3 \
     --total-timesteps 100000000 \
     --wandb-project-name gym-microrts \
     --capture-video \
     --seed 1
 ```
-
-The run above will save a model at the models folder. In the experiment folder we 
-provided a trained model. Run the following to evaluate the agents
-
-```bash
-python ppo_eval_simple.py \
-    --gym-id MicrortsDefeatWorkerRushEnemyShaped-v3 \
-    --agent-model-path agent.pt
-```
-
-which will look like the following
-
-![against_worker_rush.gif](static/against_worker_rush.gif)
 
 
 ## Environment Specification
