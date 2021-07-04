@@ -14,7 +14,7 @@ from jpype.imports import registerDomain
 import jpype.imports
 from jpype.types import JArray
 
-class MicroRTSVecEnv:
+class MicroRTSGridModeVecEnv:
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second' : 150
@@ -26,7 +26,8 @@ class MicroRTSVecEnv:
     """
 
     def __init__(self,
-        num_envs=2,
+        num_selfplay_envs,
+        num_bot_envs,
         max_steps=2000,
         render_theme=2,
         frame_skip=0,
@@ -34,8 +35,10 @@ class MicroRTSVecEnv:
         map_path="maps/10x10/basesTwoWorkers10x10.xml",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0])):
 
-        assert num_envs == len(ai2s), "for each environment, a microrts ai should be provided"
-        self.num_envs = num_envs
+        self.num_selfplay_envs = num_selfplay_envs
+        self.num_bot_envs = num_bot_envs
+        self.num_envs = num_selfplay_envs + num_bot_envs
+        assert self.num_bot_envs == len(ai2s), "for each environment, a microrts ai should be provided"
         self.max_steps = max_steps
         self.render_theme = render_theme
         self.frame_skip = frame_skip
@@ -92,9 +95,10 @@ class MicroRTSVecEnv:
         ])
 
     def start_client(self):
-        from ts import JNIVecClient
+        from ts import JNIGridnetVecClient
         from ai.core import AI
-        self.vec_client = JNIVecClient(
+        self.vec_client = JNIGridnetVecClient(
+            self.num_selfplay_envs,
             self.num_envs,
             self.max_steps,
             self.rfs,
@@ -103,8 +107,9 @@ class MicroRTSVecEnv:
             JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
             self.real_utt
         )
+        self.render_client = self.vec_client.selfPlayClients[0] if len(self.vec_client.selfPlayClients) > 0 else self.vec_client.clients[0]
         # get the unit type table
-        self.utt = json.loads(str(self.vec_client.clients[0].sendUTT()))
+        self.utt = json.loads(str(self.render_client.sendUTT()))
 
     def reset(self):
         responses = self.vec_client.reset([0 for _ in range(self.num_envs)])
@@ -128,8 +133,8 @@ class MicroRTSVecEnv:
         self.actions = actions
 
     def step_wait(self):
-        responses = self.vec_client.step(self.actions, [0 for _ in range(self.num_envs)])
-        raw_obs, reward, done, info = np.array(responses.observation), np.array(responses.reward), np.array(responses.done), [{} for _ in range(self.num_envs)]
+        responses = self.vec_client.gameStep(self.actions, [0 for _ in range(self.num_envs)])
+        raw_obs, reward, done, info = np.array(responses.observation), np.array(responses.reward), np.array(responses.done), [{} for _ in range(self.num_selfplay_envs+self.num_envs)]
         obs = []
         for ro in raw_obs:
             obs += [self._encode_obs(ro)]
@@ -154,56 +159,13 @@ class MicroRTSVecEnv:
 
     def render(self, mode="human"):
         if mode == "human":
-            self.vec_client.clients[0].render(False)
+            self.render_client.render(False)
         elif mode == 'rgb_array':
-            bytes_array = np.array(self.vec_client.clients[0].render(True))
+            bytes_array = np.array(self.render_client.render(True))
             image = Image.frombytes("RGB", (640, 640), bytes_array)
-            return np.array(image)
+            return np.array(image)[:,:,::-1]
 
     def close(self):
         if jpype._jpype.isStarted():
             self.vec_client.close()
             jpype.shutdownJVM()
-
-class MicroRTSGridModeVecEnv(MicroRTSVecEnv):
-
-    def __init__(self, num_selfplay_envs, num_bot_envs, **kwargs):
-        self.num_selfplay_envs = num_selfplay_envs
-        self.num_bot_envs = num_bot_envs
-        kwargs['num_envs'] = num_bot_envs
-        super().__init__(**kwargs)
-        self.num_envs = num_selfplay_envs + num_bot_envs
-
-    def start_client(self):
-        from ts import JNIGridnetVecClient
-        from ai.core import AI
-        self.vec_client = JNIGridnetVecClient(
-            self.num_selfplay_envs,
-            self.num_envs,
-            self.max_steps,
-            self.rfs,
-            os.path.expanduser(self.microrts_path),
-            self.map_path,
-            JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
-            self.real_utt
-        )
-        self.render_client = self.vec_client.selfPlayClients[0] if len(self.vec_client.selfPlayClients) > 0 else self.vec_client.clients[0]
-        # get the unit type table
-        self.utt = json.loads(str(self.render_client.sendUTT()))
-
-    def step_wait(self):
-        responses = self.vec_client.gameStep(self.actions, [0 for _ in range(self.num_envs)])
-        raw_obs, reward, done, info = np.array(responses.observation), np.array(responses.reward), np.array(responses.done), [{} for _ in range(self.num_selfplay_envs+self.num_envs)]
-        obs = []
-        for ro in raw_obs:
-            obs += [self._encode_obs(ro)]
-        infos = [{"raw_rewards": item} for item in reward]
-        return np.array(obs), reward @ self.reward_weight, done[:,0], infos
-
-    def render(self, mode="human"):
-        if mode == "human":
-            self.render_client.render(False)
-        elif mode == 'rgb_array':
-            bytes_array = np.array(self.render_client.render(True))
-            image = Image.frombytes("RGB", (640, 640), bytes_array)
-            return np.array(image)
