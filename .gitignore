@@ -7,6 +7,7 @@ experiments/mask/*
 benchmark/scripts/*
 **/wandb/*
 experiments/videos/*
+experiments/paper/videos/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

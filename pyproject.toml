@@ -12,6 +12,9 @@ dacite = "^1.6.0"
 
 [tool.poetry.dev-dependencies]
 poetry-dynamic-versioning = "^0.13.0"
+torch = "^1.9.0"
+stable-baselines3 = "^1.1.0"
+spyder = "^5.0.5"
 
 [tool.poetry-dynamic-versioning]
 enable = true
