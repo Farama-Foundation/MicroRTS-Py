@@ -70,6 +70,44 @@ for i in range(10000):
 env.close()
 ```
 
+
+For running a partial observable example, run either the `hello_world_po.py`in this repo or the following file
+```import gym
+import gym_microrts
+import time
+import numpy as np
+from gym.wrappers import Monitor
+from gym_microrts import microrts_ai
+from gym_microrts.envs.povec_env import POMicroRTSGridModeVecEnv
+import gym_microrts
+import os, sys
+
+env = POMicroRTSGridModeVecEnv(
+    num_selfplay_envs=0,
+    num_bot_envs=1,
+    max_steps=2000,
+    render_theme=2,
+    ai2s=[microrts_ai.randomAI for _ in range(1)],
+    map_path="maps/16x16/basesWorkers16x16.xml",
+    reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
+)
+
+env.action_space.seed(0)
+env.reset()
+for i in range(10000):
+    env.render()
+    action_mask = np.array(env.vec_client.getMasks(0)).flatten()
+    time.sleep(0.001)
+    action = [env.action_space.sample() for _ in range(1)]
+    
+    # optional: selecting only valid units.
+    if len(action_mask.nonzero()[0]) != 0:
+        action[:][0] = action_mask.nonzero()[0][0]
+
+    next_obs, reward, done, info = env.step([action])
+env.close()
+```
+
 To train an agent against the built-in WorkerRushAI, run the following
 
 ```bash
@@ -93,6 +131,15 @@ Here is a description of Gym-μRTS's observation and action space:
     The 27 values of each feature plane for the position in the map of such worker will thus be:
     
     `[0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0]`
+
+* **Partial Observation Space.** (`Box(0, 1, (h, w, 29), int32)`) Given a map of size `h x w`, the observation is a tensor of shape `(h, w, n_f)`, where `n_f` is a number of feature planes that have binary values. The observation space for partial observability uses 29 feature planes as shown in the following table. A feature plane can be thought of as a concatenation of multiple one-hot encoded features. As an example, if there is a worker with hit points equal to 1, not carrying any resources, owner being Player 1,  currently not executing any actions, and not visible to the opponent, then the one-hot encoding features will look like the following:
+
+   `[0,1,0,0,0],  [1,0,0,0,0],  [1,0,0], [0,0,0,0,1,0,0,0],  [1,0,0,0,0,0], [1,0]`
+   
+
+    The 29 values of each feature plane for the position in the map of such worker will thus be:
+    
+    `[0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0]`
 
 * **Action Space.** (`MultiDiscrete([hw   6   4   4   4   4   7 a_r])`) Given a map of size `h x w` and the maximum attack range `a_r=7`, the action is an 8-dimensional vector of discrete values as specified in the following table. The first component of the action vector represents the unit in the map to issue actions to, the second is the action type, and the rest of components represent the different parameters different action types can take. Depending on which action type is selected, the game engine will use the corresponding parameters to execute the action. As an example, if the RL agent issues a move south action to the worker at $x=3, y=2$ in a 10x10 map, the action will be encoded in the following way:
     
