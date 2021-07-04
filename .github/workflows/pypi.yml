@@ -32,7 +32,7 @@ jobs:
       with:
         poetry-version: 1.1.7
     - name: Build a source tarball
-      run: poetry install && poetry build --format sdist
+      run: pip install poetry-dynamic-versioning && poetry install && poetry build --format sdist
     - name: Upload artifact to S3
       uses: shallwefootball/s3-upload-action@master
       with:
