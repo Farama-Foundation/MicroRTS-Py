@@ -1,4 +1,4 @@
-# Gym-MicroRTS
+# Gym-μRTS (pronounced "gym-micro-RTS")
 
 [<img src="https://img.shields.io/badge/discord-gym%20microrts-green?label=Discord&logo=discord&logoColor=ffffff&labelColor=7289DA&color=2c2f33">](https://discord.gg/DdJsrdry6F)
 [<img src="https://github.com/vwxyzjn/gym-microrts/workflows/build/badge.svg">](
@@ -8,10 +8,15 @@ https://pypi.org/project/gym-microrts/)
 
 
 
-This repo contains the source code for the gym wrapper of MicroRTS authored by [Santiago Ontañón](https://github.com/santiontanon/microrts). 
+This repo contains the source code for the gym wrapper of μRTS authored by [Santiago Ontañón](https://github.com/santiontanon/microrts). 
+
 
 
 ![demo.gif](static/fullgame.gif)
+
+## Technical Paper
+
+Before diving into the code, we highly recommend reading the preprint of our paper: [Gym-μRTS: Toward Affordable Deep Reinforcement Learning Research in Real-time Strategy Games](https://arxiv.org/abs/2105.13807)
 
 ## Get Started
 
@@ -39,9 +44,10 @@ try:
         map_path="maps/16x16/basesWorkers16x16.xml",
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
     )
-    # env = gym.make('MicrortsDefeatCoacAIShaped-v3').env
-    # env = gym.wrappers.RecordEpisodeStatistics(env)
-    # env.action_space.seed(0)
+    # the above `reward_weight` (in order) means +10 for wining, 
+    # +1 for each resource gathered or returned, +1 for each worker produced
+    # +0.2 for each building produced, +1 for each attack action issued
+    # +4 for each combat units produced
     obs = env.reset()
     env.render()
 except Exception as e:
@@ -64,34 +70,58 @@ for i in range(10000):
 env.close()
 ```
 
+
+For running a partial observable example, run either the `hello_world_po.py`in this repo or the following file
+```import gym
+import gym_microrts
+import time
+import numpy as np
+from gym.wrappers import Monitor
+from gym_microrts import microrts_ai
+from gym_microrts.envs.povec_env import POMicroRTSGridModeVecEnv
+import gym_microrts
+import os, sys
+
+env = POMicroRTSGridModeVecEnv(
+    num_selfplay_envs=0,
+    num_bot_envs=1,
+    max_steps=2000,
+    render_theme=2,
+    ai2s=[microrts_ai.randomAI for _ in range(1)],
+    map_path="maps/16x16/basesWorkers16x16.xml",
+    reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
+)
+
+env.action_space.seed(0)
+env.reset()
+for i in range(10000):
+    env.render()
+    action_mask = np.array(env.vec_client.getMasks(0)).flatten()
+    time.sleep(0.001)
+    action = [env.action_space.sample() for _ in range(1)]
+    
+    # optional: selecting only valid units.
+    if len(action_mask.nonzero()[0]) != 0:
+        action[:][0] = action_mask.nonzero()[0][0]
+
+    next_obs, reward, done, info = env.step([action])
+env.close()
+```
+
 To train an agent against the built-in WorkerRushAI, run the following
 
 ```bash
 python experiments/ppo.py \
-    --gym-id MicrortsDefeatWorkerRushEnemyShaped-v3 \
     --total-timesteps 100000000 \
     --wandb-project-name gym-microrts \
     --capture-video \
     --seed 1
 ```
 
-The run above will save a model at the models folder. In the experiment folder we 
-provided a trained model. Run the following to evaluate the agents
-
-```bash
-python ppo_eval_simple.py \
-    --gym-id MicrortsDefeatWorkerRushEnemyShaped-v3 \
-    --agent-model-path agent.pt
-```
-
-which will look like the following
-
-![against_worker_rush.gif](static/against_worker_rush.gif)
-
 
 ## Environment Specification
 
-Here is a description of gym-microrts's observation and action space:
+Here is a description of Gym-μRTS's observation and action space:
 
 * **Observation Space.** (`Box(0, 1, (h, w, 27), int32)`) Given a map of size `h x w`, the observation is a tensor of shape `(h, w, n_f)`, where `n_f` is a number of feature planes that have binary values. The observation space used in this paper uses 27 feature planes as shown in the following table. A feature plane can be thought of as a concatenation of multiple one-hot encoded features. As an example, if there is a worker with hit points equal to 1, not carrying any resources, owner being Player 1, and currently not executing any actions, then the one-hot encoding features will look like the following:
 
@@ -102,20 +132,28 @@ Here is a description of gym-microrts's observation and action space:
     
     `[0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0]`
 
-* **Action Space.** (`MultiDiscrete([hw   6   4   4   4   4   7 hw])`) Given a map of size `h x w`, the action is an 8-dimensional vector of discrete values as specified in the following table. The first component of the action vector represents the unit in the map to issue actions to, the second is the action type, and the rest of components represent the different parameters different action types can take. Depending on which action type is selected, the game engine will use the corresponding parameters to execute the action. As an example, if the RL agent issues a move south action to the worker at $x=3, y=2$ in a 10x10 map, the action will be encoded in the following way:
+* **Partial Observation Space.** (`Box(0, 1, (h, w, 29), int32)`) Given a map of size `h x w`, the observation is a tensor of shape `(h, w, n_f)`, where `n_f` is a number of feature planes that have binary values. The observation space for partial observability uses 29 feature planes as shown in the following table. A feature plane can be thought of as a concatenation of multiple one-hot encoded features. As an example, if there is a worker with hit points equal to 1, not carrying any resources, owner being Player 1,  currently not executing any actions, and not visible to the opponent, then the one-hot encoding features will look like the following:
+
+   `[0,1,0,0,0],  [1,0,0,0,0],  [1,0,0], [0,0,0,0,1,0,0,0],  [1,0,0,0,0,0], [1,0]`
+   
+
+    The 29 values of each feature plane for the position in the map of such worker will thus be:
+    
+    `[0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0]`
+
+* **Action Space.** (`MultiDiscrete([hw   6   4   4   4   4   7 a_r])`) Given a map of size `h x w` and the maximum attack range `a_r=7`, the action is an 8-dimensional vector of discrete values as specified in the following table. The first component of the action vector represents the unit in the map to issue actions to, the second is the action type, and the rest of components represent the different parameters different action types can take. Depending on which action type is selected, the game engine will use the corresponding parameters to execute the action. As an example, if the RL agent issues a move south action to the worker at $x=3, y=2$ in a 10x10 map, the action will be encoded in the following way:
     
     `[3+2*10,1,2,0,0,0,0,0 ]`
 
-
-![obs_action.svg](static/obs_action.svg)
+![image](https://user-images.githubusercontent.com/5555347/120344517-a5bf7300-c2c7-11eb-81b6-172813ba8a0b.png)
 
 ## Preset Envs:
 
-Gym-microrts comes with preset environments for common tasks as well as engaging the full game. Feel free to check out the following benchmark:
+Gym-μRTS comes with preset environments for common tasks as well as engaging the full game. Feel free to check out the following benchmark:
 
-* [Gym-microrts V1 Benchmark](https://wandb.ai/vwxyzjn/action-guidance/reports/Gym-microrts-V1-Benchmark--VmlldzozMDQ4MTU)
-* [Gym-microrts V2 Benchmark](https://wandb.ai/vwxyzjn/gym-microrts/reports/Gym-microrts-s-V2-Benchmark--VmlldzoyNTg5NTA)
-* [Gym-microrts V3 Benchmark](https://wandb.ai/vwxyzjn/rts-generalization/reports/Gym-microrts-V3-Environments--VmlldzoyNzQwNzM)
+* [Gym-μRTS V1 Benchmark](https://wandb.ai/vwxyzjn/action-guidance/reports/Gym-microrts-V1-Benchmark--VmlldzozMDQ4MTU)
+* [Gym-μRTS V2 Benchmark](https://wandb.ai/vwxyzjn/gym-microrts/reports/Gym-microrts-s-V2-Benchmark--VmlldzoyNTg5NTA)
+* [Gym-μRTS V3 Benchmark](https://wandb.ai/vwxyzjn/rts-generalization/reports/Gym-microrts-V3-Environments--VmlldzoyNzQwNzM)
 
 
 Below are the difference between the versioned environments
@@ -146,9 +184,10 @@ $ python hello_world.py
 [ ] Rendering does not exactly work in macos. See https://github.com/jpype-project/jpype/issues/906
 
 
-## Papers written using gym-microrts
-
-* Comparing Observation and Action Representations for Deep Reinforcement Learning in MicroRTS (https://arxiv.org/abs/1910.12134)
-    * Logged experiments https://app.wandb.ai/costa-huang/MicrortsRL
+## Papers written using Gym-μRTS
+* CoG 2021: [Gym-μRTS: Toward Affordable Deep Reinforcement Learning Research in Real-time Strategy Games](https://arxiv.org/abs/2105.13807)
+* AAAI RLG 2021: [Generalization in Deep Reinforcement Learning with Real-time Strategy Games](http://aaai-rlg.mlanctot.info/papers/AAAI21-RLG_paper_33.pdf), 
+* AIIDE 2020 Strategy Games Workshop: [Action Guidance: Getting the Best of Training Agents with Sparse Rewards and Shaped Rewards](https://arxiv.org/abs/2010.03956), 
+* AIIDE 2019 Strategy Games Workshop: [Comparing Observation and Action Representations for Deep Reinforcement Learning in MicroRTS](https://arxiv.org/abs/1910.12134), 
 
 
