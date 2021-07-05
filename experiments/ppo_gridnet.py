@@ -172,18 +172,8 @@ class Agent(nn.Module):
             nn.ReLU(),
             layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
             nn.MaxPool2d(3, stride=2, padding=1),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(64, 128, kernel_size=3, padding=1)),
-            nn.MaxPool2d(3, stride=2, padding=1),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
-            nn.MaxPool2d(3, stride=2, padding=1),
         )
         self.actor = nn.Sequential(
-            layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
-            nn.ReLU(),
-            layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
-            nn.ReLU(),
             layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
             nn.ReLU(),
             layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1), std=0.01),
@@ -191,7 +181,7 @@ class Agent(nn.Module):
         )
         self.critic = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(256, 1), std=1),
+            layer_init(nn.Linear(64*4*4, 1), std=1),
         )
 
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
