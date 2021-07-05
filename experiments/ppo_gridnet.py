@@ -45,11 +45,13 @@ def parse_args():
         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
+    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+        help='if toggled, the game will have partial observability')
     parser.add_argument('--n-minibatch', type=int, default=4,
         help='the number of mini batch')
-    parser.add_argument('--num-bot-envs', type=int, default=24,
+    parser.add_argument('--num-bot-envs', type=int, default=0,
         help='the number of bot game environment; 16 bot envs measn 16 games')
-    parser.add_argument('--num-selfplay-envs', type=int, default=0,
+    parser.add_argument('--num-selfplay-envs', type=int, default=24,
         help='the number of self play envs; 16 self play envs means 8 games')
     parser.add_argument('--num-steps', type=int, default=256,
         help='the number of steps per game environment')
@@ -93,10 +95,6 @@ def parse_args():
 
 
 class MicroRTSStatsRecorder(VecEnvWrapper):
-    def __init__(self, env, gamma):
-        super().__init__(env)
-        self.gamma = gamma
-
     def reset(self):
         obs = self.venv.reset()
         self.raw_rewards = [[] for _ in range(self.num_envs)]
@@ -161,12 +159,14 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 
-class Encoder(nn.Module):
-    def __init__(self, input_channels):
-        super().__init__()
-        self._encoder = nn.Sequential(
+class Agent(nn.Module):
+    def __init__(self, envs, mapsize=16 * 16):
+        super(Agent, self).__init__()
+        self.mapsize = mapsize
+        h, w, c = envs.observation_space.shape
+        self.encoder = nn.Sequential(
             Transpose((0, 3, 1, 2)),
-            layer_init(nn.Conv2d(input_channels, 32, kernel_size=3, padding=1)),
+            layer_init(nn.Conv2d(c, 32, kernel_size=3, padding=1)),
             nn.MaxPool2d(3, stride=2, padding=1),
             nn.ReLU(),
             layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
@@ -178,37 +178,16 @@ class Encoder(nn.Module):
             layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
             nn.MaxPool2d(3, stride=2, padding=1),
         )
-
-    def forward(self, x):
-        return self._encoder(x)
-
-
-class Decoder(nn.Module):
-    def __init__(self, output_channels):
-        super().__init__()
-
-        self.deconv = nn.Sequential(
+        self.actor = nn.Sequential(
             layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
             nn.ReLU(),
             layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
             nn.ReLU(),
             layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
             nn.ReLU(),
-            layer_init(nn.ConvTranspose2d(32, output_channels, 3, stride=2, padding=1, output_padding=1)),
+            layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1)),
             Transpose((0, 2, 3, 1)),
         )
-
-    def forward(self, x):
-        return self.deconv(x)
-
-
-class Agent(nn.Module):
-    def __init__(self, mapsize=16 * 16):
-        super(Agent, self).__init__()
-        self.mapsize = mapsize
-        h, w, c = envs.observation_space.shape
-        self.encoder = Encoder(c)
-        self.actor = Decoder(78)
         self.critic = nn.Sequential(
             nn.Flatten(),
             layer_init(nn.Linear(256, 128), std=1),
@@ -282,16 +261,17 @@ if __name__ == "__main__":
     envs = MicroRTSGridModeVecEnv(
         num_selfplay_envs=args.num_selfplay_envs,
         num_bot_envs=args.num_bot_envs,
+        partial_obs=args.partial_obs,
         max_steps=2000,
         render_theme=2,
-        ai2s=[microrts_ai.coacAI for _ in range(args.num_bot_envs - 6)]
+        ai2s=[microrts_ai.randomAI for _ in range(args.num_bot_envs - 6)]
         + [microrts_ai.randomBiasedAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.lightRushAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.workerRushAI for _ in range(min(args.num_bot_envs, 2))],
         map_path="maps/16x16/basesWorkers16x16.xml",
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
     )
-    envs = MicroRTSStatsRecorder(envs, args.gamma)
+    envs = MicroRTSStatsRecorder(envs)
     envs = VecMonitor(envs)
     if args.capture_video:
         envs = VecVideoRecorder(
@@ -299,7 +279,7 @@ if __name__ == "__main__":
         )
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
-    agent = Agent().to(device)
+    agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     if args.anneal_lr:
         # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
