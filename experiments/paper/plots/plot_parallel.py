@@ -1,11 +1,12 @@
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
+
 sns.set_context("talk")
-df = pd.DataFrame([["line 1",20,30,100],\
-    ["line 2",10,40,90],["line 3",10,35,120]],\
-    columns=["element","var 1","var 2","var 3"])
-pd.plotting.parallel_coordinates(df,"element")
+df = pd.DataFrame(
+    [["line 1", 20, 30, 100], ["line 2", 10, 40, 90], ["line 3", 10, 35, 120]], columns=["element", "var 1", "var 2", "var 3"]
+)
+pd.plotting.parallel_coordinates(df, "element")
 plt.show()
 
 name2label = {
@@ -23,15 +24,17 @@ name2label = {
     "ppo_gridnet_coacai_partial_mask": "PPO + partial invalid action masking",
 }
 data = pd.read_csv("uas_parallel.csv")
-data['exp_name'] = data['exp_name'].map(name2label)
-del data['Name']
+data["exp_name"] = data["exp_name"].map(name2label)
+del data["Name"]
 
-data['charts/cumulative_match_results/win rate'] *= max(data['charts/total_parameters'])
-data = data.rename(columns={"charts/cumulative_match_results/win rate": "Cumulative Win Rate", "charts/total_parameters": "Total Parameters"})
+data["charts/cumulative_match_results/win rate"] *= max(data["charts/total_parameters"])
+data = data.rename(
+    columns={"charts/cumulative_match_results/win rate": "Cumulative Win Rate", "charts/total_parameters": "Total Parameters"}
+)
 fig, ax1 = plt.subplots(figsize=(9, 8))
-pd.plotting.parallel_coordinates(data ,"exp_name", ax=ax1)
+pd.plotting.parallel_coordinates(data, "exp_name", ax=ax1)
 
-ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=1)
+ax1.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=1)
 ax2 = ax1.twinx()
 ax2.set_ylim(0, 1.0)
 fig.tight_layout()
@@ -42,7 +45,7 @@ fig.savefig("uas_parallel.pdf")
 
 # mean, amp = 40000, 20000
 # t = np.arange(50)
-# s1 = np.sin(t)*amp + mean #synthetic ts, but closer to my data 
+# s1 = np.sin(t)*amp + mean #synthetic ts, but closer to my data
 
 # fig, ax1 = plt.subplots()
 # ax1.plot(t, s1, 'b-')

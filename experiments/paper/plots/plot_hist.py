@@ -1,31 +1,34 @@
-import wandb
 import os
-import pandas as pd 
+
+import pandas as pd
+
+import wandb
+
 api = wandb.Api()
 
 if not os.path.exists("eval.csv"):
     # Project is specified by <entity/project-name>
     runs = api.runs("vwxyzjn/gym-microrts-paper-eval")
-    summary_list = [] 
-    config_list = [] 
-    name_list = [] 
-    for run in runs: 
+    summary_list = []
+    config_list = []
+    name_list = []
+    for run in runs:
         # run.summary are the output key/values like accuracy.
-        # We call ._json_dict to omit large files 
-        summary_list.append(run.summary._json_dict) 
-    
+        # We call ._json_dict to omit large files
+        summary_list.append(run.summary._json_dict)
+
         # run.config is the input metrics.
         # We remove special values that start with _.
-        config = {k:v for k,v in run.config.items() if not k.startswith('_')}
-        config_list.append(config) 
-    
+        config = {k: v for k, v in run.config.items() if not k.startswith("_")}
+        config_list.append(config)
+
         # run.name is the name of the run.
-        name_list.append(run.name)       
-    
-    summary_df = pd.DataFrame.from_records(summary_list) 
-    config_df = pd.DataFrame.from_records(config_list) 
-    name_df = pd.DataFrame({'name': name_list}) 
-    all_df = pd.concat([name_df, config_df,summary_df], axis=1)
+        name_list.append(run.name)
+
+    summary_df = pd.DataFrame.from_records(summary_list)
+    config_df = pd.DataFrame.from_records(config_list)
+    name_df = pd.DataFrame({"name": name_list})
+    all_df = pd.concat([name_df, config_df, summary_df], axis=1)
     all_df.to_csv("project.csv")
 else:
     all_df = pd.read_csv("project.csv")
@@ -53,9 +56,10 @@ name2label = {
 
 # f, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
-import numpy as np
 # from gym_microrts import microrts_ai
 import matplotlib.pyplot as plt
+import numpy as np
+
 all_ais = {
     "randomBiasedAI": "microrts_ai.randomBiasedAI",
     # "randomAI": "microrts_ai.randomAI",
@@ -71,23 +75,25 @@ all_ais = {
     "droplet": "microrts_ai.droplet",
     "guidedRojoA3N": "microrts_ai.guidedRojoA3",
 }
-ai_names, ais = list(all_ais.keys()) ,list(all_ais.values())
+ai_names, ais = list(all_ais.keys()), list(all_ais.values())
 n_rows, n_cols = 3, 4
 
 for idx in range(len(all_df)):
     ai_match_stats = dict(zip(ai_names, np.zeros((len(ais), 3))))
     for ai_name in ai_names:
-        ai_match_stats[ai_name] = np.array([
-            all_df.iloc[idx][f'charts/{ai_name}/loss'],
-            all_df.iloc[idx][f'charts/{ai_name}/tie'],
-            all_df.iloc[idx][f'charts/{ai_name}/win'],
-        ])
-    
+        ai_match_stats[ai_name] = np.array(
+            [
+                all_df.iloc[idx][f"charts/{ai_name}/loss"],
+                all_df.iloc[idx][f"charts/{ai_name}/tie"],
+                all_df.iloc[idx][f"charts/{ai_name}/win"],
+            ]
+        )
+
     f, axes = plt.subplots(n_rows, n_cols, figsize=(9, 7), sharex=True, sharey=True)
     for i in range(len(ai_names)):
         var_name = ai_names[i]
         # if i>=1: i += 2
-        ax=axes.flatten()[i]
+        ax = axes.flatten()[i]
         ax.bar(["loss", "tie", "win"], ai_match_stats[var_name])
         ax.set_title(var_name)
     # f.suptitle(name2label[all_df.iloc[idx]['exp_name']])

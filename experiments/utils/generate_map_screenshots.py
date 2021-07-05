@@ -1,17 +1,12 @@
 import argparse
-from distutils.util import strtobool
-import numpy as np
-import gym
-import gym_microrts
-from gym.wrappers import TimeLimit, Monitor
 import copy
-from PIL import Image
 
+import gym
+from PIL import Image
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gym-id', type=str, default="MicrortsMining-v3",
-                        help='the id of the gym environment')
+    parser.add_argument("--gym-id", type=str, default="MicrortsMining-v3", help="the id of the gym environment")
     args = parser.parse_args()
 
 ALL16x16_MAPS = [
@@ -48,8 +43,8 @@ for m in ALL16x16_MAPS:
     env.init(config=c)
     env.client.renderTheme = 2
     env.reset()
-    img_array = env.render('rgb_array')
+    img_array = env.render("rgb_array")
     # img = Image.fromarray(img_array[105:607][:,70:571])
     # img = Image.fromarray(img_array)
-    img = Image.fromarray(img_array[55:607][:,45:596])
+    img = Image.fromarray(img_array[55:607][:, 45:596])
     img.save(f"{m.split('/')[-1]}.png")

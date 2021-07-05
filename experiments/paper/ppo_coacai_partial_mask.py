@@ -1,86 +1,125 @@
+import argparse
+import os
+import random
+import time
+from distutils.util import strtobool
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
+from gym.spaces import MultiDiscrete
+from gym_microrts import microrts_ai
+from gym_microrts.envs.vec_env import MicroRTSVecEnv
+from stable_baselines3.common.vec_env import VecEnvWrapper, VecVideoRecorder
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
-import argparse
-from distutils.util import strtobool
-import numpy as np
-import gym
-import gym_microrts
-from gym_microrts.envs.vec_env import MicroRTSVecEnv
-from gym_microrts import microrts_ai
-from gym.wrappers import TimeLimit, Monitor
-
-from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
-import time
-import random
-import os
-from stable_baselines3.common.vec_env import VecEnvWrapper, VecVideoRecorder
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='PPO agent')
+    parser = argparse.ArgumentParser(description="PPO agent")
     # Common arguments
-    parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
-                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="MicrortsDefeatCoacAIShaped-v3",
-                        help='the id of the gym environment')
-    parser.add_argument('--learning-rate', type=float, default=2.5e-4,
-                        help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=1,
-                        help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=100000000,
-                        help='total timesteps of the experiments')
-    parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                        help='if toggled, `torch.backends.cudnn.deterministic=False`')
-    parser.add_argument('--cuda', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                        help='if toggled, cuda will not be enabled by default')
-    parser.add_argument('--prod-mode', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                        help='run the script in production mode and use wandb to log outputs')
-    parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                        help='weather to capture videos of the agent performances (check out `videos` folder)')
-    parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
-                        help="the wandb's project name")
-    parser.add_argument('--wandb-entity', type=str, default=None,
-                        help="the entity (team) of wandb's project")
+    parser.add_argument(
+        "--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"), help="the name of this experiment"
+    )
+    parser.add_argument("--gym-id", type=str, default="MicrortsDefeatCoacAIShaped-v3", help="the id of the gym environment")
+    parser.add_argument("--learning-rate", type=float, default=2.5e-4, help="the learning rate of the optimizer")
+    parser.add_argument("--seed", type=int, default=1, help="seed of the experiment")
+    parser.add_argument("--total-timesteps", type=int, default=100000000, help="total timesteps of the experiments")
+    parser.add_argument(
+        "--torch-deterministic",
+        type=lambda x: bool(strtobool(x)),
+        default=True,
+        nargs="?",
+        const=True,
+        help="if toggled, `torch.backends.cudnn.deterministic=False`",
+    )
+    parser.add_argument(
+        "--cuda",
+        type=lambda x: bool(strtobool(x)),
+        default=True,
+        nargs="?",
+        const=True,
+        help="if toggled, cuda will not be enabled by default",
+    )
+    parser.add_argument(
+        "--prod-mode",
+        type=lambda x: bool(strtobool(x)),
+        default=False,
+        nargs="?",
+        const=True,
+        help="run the script in production mode and use wandb to log outputs",
+    )
+    parser.add_argument(
+        "--capture-video",
+        type=lambda x: bool(strtobool(x)),
+        default=False,
+        nargs="?",
+        const=True,
+        help="weather to capture videos of the agent performances (check out `videos` folder)",
+    )
+    parser.add_argument("--wandb-project-name", type=str, default="cleanRL", help="the wandb's project name")
+    parser.add_argument("--wandb-entity", type=str, default=None, help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--n-minibatch', type=int, default=4,
-                        help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=24,
-                        help='the number of parallel game environment')
-    parser.add_argument('--num-steps', type=int, default=512,
-                        help='the number of steps per game environment')
-    parser.add_argument('--gamma', type=float, default=0.99,
-                        help='the discount factor gamma')
-    parser.add_argument('--gae-lambda', type=float, default=0.95,
-                        help='the lambda for the general advantage estimation')
-    parser.add_argument('--ent-coef', type=float, default=0.01,
-                        help="coefficient of the entropy")
-    parser.add_argument('--vf-coef', type=float, default=0.5,
-                        help="coefficient of the value function")
-    parser.add_argument('--max-grad-norm', type=float, default=0.5,
-                        help='the maximum norm for the gradient clipping')
-    parser.add_argument('--clip-coef', type=float, default=0.1,
-                        help="the surrogate clipping coefficient")
-    parser.add_argument('--update-epochs', type=int, default=4,
-                         help="the K epochs to update the policy")
-    parser.add_argument('--kle-stop', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
-    parser.add_argument('--kle-rollback', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                         help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
-    parser.add_argument('--target-kl', type=float, default=0.03,
-                         help='the target-kl variable that is referred by --kl')
-    parser.add_argument('--gae', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                         help='Use GAE for advantage computation')
-    parser.add_argument('--norm-adv', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                          help="Toggles advantages normalization")
-    parser.add_argument('--anneal-lr', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                          help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument('--clip-vloss', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                          help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
+    parser.add_argument("--n-minibatch", type=int, default=4, help="the number of mini batch")
+    parser.add_argument("--num-envs", type=int, default=24, help="the number of parallel game environment")
+    parser.add_argument("--num-steps", type=int, default=512, help="the number of steps per game environment")
+    parser.add_argument("--gamma", type=float, default=0.99, help="the discount factor gamma")
+    parser.add_argument("--gae-lambda", type=float, default=0.95, help="the lambda for the general advantage estimation")
+    parser.add_argument("--ent-coef", type=float, default=0.01, help="coefficient of the entropy")
+    parser.add_argument("--vf-coef", type=float, default=0.5, help="coefficient of the value function")
+    parser.add_argument("--max-grad-norm", type=float, default=0.5, help="the maximum norm for the gradient clipping")
+    parser.add_argument("--clip-coef", type=float, default=0.1, help="the surrogate clipping coefficient")
+    parser.add_argument("--update-epochs", type=int, default=4, help="the K epochs to update the policy")
+    parser.add_argument(
+        "--kle-stop",
+        type=lambda x: bool(strtobool(x)),
+        default=False,
+        nargs="?",
+        const=True,
+        help="If toggled, the policy updates will be early stopped w.r.t target-kl",
+    )
+    parser.add_argument(
+        "--kle-rollback",
+        type=lambda x: bool(strtobool(x)),
+        default=False,
+        nargs="?",
+        const=True,
+        help="If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl",
+    )
+    parser.add_argument("--target-kl", type=float, default=0.03, help="the target-kl variable that is referred by --kl")
+    parser.add_argument(
+        "--gae",
+        type=lambda x: bool(strtobool(x)),
+        default=True,
+        nargs="?",
+        const=True,
+        help="Use GAE for advantage computation",
+    )
+    parser.add_argument(
+        "--norm-adv",
+        type=lambda x: bool(strtobool(x)),
+        default=True,
+        nargs="?",
+        const=True,
+        help="Toggles advantages normalization",
+    )
+    parser.add_argument(
+        "--anneal-lr",
+        type=lambda x: bool(strtobool(x)),
+        default=True,
+        nargs="?",
+        const=True,
+        help="Toggle learning rate annealing for policy and value networks",
+    )
+    parser.add_argument(
+        "--clip-vloss",
+        type=lambda x: bool(strtobool(x)),
+        default=True,
+        nargs="?",
+        const=True,
+        help="Toggles wheter or not to use a clipped loss for the value function, as per the paper.",
+    )
 
     args = parser.parse_args()
     if not args.seed:
@@ -88,6 +127,7 @@ if __name__ == "__main__":
 
 args.batch_size = int(args.num_envs * args.num_steps)
 args.minibatch_size = int(args.batch_size // args.n_minibatch)
+
 
 class VecMonitor(VecEnvWrapper):
     def __init__(self, venv):
@@ -99,8 +139,8 @@ class VecMonitor(VecEnvWrapper):
 
     def reset(self):
         obs = self.venv.reset()
-        self.eprets = np.zeros(self.num_envs, 'f')
-        self.eplens = np.zeros(self.num_envs, 'i')
+        self.eprets = np.zeros(self.num_envs, "f")
+        self.eplens = np.zeros(self.num_envs, "i")
         return obs
 
     def step_wait(self):
@@ -114,13 +154,14 @@ class VecMonitor(VecEnvWrapper):
                 info = infos[i].copy()
                 ret = self.eprets[i]
                 eplen = self.eplens[i]
-                epinfo = {'r': ret, 'l': eplen, 't': round(time.time() - self.tstart, 6)}
-                info['episode'] = epinfo
+                epinfo = {"r": ret, "l": eplen, "t": round(time.time() - self.tstart, 6)}
+                info["episode"] = epinfo
                 self.epcount += 1
                 self.eprets[i] = 0
                 self.eplens[i] = 0
                 newinfos[i] = info
         return obs, rews, dones, newinfos
+
 
 class VecPyTorch(VecEnvWrapper):
     def __init__(self, venv, device):
@@ -142,6 +183,7 @@ class VecPyTorch(VecEnvWrapper):
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
 
+
 class MicroRTSStatsRecorder(VecEnvWrapper):
     def __init__(self, env, gamma):
         super().__init__(env)
@@ -155,35 +197,43 @@ class MicroRTSStatsRecorder(VecEnvWrapper):
     def step_wait(self):
         obs, rews, dones, infos = self.venv.step_wait()
         for i in range(len(dones)):
-            self.raw_rewards[i] += [infos[i]["raw_rewards"]] 
+            self.raw_rewards[i] += [infos[i]["raw_rewards"]]
         newinfos = list(infos[:])
         for i in range(len(dones)):
             if dones[i]:
                 info = infos[i].copy()
                 raw_rewards = np.array(self.raw_rewards[i]).sum(0)
                 raw_names = [str(rf) for rf in self.rfs]
-                info['microrts_stats'] = dict(zip(raw_names, raw_rewards))
+                info["microrts_stats"] = dict(zip(raw_names, raw_rewards))
                 self.raw_rewards[i] = []
                 newinfos[i] = info
         return obs, rews, dones, newinfos
 
+
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
-writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
-        '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
+writer.add_text(
+    "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))
+)
 if args.prod_mode:
     import wandb
+
     run = wandb.init(
-        project=args.wandb_project_name, entity=args.wandb_entity,
+        project=args.wandb_project_name,
+        entity=args.wandb_entity,
         # sync_tensorboard=True,
-        config=vars(args), name=experiment_name, monitor_gym=True, save_code=True)
+        config=vars(args),
+        name=experiment_name,
+        monitor_gym=True,
+        save_code=True,
+    )
     wandb.tensorboard.patch(save=False)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
     CHECKPOINT_FREQUENCY = 50
 
 # TRY NOT TO MODIFY: seeding
-device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
+device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -194,14 +244,15 @@ envs = MicroRTSVecEnv(
     render_theme=2,
     ai2s=[microrts_ai.coacAI for _ in range(args.num_envs)],
     map_path="maps/16x16/basesWorkers16x16.xml",
-    reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
+    reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
 )
 envs = MicroRTSStatsRecorder(envs, args.gamma)
 envs = VecMonitor(envs)
 envs = VecPyTorch(envs, device)
 if args.capture_video:
-    envs = VecVideoRecorder(envs, f'videos/{experiment_name}',
-                            record_video_trigger=lambda x: x % 1000000 == 0, video_length=2000)
+    envs = VecVideoRecorder(
+        envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 1000000 == 0, video_length=2000
+    )
 assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
@@ -212,15 +263,16 @@ class CategoricalMasked(Categorical):
             super(CategoricalMasked, self).__init__(probs, logits, validate_args)
         else:
             self.masks = masks.type(torch.BoolTensor).to(device)
-            logits = torch.where(self.masks, logits, torch.tensor(-1e+8).to(device))
+            logits = torch.where(self.masks, logits, torch.tensor(-1e8).to(device))
             super(CategoricalMasked, self).__init__(probs, logits, validate_args)
-    
+
     def entropy(self):
         if len(self.masks) == 0:
             return super(CategoricalMasked, self).entropy()
         p_log_p = self.logits * self.probs
-        p_log_p = torch.where(self.masks, p_log_p, torch.tensor(0.).to(device))
+        p_log_p = torch.where(self.masks, p_log_p, torch.tensor(0.0).to(device))
         return -p_log_p.sum(-1)
+
 
 class Scale(nn.Module):
     def __init__(self, scale):
@@ -230,10 +282,12 @@ class Scale(nn.Module):
     def forward(self, x):
         return x * self.scale
 
+
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
+
 
 class Agent(nn.Module):
     def __init__(self, frames=4):
@@ -244,18 +298,19 @@ class Agent(nn.Module):
             layer_init(nn.Conv2d(16, 32, kernel_size=2)),
             nn.ReLU(),
             nn.Flatten(),
-            layer_init(nn.Linear(32*6*6, 256)),
-            nn.ReLU(),)
+            layer_init(nn.Linear(32 * 6 * 6, 256)),
+            nn.ReLU(),
+        )
         self.actor = layer_init(nn.Linear(256, envs.action_space.nvec.sum()), std=0.01)
         self.critic = layer_init(nn.Linear(256, 1), std=1)
 
     def forward(self, x):
-        return self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
+        return self.network(x.permute((0, 3, 1, 2)))  # "bhwc" -> "bchw"
 
     def get_action(self, x, action=None, invalid_action_masks=None, envs=None):
         logits = self.actor(self.forward(x))
         split_logits = torch.split(logits, envs.action_space.nvec.tolist(), dim=1)
-        
+
         if action is None:
             # 1. select source unit based on source unit mask
             source_unit_mask = torch.Tensor(np.array(envs.vec_client.getUnitLocationMasks()).reshape(args.num_envs, -1))
@@ -265,25 +320,31 @@ class Agent(nn.Module):
             #    source-unit mask of action type and parameters
             # print(np.array(envs.vec_client.getUnitActionMasks(action_components[0].cpu().numpy())).reshape(args.num_envs, -1))
             source_unit_action_mask = torch.Tensor(
-                np.array(envs.vec_client.getUnitActionMasks(action_components[0].cpu().numpy())).reshape(args.num_envs, -1))
-            
+                np.array(envs.vec_client.getUnitActionMasks(action_components[0].cpu().numpy())).reshape(args.num_envs, -1)
+            )
+
             # remove the mask on action parameters, which is a similar setup to pysc2
-            source_unit_action_mask[:,6:] = 1
-            
+            source_unit_action_mask[:, 6:] = 1
+
             split_suam = torch.split(source_unit_action_mask, envs.action_space.nvec.tolist()[1:], dim=1)
-            multi_categoricals = multi_categoricals + [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits[1:], split_suam)]
+            multi_categoricals = multi_categoricals + [
+                CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits[1:], split_suam)
+            ]
             invalid_action_masks = torch.cat((source_unit_mask, source_unit_action_mask), 1)
             action_components += [categorical.sample() for categorical in multi_categoricals[1:]]
             action = torch.stack(action_components)
         else:
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_space.nvec.tolist(), dim=1)
-            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
+            multi_categoricals = [
+                CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)
+            ]
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
         return action, logprob.sum(0), entropy.sum(0), invalid_action_masks
 
     def get_value(self, x):
         return self.critic(self.forward(x))
+
 
 agent = Agent().to(device)
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -310,21 +371,21 @@ num_updates = args.total_timesteps // args.batch_size
 ## CRASH AND RESUME LOGIC:
 starting_update = 1
 if args.prod_mode and wandb.run.resumed:
-    starting_update = run.summary.get('charts/update') + 1
+    starting_update = run.summary.get("charts/update") + 1
     global_step = starting_update * args.batch_size
     api = wandb.Api()
     run = api.run(f"{run.entity}/{run.project}/{run.id}")
-    model = run.file('agent.pt')
+    model = run.file("agent.pt")
     model.download(f"models/{experiment_name}/")
     agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt", map_location=device))
     agent.eval()
     print(f"resumed at update {starting_update}")
-for update in range(starting_update, num_updates+1):
+for update in range(starting_update, num_updates + 1):
     # Annealing the rate if instructed to do so.
     if args.anneal_lr:
         frac = 1.0 - (update - 1.0) / num_updates
         lrnow = lr(frac)
-        optimizer.param_groups[0]['lr'] = lrnow
+        optimizer.param_groups[0]["lr"] = lrnow
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(0, args.num_steps):
@@ -346,11 +407,11 @@ for update in range(starting_update, num_updates+1):
         rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
 
         for info in infos:
-            if 'episode' in info.keys():
+            if "episode" in info.keys():
                 print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
-                for key in info['microrts_stats']:
-                    writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
+                writer.add_scalar("charts/episode_reward", info["episode"]["r"], global_step)
+                for key in info["microrts_stats"]:
+                    writer.add_scalar(f"charts/episode_reward/{key}", info["microrts_stats"][key], global_step)
                 break
 
     # bootstrap reward if not done. reached the batch limit
@@ -364,8 +425,8 @@ for update in range(starting_update, num_updates+1):
                     nextnonterminal = 1.0 - next_done
                     nextvalues = last_value
                 else:
-                    nextnonterminal = 1.0 - dones[t+1]
-                    nextvalues = values[t+1]
+                    nextnonterminal = 1.0 - dones[t + 1]
+                    nextvalues = values[t + 1]
                 delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
                 advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
             returns = advantages + values
@@ -376,15 +437,15 @@ for update in range(starting_update, num_updates+1):
                     nextnonterminal = 1.0 - next_done
                     next_return = last_value
                 else:
-                    nextnonterminal = 1.0 - dones[t+1]
-                    next_return = returns[t+1]
+                    nextnonterminal = 1.0 - dones[t + 1]
+                    next_return = returns[t + 1]
                 returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
             advantages = returns - values
 
     # flatten the batch
-    b_obs = obs.reshape((-1,)+envs.observation_space.shape)
+    b_obs = obs.reshape((-1,) + envs.observation_space.shape)
     b_logprobs = logprobs.reshape(-1)
-    b_actions = actions.reshape((-1,)+envs.action_space.shape)
+    b_actions = actions.reshape((-1,) + envs.action_space.shape)
     b_advantages = advantages.reshape(-1)
     b_returns = returns.reshape(-1)
     b_values = values.reshape(-1)
@@ -392,7 +453,9 @@ for update in range(starting_update, num_updates+1):
 
     # Optimizaing the policy and value network
     target_agent = Agent().to(device)
-    inds = np.arange(args.batch_size,)
+    inds = np.arange(
+        args.batch_size,
+    )
     for i_epoch_pi in range(args.update_epochs):
         np.random.shuffle(inds)
         target_agent.load_state_dict(agent.state_dict())
@@ -404,10 +467,8 @@ for update in range(starting_update, num_updates+1):
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
             _, newlogproba, entropy, _ = agent.get_action(
-                b_obs[minibatch_ind],
-                b_actions.long()[minibatch_ind].T,
-                b_invalid_action_masks[minibatch_ind],
-                envs)
+                b_obs[minibatch_ind], b_actions.long()[minibatch_ind].T, b_invalid_action_masks[minibatch_ind], envs
+            )
             ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
 
             # Stats
@@ -415,20 +476,22 @@ for update in range(starting_update, num_updates+1):
 
             # Policy loss
             pg_loss1 = -mb_advantages * ratio
-            pg_loss2 = -mb_advantages * torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef)
+            pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
             pg_loss = torch.max(pg_loss1, pg_loss2).mean()
             entropy_loss = entropy.mean()
 
             # Value loss
             new_values = agent.get_value(b_obs[minibatch_ind]).view(-1)
             if args.clip_vloss:
-                v_loss_unclipped = ((new_values - b_returns[minibatch_ind]) ** 2)
-                v_clipped = b_values[minibatch_ind] + torch.clamp(new_values - b_values[minibatch_ind], -args.clip_coef, args.clip_coef)
-                v_loss_clipped = (v_clipped - b_returns[minibatch_ind])**2
+                v_loss_unclipped = (new_values - b_returns[minibatch_ind]) ** 2
+                v_clipped = b_values[minibatch_ind] + torch.clamp(
+                    new_values - b_values[minibatch_ind], -args.clip_coef, args.clip_coef
+                )
+                v_loss_clipped = (v_clipped - b_returns[minibatch_ind]) ** 2
                 v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
                 v_loss = 0.5 * v_loss_max.mean()
             else:
-                v_loss = 0.5 *((new_values - b_returns[minibatch_ind]) ** 2)
+                v_loss = 0.5 * ((new_values - b_returns[minibatch_ind]) ** 2)
 
             loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
@@ -441,11 +504,12 @@ for update in range(starting_update, num_updates+1):
             if approx_kl > args.target_kl:
                 break
         if args.kle_rollback:
-            if (b_logprobs[minibatch_ind] - agent.get_action(
-                    b_obs[minibatch_ind],
-                    b_actions.long()[minibatch_ind].T,
-                    b_invalid_action_masks[minibatch_ind],
-                    envs)[1]).mean() > args.target_kl:
+            if (
+                b_logprobs[minibatch_ind]
+                - agent.get_action(
+                    b_obs[minibatch_ind], b_actions.long()[minibatch_ind].T, b_invalid_action_masks[minibatch_ind], envs
+                )[1]
+            ).mean() > args.target_kl:
                 agent.load_state_dict(target_agent.state_dict())
                 break
 
@@ -460,7 +524,7 @@ for update in range(starting_update, num_updates+1):
                 torch.save(agent.state_dict(), f"{wandb.run.dir}/agent.pt")
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
-    writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
+    writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
     writer.add_scalar("charts/update", update, global_step)
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
