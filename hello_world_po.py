@@ -1,12 +1,13 @@
 import numpy as np
 from gym_microrts import microrts_ai
-from gym_microrts.envs.vec_env import POMicroRTSGridModeVecEnv
+from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 from numpy.random import choice
 from stable_baselines3.common.vec_env import VecVideoRecorder
 
-env = POMicroRTSGridModeVecEnv(
+env = MicroRTSGridModeVecEnv(
     num_selfplay_envs=0,
     num_bot_envs=1,
+    partial_obs=True,
     max_steps=2000,
     render_theme=2,
     ai2s=[microrts_ai.randomAI for _ in range(1)],
