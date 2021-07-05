@@ -20,6 +20,10 @@ class MicroRTSGridModeVecEnv:
         'video.frames_per_second' : 150
     }
     """
+    [[0]x_coordinate*y_coordinate(x*y), [1]a_t(6), [2]p_move(4), [3]p_harvest(4), 
+    [4]p_return(4), [5]p_produce_direction(4), [6]p_produce_unit_type(z), 
+    [7]x_coordinate*y_coordinate(x*y)]
+
     Create a baselines VecEnv environment from a gym3 environment.
 
     :param env: gym3 environment to adapt
@@ -31,7 +35,7 @@ class MicroRTSGridModeVecEnv:
         max_steps=2000,
         render_theme=2,
         frame_skip=0,
-        ai2s=[microrts_ai.passiveAI, microrts_ai.passiveAI],
+        ai2s=[],
         map_path="maps/10x10/basesTwoWorkers10x10.xml",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0])):
 
@@ -99,7 +103,7 @@ class MicroRTSGridModeVecEnv:
         from ai.core import AI
         self.vec_client = JNIGridnetVecClient(
             self.num_selfplay_envs,
-            self.num_envs,
+            self.num_bot_envs,
             self.max_steps,
             self.rfs,
             os.path.expanduser(self.microrts_path),
@@ -134,7 +138,7 @@ class MicroRTSGridModeVecEnv:
 
     def step_wait(self):
         responses = self.vec_client.gameStep(self.actions, [0 for _ in range(self.num_envs)])
-        raw_obs, reward, done, info = np.array(responses.observation), np.array(responses.reward), np.array(responses.done), [{} for _ in range(self.num_selfplay_envs+self.num_envs)]
+        raw_obs, reward, done = np.array(responses.observation), np.array(responses.reward), np.array(responses.done)
         obs = []
         for ro in raw_obs:
             obs += [self._encode_obs(ro)]
@@ -169,3 +173,26 @@ class MicroRTSGridModeVecEnv:
         if jpype._jpype.isStarted():
             self.vec_client.close()
             jpype.shutdownJVM()
+
+class POMicroRTSGridModeVecEnv(MicroRTSGridModeVecEnv):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.num_planes = [5, 5, 3, len(self.utt['unitTypes'])+1, 6, 2]
+
+    def start_client(self):
+        from ts import JNIVecClientPO
+        from ai.core import AI
+        self.vec_client = JNIVecClientPO(
+            self.num_selfplay_envs,
+            self.num_envs,
+            self.max_steps,
+            self.rfs,
+            os.path.expanduser(self.microrts_path),
+            self.map_path,
+            JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
+            self.real_utt
+        )
+        self.render_client = self.vec_client.selfPlayClients[0] if len(self.vec_client.selfPlayClients) > 0 else self.vec_client.clients[0]
+        # get the unit type table
+        self.utt = json.loads(str(self.render_client.sendUTT()))

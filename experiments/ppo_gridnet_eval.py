@@ -50,13 +50,13 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--num-bot-envs', type=int, default=0,
+    parser.add_argument('--num-bot-envs', type=int, default=1,
                         help='the number of bot game environment; 16 bot envs measn 16 games')
-    parser.add_argument('--num-selfplay-envs', type=int, default=16,
+    parser.add_argument('--num-selfplay-envs', type=int, default=0,
                         help='the number of self play envs; 16 self play envs means 8 games')
     parser.add_argument('--num-steps', type=int, default=256,
                         help='the number of steps per game environment')
-    parser.add_argument('--agent-model-path', type=str, default="agent_selfplay1.pt",
+    parser.add_argument('--agent-model-path', type=str, default="agent.pt",
                         help="the path to the agent's model")
 
     args = parser.parse_args()
@@ -141,19 +141,19 @@ np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 all_ais = {
-    "randomBiasedAI": microrts_ai.randomBiasedAI,
-    "randomAI": microrts_ai.randomAI,
-    "passiveAI": microrts_ai.passiveAI,
-    "workerRushAI": microrts_ai.workerRushAI,
-    "lightRushAI": microrts_ai.lightRushAI,
+    # "randomBiasedAI": microrts_ai.randomBiasedAI,
+    # "randomAI": microrts_ai.randomAI,
+    # "passiveAI": microrts_ai.passiveAI,
+    # "workerRushAI": microrts_ai.workerRushAI,
+    # "lightRushAI": microrts_ai.lightRushAI,
     "coacAI": microrts_ai.coacAI,
-    "naiveMCTSAI": microrts_ai.naiveMCTSAI,
-    "mixedBot": microrts_ai.mixedBot,
-    "rojo": microrts_ai.rojo,
-    "izanagi": microrts_ai.izanagi,
-    "tiamat": microrts_ai.tiamat,
-    "droplet": microrts_ai.droplet,
-    "guidedRojoA3N": microrts_ai.guidedRojoA3N
+    # "naiveMCTSAI": microrts_ai.naiveMCTSAI,
+    # "mixedBot": microrts_ai.mixedBot,
+    # "rojo": microrts_ai.rojo,
+    # "izanagi": microrts_ai.izanagi,
+    # "tiamat": microrts_ai.tiamat,
+    # "droplet": microrts_ai.droplet,
+    # "guidedRojoA3N": microrts_ai.guidedRojoA3N
 }
 ai_names, ais = list(all_ais.keys()) ,list(all_ais.values())
 ai_match_stats = dict(zip(ai_names, np.zeros((len(ais), 3))))
@@ -212,54 +212,94 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
-class Agent(nn.Module):
-    def __init__(self):
-        super(Agent, self).__init__()
-        self.encoder = nn.Sequential(
-            Transpose((0, 3, 1, 2)),  # "bhwc" -> "bchw"
-            layer_init(nn.Conv2d(27, 16, kernel_size=3, padding=1)),
+class Encoder(nn.Module):
+    def __init__(self, input_channels):
+        super().__init__()
+        self._encoder = nn.Sequential(
+            Transpose((0, 3, 1, 2)),
+            layer_init(nn.Conv2d(input_channels, 32, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
             nn.ReLU(),
-            layer_init(nn.Conv2d(16, 32, kernel_size=3, padding=1)),
-            nn.ReLU(),)
-        
-        # decoder
-        self.actor = nn.Sequential(
-            layer_init(nn.Conv2d(32, envs.action_space.nvec[1:].sum(), kernel_size=1)),
-            Transpose((0, 2, 3, 1)),  # "bchw" -> "bhwc"
-            nn.Flatten(),)
+            layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(64, 128, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
+        )
+
+    def forward(self, x):
+        return self._encoder(x)
+
+
+class Decoder(nn.Module):
+    def __init__(self, output_channels):
+        super().__init__()
+
+        self.deconv = nn.Sequential(
+            layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
+            layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
+            layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
+            layer_init(nn.ConvTranspose2d(32, output_channels, 3, stride=2, padding=1, output_padding=1)),
+            Transpose((0, 2, 3, 1)),
+        )
+
+    def forward(self, x):
+        return self.deconv(x)
+
+
+class Agent(nn.Module):
+    def __init__(self, mapsize=16 * 16):
+        super(Agent, self).__init__()
+        self.mapsize = mapsize
+        h, w, c = envs.observation_space.shape
+
+        self.encoder = Encoder(c)
+
+        self.actor = Decoder(78)
 
         self.critic = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(32*16*16, 256)),
+            layer_init(nn.Linear(256, 128), std=1),
             nn.ReLU(),
-            layer_init(nn.Linear(256, 1), std=1))
-        
+            layer_init(nn.Linear(128, 1), std=1),
+        )
+
     def forward(self, x):
-        return self.encoder(x)
+        return self.encoder(x)  # "bhwc" -> "bchw"
 
     def get_action(self, x, action=None, invalid_action_masks=None, envs=None):
         logits = self.actor(self.forward(x))
-        grid_logits = logits.view(-1, envs.action_space.nvec[1:].sum())
+        grid_logits = logits.reshape(-1, envs.action_space.nvec[1:].sum())
         split_logits = torch.split(grid_logits, envs.action_space.nvec[1:].tolist(), dim=1)
-        
+
         if action is None:
             invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
-            invalid_action_masks = invalid_action_masks.view(-1,invalid_action_masks.shape[-1])
-            split_invalid_action_masks = torch.split(invalid_action_masks[:,1:], envs.action_space.nvec[1:].tolist(), dim=1)
-            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
+            invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
+            split_invalid_action_masks = torch.split(invalid_action_masks[:, 1:], envs.action_space.nvec[1:].tolist(),
+                                                     dim=1)
+            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in
+                                  zip(split_logits, split_invalid_action_masks)]
             action = torch.stack([categorical.sample() for categorical in multi_categoricals])
         else:
-            invalid_action_masks = invalid_action_masks.view(-1,invalid_action_masks.shape[-1])
-            action = action.view(-1,action.shape[-1]).T
-            split_invalid_action_masks = torch.split(invalid_action_masks[:,1:], envs.action_space.nvec[1:].tolist(), dim=1)
-            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)]
+            invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
+            action = action.view(-1, action.shape[-1]).T
+            split_invalid_action_masks = torch.split(invalid_action_masks[:, 1:], envs.action_space.nvec[1:].tolist(),
+                                                     dim=1)
+            multi_categoricals = [CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in
+                                  zip(split_logits, split_invalid_action_masks)]
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
         num_predicted_parameters = len(envs.action_space.nvec) - 1
         logprob = logprob.T.view(-1, 256, num_predicted_parameters)
         entropy = entropy.T.view(-1, 256, num_predicted_parameters)
         action = action.T.view(-1, 256, num_predicted_parameters)
-        invalid_action_masks = invalid_action_masks.view(-1, 256, envs.action_space.nvec[1:].sum()+1)
+        invalid_action_masks = invalid_action_masks.view(-1, 256, envs.action_space.nvec[1:].sum() + 1)
         return action, logprob.sum(1).sum(1), entropy.sum(1).sum(1), invalid_action_masks
 
     def get_value(self, x):
@@ -292,17 +332,6 @@ starting_update = 1
 agent.load_state_dict(torch.load(args.agent_model_path))
 agent.eval()
 from jpype.types import JArray, JInt
-if args.prod_mode and wandb.run.resumed:
-    starting_update = run.summary.get('charts/update') + 1
-    global_step = starting_update * args.batch_size
-    api = wandb.Api()
-    run = api.run(f"{run.entity}/{run.project}/{run.id}")
-    model = run.file('agent.pt')
-    model.download(f"models/{experiment_name}/")
-    agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt", map_location=device))
-    agent.eval()
-    print(f"resumed at update {starting_update}")
-
 for update in range(starting_update, num_updates+1):
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
