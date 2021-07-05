@@ -15,6 +15,7 @@ poetry-dynamic-versioning = "^0.13.0"
 torch = "^1.9.0"
 spyder = "^5.0.5"
 tensorboard = "^2.5.0"
+wandb = "^0.10.33"
 
 [tool.poetry-dynamic-versioning]
 enable = true
