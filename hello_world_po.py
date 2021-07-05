@@ -1,8 +1,9 @@
 import numpy as np
-from gym_microrts import microrts_ai
-from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 from numpy.random import choice
 from stable_baselines3.common.vec_env import VecVideoRecorder
+
+from gym_microrts import microrts_ai
+from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 env = MicroRTSGridModeVecEnv(
     num_selfplay_envs=0,
