@@ -136,16 +136,39 @@ Below are the difference between the versioned environments
 
 ## Developer Guide
 
-Clone the repo
+Required dev environment
+```
+# install pyenv
+curl https://pyenv.run | bash
+echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> ~/.bashrc # switch to your shell
+echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bashrc
+source ~/.bashrc
+
+# install python 3.9.5
+pyenv install 3.9.5
+
+# install pipx
+python -m install pipx
+
+# install other dev dependencies
+pipx install poetry
+pipx install black
+pipx install autoflake
+pipx install black
+```
+
 
 ```bash
 # install gym-microrts
 $ git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
 cd gym-microrts && \
-pip install -e .
+pyenv install -s $(sed "s/\/envs.*//" .python-version)
+pyenv virtualenv $(sed "s/\/envs\// /" .python-version)
+poetry install
 # build microrts
-$ cd gym_microrts/microrts && bash build.sh && cd ..&& cd ..
-$ python hello_world.py
+cd gym_microrts/microrts && bash build.sh && cd ..&& cd ..
+python hello_world.py
 ```
 
 ## Known issues
