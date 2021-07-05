@@ -186,14 +186,12 @@ class Agent(nn.Module):
             nn.ReLU(),
             layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
             nn.ReLU(),
-            layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1)),
+            layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1), std=0.01),
             Transpose((0, 2, 3, 1)),
         )
         self.critic = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(256, 128), std=1),
-            nn.ReLU(),
-            layer_init(nn.Linear(128, 1), std=1),
+            layer_init(nn.Linear(256, 1), std=1),
         )
 
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
@@ -278,7 +276,7 @@ if __name__ == "__main__":
     envs = VecMonitor(envs)
     if args.capture_video:
         envs = VecVideoRecorder(
-            envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 1000000 == 0, video_length=2000
+            envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 10000 == 0, video_length=2000
         )
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
