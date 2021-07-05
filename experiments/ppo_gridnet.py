@@ -255,7 +255,7 @@ if __name__ == "__main__":
         partial_obs=args.partial_obs,
         max_steps=2000,
         render_theme=2,
-        ai2s=[microrts_ai.randomAI for _ in range(args.num_bot_envs - 6)]
+        ai2s=[microrts_ai.coacAI for _ in range(args.num_bot_envs - 6)]
         + [microrts_ai.randomBiasedAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.lightRushAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.workerRushAI for _ in range(min(args.num_bot_envs, 2))],
