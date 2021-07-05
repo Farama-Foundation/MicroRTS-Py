@@ -118,20 +118,21 @@ class MicroRTSStatsRecorder(VecEnvWrapper):
 
 # ALGO LOGIC: initialize agent here:
 class CategoricalMasked(Categorical):
-    def __init__(self, probs=None, logits=None, validate_args=None, masks=[], sw=None):
+    def __init__(self, probs=None, logits=None, validate_args=None, masks=[], device=None):
         self.masks = masks
+        self.device = device
         if len(self.masks) == 0:
             super(CategoricalMasked, self).__init__(probs, logits, validate_args)
         else:
             self.masks = masks.bool()
-            logits = torch.where(self.masks, logits, torch.tensor(-1e8, device=device))
+            logits = torch.where(self.masks, logits, torch.tensor(-1e8, device=self.device))
             super(CategoricalMasked, self).__init__(probs, logits, validate_args)
 
     def entropy(self):
         if len(self.masks) == 0:
             return super(CategoricalMasked, self).entropy()
         p_log_p = self.logits * self.probs
-        p_log_p = torch.where(self.masks, p_log_p, torch.tensor(0.0).to(device))
+        p_log_p = torch.where(self.masks, p_log_p, torch.tensor(0.0).to(self.device))
         return -p_log_p.sum(-1)
 
 
@@ -195,7 +196,7 @@ class Agent(nn.Module):
             layer_init(nn.Linear(128, 1), std=1),
         )
 
-    def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None):
+    def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
         hidden = self.encoder(x)
         logits = self.actor(hidden)
         grid_logits = logits.reshape(-1, envs.action_space.nvec[1:].sum())
@@ -206,7 +207,8 @@ class Agent(nn.Module):
             invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
             split_invalid_action_masks = torch.split(invalid_action_masks[:, 1:], envs.action_space.nvec[1:].tolist(), dim=1)
             multi_categoricals = [
-                CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)
+                CategoricalMasked(logits=logits, masks=iam, device=device)
+                for (logits, iam) in zip(split_logits, split_invalid_action_masks)
             ]
             action = torch.stack([categorical.sample() for categorical in multi_categoricals])
         else:
@@ -214,7 +216,8 @@ class Agent(nn.Module):
             action = action.view(-1, action.shape[-1]).T
             split_invalid_action_masks = torch.split(invalid_action_masks[:, 1:], envs.action_space.nvec[1:].tolist(), dim=1)
             multi_categoricals = [
-                CategoricalMasked(logits=logits, masks=iam) for (logits, iam) in zip(split_logits, split_invalid_action_masks)
+                CategoricalMasked(logits=logits, masks=iam, device=device)
+                for (logits, iam) in zip(split_logits, split_invalid_action_masks)
             ]
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
@@ -342,7 +345,9 @@ if __name__ == "__main__":
             dones[step] = next_done
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
-                action, logproba, _, invalid_action_masks[step], vs = agent.get_action_and_value(next_obs, envs=envs)
+                action, logproba, _, invalid_action_masks[step], vs = agent.get_action_and_value(
+                    next_obs, envs=envs, device=device
+                )
                 values[step] = vs.flatten()
 
             actions[step] = action
@@ -437,7 +442,7 @@ if __name__ == "__main__":
                 if args.norm_adv:
                     mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
                 _, newlogproba, entropy, _, new_values = agent.get_action_and_value(
-                    b_obs[minibatch_ind], b_actions.long()[minibatch_ind], b_invalid_action_masks[minibatch_ind], envs
+                    b_obs[minibatch_ind], b_actions.long()[minibatch_ind], b_invalid_action_masks[minibatch_ind], envs, device
                 )
                 ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
 

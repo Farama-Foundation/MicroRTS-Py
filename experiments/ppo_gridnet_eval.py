@@ -6,17 +6,15 @@ import random
 import time
 from distutils.util import strtobool
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
 from gym.spaces import MultiDiscrete
-from gym_microrts import microrts_ai
 from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
-from stable_baselines3.common.vec_env import VecVideoRecorder, VecMonitor
-from torch.distributions.categorical import Categorical
+from stable_baselines3.common.vec_env import VecMonitor, VecVideoRecorder
 from torch.utils.tensorboard import SummaryWriter
-from ppo_gridnet import MicroRTSStatsRecorder, Agent
+
+from ppo_gridnet import Agent, MicroRTSStatsRecorder
+
 
 def parse_args():
     # fmt: off
@@ -45,11 +43,11 @@ def parse_args():
         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
+    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+        help='if toggled, the game will have partial observability')
     parser.add_argument('--n-minibatch', type=int, default=4,
         help='the number of mini batch')
-    parser.add_argument('--num-bot-envs', type=int, default=24,
-        help='the number of bot game environment; 16 bot envs measn 16 games')
-    parser.add_argument('--num-selfplay-envs', type=int, default=0,
+    parser.add_argument('--num-selfplay-envs', type=int, default=4,
         help='the number of self play envs; 16 self play envs means 8 games')
     parser.add_argument('--num-steps', type=int, default=256,
         help='the number of steps per game environment')
@@ -59,11 +57,9 @@ def parse_args():
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
-    args.num_envs = args.num_selfplay_envs + args.num_bot_envs
-    args.batch_size = int(args.num_envs * args.num_steps)
-    args.minibatch_size = int(args.batch_size // args.n_minibatch)
     # fmt: on
     return args
+
 
 if __name__ == "__main__":
     args = parse_args()
@@ -102,7 +98,7 @@ if __name__ == "__main__":
         # "passiveAI": microrts_ai.passiveAI,
         # "workerRushAI": microrts_ai.workerRushAI,
         # "lightRushAI": microrts_ai.lightRushAI,
-        "coacAI": microrts_ai.coacAI,
+        # "coacAI": microrts_ai.coacAI,
         # "naiveMCTSAI": microrts_ai.naiveMCTSAI,
         # "mixedBot": microrts_ai.mixedBot,
         # "rojo": microrts_ai.rojo,
@@ -113,10 +109,12 @@ if __name__ == "__main__":
     }
     ai_names, ais = list(all_ais.keys()), list(all_ais.values())
     ai_match_stats = dict(zip(ai_names, np.zeros((len(ais), 3))))
-    args.num_envs = len(ais)
+    args.num_envs = len(ais) + args.num_selfplay_envs
     envs = MicroRTSGridModeVecEnv(
         num_bot_envs=len(ais),
-        num_selfplay_envs=0,
+        num_selfplay_envs=args.num_selfplay_envs,
+        partial_obs=args.partial_obs,
+        max_steps=5000,
         render_theme=2,
         ai2s=ais,
         map_path="maps/16x16/basesWorkers16x16A.xml",
@@ -168,8 +166,10 @@ if __name__ == "__main__":
             dones[step] = next_done
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
-                values[step] = agent.get_value(obs[step]).flatten()
-                action, logproba, _, invalid_action_masks[step] = agent.get_action(obs[step], envs=envs)
+                action, logproba, _, invalid_action_masks[step], vs = agent.get_action_and_value(
+                    next_obs, envs=envs, device=device
+                )
+                values[step] = vs.flatten()
 
             actions[step] = action
             logprobs[step] = logproba
@@ -205,35 +205,35 @@ if __name__ == "__main__":
                 raise
             rewards[step], next_done = torch.Tensor(rs).to(device), torch.Tensor(ds).to(device)
 
-            for idx, info in enumerate(infos):
-                if "episode" in info.keys():
-                    # print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                    # writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+    #         for idx, info in enumerate(infos):
+    #             if "episode" in info.keys():
+    #                 # print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+    #                 # writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
 
-                    print("against", ai_names[idx], info["microrts_stats"]["WinLossRewardFunction"])
-                    if info["microrts_stats"]["WinLossRewardFunction"] == -1.0:
-                        ai_match_stats[ai_names[idx]][0] += 1
-                    elif info["microrts_stats"]["WinLossRewardFunction"] == 0.0:
-                        ai_match_stats[ai_names[idx]][1] += 1
-                    elif info["microrts_stats"]["WinLossRewardFunction"] == 1.0:
-                        ai_match_stats[ai_names[idx]][2] += 1
-                    # raise
-                    # print(info['microrts_stats']['WinLossRewardFunction'])
-                    assert info["microrts_stats"]["WinLossRewardFunction"] != -2.0
-                    assert info["microrts_stats"]["WinLossRewardFunction"] != 2.0
-                    # for key in info['microrts_stats']:
-                    #     writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
-                    # print("=============================================")
-                    # break
+    #                 print("against", ai_names[idx], info["microrts_stats"]["WinLossRewardFunction"])
+    #                 if info["microrts_stats"]["WinLossRewardFunction"] == -1.0:
+    #                     ai_match_stats[ai_names[idx]][0] += 1
+    #                 elif info["microrts_stats"]["WinLossRewardFunction"] == 0.0:
+    #                     ai_match_stats[ai_names[idx]][1] += 1
+    #                 elif info["microrts_stats"]["WinLossRewardFunction"] == 1.0:
+    #                     ai_match_stats[ai_names[idx]][2] += 1
+    #                 # raise
+    #                 # print(info['microrts_stats']['WinLossRewardFunction'])
+    #                 assert info["microrts_stats"]["WinLossRewardFunction"] != -2.0
+    #                 assert info["microrts_stats"]["WinLossRewardFunction"] != 2.0
+    #                 # for key in info['microrts_stats']:
+    #                 #     writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
+    #                 # print("=============================================")
+    #                 # break
 
-    n_rows, n_cols = 3, 5
-    fig = plt.figure(figsize=(5 * 3, 4 * 3))
-    for i, var_name in enumerate(ai_names):
-        ax = fig.add_subplot(n_rows, n_cols, i + 1)
-        ax.bar(["loss", "tie", "win"], ai_match_stats[var_name])
-        ax.set_title(var_name)
-    fig.suptitle(args.agent_model_path)
-    fig.tight_layout()
+    # n_rows, n_cols = 3, 5
+    # fig = plt.figure(figsize=(5 * 3, 4 * 3))
+    # for i, var_name in enumerate(ai_names):
+    #     ax = fig.add_subplot(n_rows, n_cols, i + 1)
+    #     ax.bar(["loss", "tie", "win"], ai_match_stats[var_name])
+    #     ax.set_title(var_name)
+    # fig.suptitle(args.agent_model_path)
+    # fig.tight_layout()
 
     envs.close()
     writer.close()
