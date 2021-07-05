@@ -181,7 +181,7 @@ class Agent(nn.Module):
         )
         self.critic = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(64*4*4, 1), std=1),
+            layer_init(nn.Linear(64 * 4 * 4, 1), std=1),
         )
 
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
