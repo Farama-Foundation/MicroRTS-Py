@@ -11,9 +11,9 @@ try:
     env = MicroRTSVecEnv(
         num_envs=1,
         render_theme=2,
-        ai2=microrts_ai.coacAI,
+        ai2s=[microrts_ai.coacAI],
         map_path="maps/16x16/basesWorkers16x16.xml",
-        reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0, 0.0])
+        reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
     )
     # env = gym.make('MicrortsDefeatCoacAIShaped-v3').env
     # env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -26,10 +26,10 @@ except Exception as e:
 # print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
 
 
-print("reward is", env.step([[ 17,   2 ,  0 ,  3 ,  0 ,  1 ,  2, 123]])[1])
+print("reward is", env.step([[ 17,   1 ,  1 ,  3 ,  0 ,  1 ,  2, 0]])[1])
 env.render()
 # print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
-print("reward is", env.step([[ 34  , 4 ,  1   ,2  , 1 ,  2  , 3 ,109]])[1])
+print("reward is", env.step([[ 34  , 4 ,  1   ,2  , 1 ,  2  , 3 ,0]])[1])
 env.render()
 # print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
 # print("reward is", env.step([12, 0, 0, 0, 0, 0, 0, 0, 0])[1])
@@ -37,9 +37,9 @@ env.render()
 # print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
 
 
-# for i in range(9):
-#     env.step([12, 0, 0, 0, 0, 0, 0, 0, 0])
-#     env.render()
+for i in range(9):
+    env.step([12, 0, 0, 0, 0, 0, 0, 0, 0])
+    env.render()
 
 # print("unit_locatiuons are at", np.where(env.get_unit_location_mask()==1)[0])
 # # # harvest
