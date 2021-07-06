@@ -151,6 +151,7 @@ source ~/.bashrc
 
 # install python 3.9.5
 pyenv install 3.9.5
+pyenv global 3.9.5
 
 # install pipx
 python -m install pipx
