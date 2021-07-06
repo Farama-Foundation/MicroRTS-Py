@@ -144,16 +144,9 @@ Required dev environment
 ```
 # install pyenv
 curl https://pyenv.run | bash
-echo -e 'if shopt -q login_shell; then' \
-      '\n  export PYENV_ROOT="$HOME/.pyenv"' \
-      '\n  export PATH="$PYENV_ROOT/bin:$PATH"' \
-      '\n eval "$(pyenv init --path)"' \
-      '\nfi' >> ~/.bashrc
-echo -e 'if [ -z "$BASH_VERSION" ]; then'\
-      '\n  export PYENV_ROOT="$HOME/.pyenv"'\
-      '\n  export PATH="$PYENV_ROOT/bin:$PATH"'\
-      '\n  eval "$(pyenv init --path)"'\
-      '\nfi' >>~/.profile
+echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> ~/.bashrc # switch to your shell
+echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bashrc
 source ~/.bashrc
 
 # install python 3.9.5
