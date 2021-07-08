@@ -266,7 +266,7 @@ if __name__ == "__main__":
     envs = VecMonitor(envs)
     if args.capture_video:
         envs = VecVideoRecorder(
-            envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 10000 == 0, video_length=2000
+            envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 100000 == 0, video_length=2000
         )
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 

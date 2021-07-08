@@ -10,11 +10,12 @@ import numpy as np
 import torch
 from gym.spaces import MultiDiscrete
 from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
+from gym_microrts import microrts_ai
 from stable_baselines3.common.vec_env import VecMonitor, VecVideoRecorder
 from torch.utils.tensorboard import SummaryWriter
 
 from ppo_gridnet import Agent, MicroRTSStatsRecorder
-
+import importlib
 
 def parse_args():
     # fmt: off
@@ -43,12 +44,14 @@ def parse_args():
         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
         help='if toggled, the game will have partial observability')
     parser.add_argument('--n-minibatch', type=int, default=4,
         help='the number of mini batch')
-    parser.add_argument('--num-selfplay-envs', type=int, default=4,
+    parser.add_argument('--num-selfplay-envs', type=int, default=2,
         help='the number of self play envs; 16 self play envs means 8 games')
+    parser.add_argument('--ai', type=str, default="",
+        help='the number of steps per game environment')
     parser.add_argument('--num-steps', type=int, default=256,
         help='the number of steps per game environment')
     parser.add_argument("--agent-model-path", type=str, default="agent.pt",
@@ -92,23 +95,28 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
-    all_ais = {
-        # "randomBiasedAI": microrts_ai.randomBiasedAI,
-        # "randomAI": microrts_ai.randomAI,
-        # "passiveAI": microrts_ai.passiveAI,
-        # "workerRushAI": microrts_ai.workerRushAI,
-        # "lightRushAI": microrts_ai.lightRushAI,
-        # "coacAI": microrts_ai.coacAI,
-        # "naiveMCTSAI": microrts_ai.naiveMCTSAI,
-        # "mixedBot": microrts_ai.mixedBot,
-        # "rojo": microrts_ai.rojo,
-        # "izanagi": microrts_ai.izanagi,
-        # "tiamat": microrts_ai.tiamat,
-        # "droplet": microrts_ai.droplet,
-        # "guidedRojoA3N": microrts_ai.guidedRojoA3N
-    }
-    ai_names, ais = list(all_ais.keys()), list(all_ais.values())
-    ai_match_stats = dict(zip(ai_names, np.zeros((len(ais), 3))))
+    ais = []
+    if args.ai:
+        ais = [eval(f"microrts_ai.{args.ai}")]
+    # all_ais = {
+    #     # "randomBiasedAI": microrts_ai.randomBiasedAI,
+    #     # "randomAI": microrts_ai.randomAI,
+    #     # "passiveAI": microrts_ai.passiveAI,
+    #     # "workerRushAI": microrts_ai.workerRushAI,
+    #     # "lightRushAI": microrts_ai.lightRushAI,
+    #     # "coacAI": microrts_ai.coacAI,
+    #     # "naiveMCTSAI": microrts_ai.naiveMCTSAI,
+    #     # "mixedBot": microrts_ai.mixedBot,
+    #     # "rojo": microrts_ai.rojo,
+    #     # "izanagi": microrts_ai.izanagi,
+    #     # "tiamat": microrts_ai.tiamat,
+    #     # "droplet": microrts_ai.droplet,
+    #     # "guidedRojoA3N": microrts_ai.guidedRojoA3N
+    #     # "POLightRush": microrts_ai.POLightRush,
+    #     # "POWorkerRush": microrts_ai.POWorkerRush,
+    # }
+    # ai_names, ais = list(all_ais.keys()), list(all_ais.values())
+    # ai_match_stats = dict(zip(ai_names, np.zeros((len(ais), 3))))
     args.num_envs = len(ais) + args.num_selfplay_envs
     envs = MicroRTSGridModeVecEnv(
         num_bot_envs=len(ais),
