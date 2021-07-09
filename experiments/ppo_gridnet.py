@@ -465,13 +465,11 @@ if __name__ == "__main__":
 
         ## CRASH AND RESUME LOGIC:
         if args.prod_mode:
-            if not os.path.exists(f"models/{experiment_name}"):
-                os.makedirs(f"models/{experiment_name}")
+            # make sure to tune `CHECKPOINT_FREQUENCY` so models are not saved too frequently
+            if update % CHECKPOINT_FREQUENCY == 0:
                 torch.save(agent.state_dict(), f"{wandb.run.dir}/agent.pt")
-                wandb.save(f"agent.pt")
-            else:
-                if update % CHECKPOINT_FREQUENCY == 0:
-                    torch.save(agent.state_dict(), f"{wandb.run.dir}/agent.pt")
+                wandb.save(f"{wandb.run.dir}/agent.pt", policy="now")
+                print("model saved")
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
