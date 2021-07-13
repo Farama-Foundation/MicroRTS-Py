@@ -18,6 +18,14 @@ def lightRushAI(utt):
     from ai.abstraction import LightRush
     return LightRush(utt)
 
+def POLightRush(utt):
+    from ai.abstraction.partialobservability import POLightRush
+    return POLightRush(utt)
+
+def POWorkerRush(utt):
+    from ai.abstraction.partialobservability import POWorkerRush
+    return POWorkerRush(utt)
+
 # Competition AIs
 
 def coacAI(utt):
