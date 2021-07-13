@@ -174,7 +174,7 @@ pyenv install -s $(sed "s/\/envs.*//" .python-version)
 pyenv virtualenv $(sed "s/\/envs\// /" .python-version)
 poetry install
 # build microrts
-cd gym_microrts/microrts && bash build.sh && cd ..&& cd ..
+cd gym_microrts/microrts && bash build.sh > build.log && cd ..&& cd ..
 python hello_world.py
 ```
 
