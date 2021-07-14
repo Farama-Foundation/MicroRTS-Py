@@ -6,6 +6,7 @@ openaigym.*
 experiments/mask/*
 benchmark/scripts/*
 videos
+dataset.pickle
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
