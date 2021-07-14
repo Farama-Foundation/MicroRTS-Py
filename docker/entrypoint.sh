@@ -4,7 +4,6 @@ export DISPLAY=:1
 set -e
 wandb login $WANDB
 git pull --recurse-submodules
-export JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8 && \
-cd gym_microrts/microrts && bash build.sh && cd ..&& cd ..
+pip install --upgrade gym_microrts
 cd experiments
 exec "$@"

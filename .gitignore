@@ -1,13 +1,11 @@
 *.tfevents.*
-*/wandb/*
+wandb
 openaigym.*
 *.pt
 *.pth
 experiments/mask/*
 benchmark/scripts/*
-**/wandb/*
-experiments/videos/*
-experiments/paper/videos/*
+videos
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -14,6 +14,7 @@ import torch.optim as optim
 from gym.spaces import MultiDiscrete
 from gym.wrappers import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecEnvWrapper
+from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
@@ -214,25 +215,21 @@ torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 
 
-def make_env(gym_id, seed, idx):
-    def thunk():
-        env = gym.make(gym_id, grid_mode=True)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        env = MicroRTSStatsRecorder(env)
-        # env = GridActionAdapter(env)
-        env = ImageToPyTorch(env)
-        if args.capture_video:
-            if idx == 0:
-                env = Monitor(env, f"videos/{experiment_name}")
-        env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
-
-    return thunk
-
-
-envs = VecPyTorch(DummyVecEnv([make_env(args.gym_id, args.seed + i, i) for i in range(args.num_envs)]), device)
+envs = MicroRTSGridModeVecEnv(
+    num_selfplay_envs=args.num_selfplay_envs,
+    num_bot_envs=args.num_bot_envs,
+    partial_obs=args.partial_obs,
+    max_steps=2000,
+    render_theme=2,
+    ai2s=[microrts_ai.coacAI for _ in range(args.num_bot_envs - 6)]
+    + [microrts_ai.randomBiasedAI for _ in range(min(args.num_bot_envs, 2))]
+    + [microrts_ai.lightRushAI for _ in range(min(args.num_bot_envs, 2))]
+    + [microrts_ai.workerRushAI for _ in range(min(args.num_bot_envs, 2))],
+    map_path="maps/16x16/basesWorkers16x16.xml",
+    reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
+)
+envs = MicroRTSStatsRecorder(envs)
+envs = VecMonitor(envs)
 # if args.prod_mode:
 #     envs = VecPyTorch(
 #         SubprocVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
