@@ -1,7 +1,8 @@
 *.tfevents.*
 wandb
 openaigym.*
-*.pt
+experiments/paper/**/**.pt
+experiments/models/**/**.pt
 *.pth
 experiments/mask/*
 benchmark/scripts/*
