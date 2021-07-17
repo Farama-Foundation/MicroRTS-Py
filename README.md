@@ -81,7 +81,7 @@ env.close()
 
 For running a partial observable example, run either the `hello_world_po.py` in this repo.
 
-To train an agent against the built-in WorkerRushAI, run the following
+To train an agent, run the following
 
 ```bash
 python experiments/ppo.py \
