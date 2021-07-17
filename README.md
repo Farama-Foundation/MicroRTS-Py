@@ -78,9 +78,6 @@ for i in range(10000):
 env.close()
 ```
 
-
-For running a partial observable example, run either the `hello_world_po.py` in this repo.
-
 To train an agent, run the following
 
 ```bash
@@ -90,6 +87,8 @@ python experiments/ppo.py \
     --capture-video \
     --seed 1
 ```
+
+For running a partial observable example, run the `hello_world_po.py` in this repo.
 
 
 ## Environment Specification
