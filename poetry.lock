@@ -311,7 +311,7 @@ test = ["pytest (>=6.0)", "pytest-cov", "pytest-subtests", "pytest-xdist", "pret
 name = "cycler"
 version = "0.10.0"
 description = "Composable style cycles"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -768,7 +768,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 name = "kiwisolver"
 version = "1.3.1"
 description = "A fast implementation of the Cassowary constraint solver"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -806,7 +806,7 @@ python-versions = ">=3.6"
 name = "matplotlib"
 version = "3.4.2"
 description = "Python plotting package"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 
@@ -980,7 +980,7 @@ pyparsing = ">=2.0.2"
 name = "pandas"
 version = "1.1.5"
 description = "Powerful data structures for data analysis, time series, and statistics"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6.1"
 
@@ -3074,7 +3074,7 @@ pyobjc-framework-Cocoa = ">=7.3"
 name = "pyparsing"
 version = "2.4.7"
 description = "Python parsing module"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
@@ -3120,7 +3120,7 @@ python-versions = ">=3.6"
 name = "python-dateutil"
 version = "2.8.1"
 description = "Extensions to the standard Python datetime module"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 
@@ -3194,7 +3194,7 @@ unidecode = ["Unidecode (>=1.1.1)"]
 name = "pytz"
 version = "2021.1"
 description = "World timezone definitions, modern and historical"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -3449,7 +3449,7 @@ python-versions = ">=3.5"
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 
@@ -3653,7 +3653,7 @@ test = ["codecov", "cython", "dask", "flaky", "matplotlib", "mock", "numpy", "pa
 name = "stable-baselines3"
 version = "1.1.0"
 description = "Pytorch version of Stable Baselines, implementations of reinforcement learning algorithms."
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -3994,7 +3994,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "f7b25c4abb80a59cc782e5ead2c57952c701bfbffbddc0e4d93e6cfb0ad36ecd"
+content-hash = "2d9f2a077a917c765723a330da9d63df761c936ca6a9f44cfe742e0bbc95cd70"
 
 [metadata.files]
 absl-py = [

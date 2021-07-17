@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.random import choice
-from stable_baselines3.common.vec_env import VecVideoRecorder
+# if you want to record videos, install stable-baselines3 and use its `VecVideoRecorder`
+# from stable_baselines3.common.vec_env import VecVideoRecorder
 
 from gym_microrts import microrts_ai
 from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
@@ -15,7 +16,7 @@ env = MicroRTSGridModeVecEnv(
     map_path="maps/16x16/basesWorkers16x16.xml",
     reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
 )
-env = VecVideoRecorder(env, 'videos', record_video_trigger=lambda x: x % 4000 == 0, video_length=2000)
+# env = VecVideoRecorder(env, 'videos', record_video_trigger=lambda x: x % 4000 == 0, video_length=2000)
 
 def sample(logits):
     # sample 1 or 2 from logits [0, 1 ,1, 0] but not 0 or 3
