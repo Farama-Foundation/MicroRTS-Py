@@ -54,7 +54,7 @@ def parse_args():
         help='the number of steps per game environment')
     parser.add_argument('--num-steps', type=int, default=256,
         help='the number of steps per game environment')
-    parser.add_argument("--agent-model-path", type=str, default="agent.pt",
+    parser.add_argument("--agent-model-path", type=str, default="agent_sota.pt",
         help="the path to the agent's model")
 
     args = parser.parse_args()

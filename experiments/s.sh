@@ -1,11 +1,5 @@
-xvfb-run -a python ppo_gridnet.py \
-    --exp-name selfplay \
-    --total-timesteps 300000000 \
-    --num-bot-envs 0 \
-    --num-selfplay-envs 24 \
-    --partial-obs \
-    --prod-mode --capture-video
-
+# full obs
+## training against diverse bots
 xvfb-run -a python ppo_gridnet.py \
     --total-timesteps 300000000 \
     --num-bot-envs 24 \
@@ -13,20 +7,21 @@ xvfb-run -a python ppo_gridnet.py \
     --partial-obs False \
     --prod-mode --capture-video
 
-# Partial obs, play against POLightRush
-python ppo_gridnet_eval.py \
-    --agent-model-path agent_po.pt \
-    --num-selfplay-envs 0 \
-    --ai randomBiasedAI \
-    --partial-obs
+## training using selfplay
+xvfb-run -a python ppo_gridnet.py \
+    --total-timesteps 300000000 \
+    --num-bot-envs 0 \
+    --num-selfplay-envs 24 \
+    --partial-obs False \
+    --prod-mode --capture-video
 
-# Partial obs, play against self
+## evaluating against a particular AI (in this cas)
 python ppo_gridnet_eval.py \
-    --agent-model-path agent_po.pt \
-    --num-selfplay-envs 2 \
-    --partial-obs
-
-python ppo_gridnet_eval.py \
-    --agent-model-path agent.pt \
+    --agent-model-path agent_sota.pt \
     --num-selfplay-envs 0 \
-    --ai randomBiasedAI
+    --ai randomBiasedAI 
+
+## evaluating against selfplay
+python ppo_gridnet_eval.py \
+    --agent-model-path agent_sota.pt \
+    --num-selfplay-envs 2

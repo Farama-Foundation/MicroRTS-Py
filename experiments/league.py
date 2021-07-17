@@ -16,34 +16,9 @@ from gym_microrts import microrts_ai
 from stable_baselines3.common.vec_env import VecMonitor, VecVideoRecorder
 from torch.utils.tensorboard import SummaryWriter
 from trueskill import TrueSkill, Rating, rate_1vs1, quality_1vs1
-from ppo_gridnet_large import Agent, MicroRTSStatsRecorder, CategoricalMasked
+from ppo_gridnet import Agent, MicroRTSStatsRecorder, CategoricalMasked
 from jpype.types import JArray, JInt
 import itertools
-
-# class Agent(_Agent):
-#     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None, ):
-#         hidden = self.encoder(x)
-#         logits = self.actor(hidden)
-#         grid_logits = logits.reshape(-1, envs.action_space.nvec[1:].sum())
-#         split_logits = torch.split(grid_logits, envs.action_space.nvec[1:].tolist(), dim=1)
-
-#         if action is None:
-#             invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
-#             invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
-#             split_invalid_action_masks = torch.split(invalid_action_masks[:, 1:], envs.action_space.nvec[1:].tolist(), dim=1)
-#             multi_categoricals = [
-#                 CategoricalMasked(logits=logits, masks=iam, device=device)
-#                 for (logits, iam) in zip(split_logits, split_invalid_action_masks)
-#             ]
-#             action = torch.stack([categorical.sample() for categorical in multi_categoricals])
-#         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
-#         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
-#         num_predicted_parameters = len(envs.action_space.nvec) - 1
-#         logprob = logprob.T.view(-1, 256, num_predicted_parameters)
-#         entropy = entropy.T.view(-1, 256, num_predicted_parameters)
-#         action = action.T.view(-1, 256, num_predicted_parameters)
-#         invalid_action_masks = invalid_action_masks.view(-1, 256, envs.action_space.nvec[1:].sum() + 1)
-#         return action, logprob.sum(1).sum(1), entropy.sum(1).sum(1), invalid_action_masks, self.critic(hidden)
 
 def parse_args():
     # fmt: off
@@ -61,7 +36,7 @@ def parse_args():
         help='if toggled, the game will have partial observability')
     parser.add_argument('--rl-ais', nargs='+', default= ['agent_sota.pt'], #
         help='the ais')
-    parser.add_argument('--built-in-ais', nargs='+', default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"],
+    parser.add_argument('--built-in-ais', nargs='+', default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI"],
         help='the ais')
     parser.add_argument('--num-matches', type=int, default=10,
         help='seed of the experiment')
@@ -265,10 +240,6 @@ if __name__ == "__main__":
         for match_up in match_ups:
             if idx == 0:
                 match_up = list(reversed(match_up))
-            # if quality_1vs1(ratings[ai1], ratings[ai2]) < 0.2:
-            #     continue
-    
-            # match_ais = list(np.random.choice(list(ratings.keys()), 2, replace=False))
             rl_ais = []
             built_in_ais = []
             for ai in match_up:
@@ -351,28 +322,3 @@ if __name__ == "__main__":
         run.log_artifact(artifact)
         for item in match_historys_dfs:
             wandb.log({item[0].rstrip(".pt"): wandb.Table(dataframe=item[1].reset_index(level=0))})
-    # built_in_ai = args.built_in_ais[0]
-    # rl_ai = args.rl_ais[0]
-    # built_in_ais = [eval(f"microrts_ai.{built_in_ai}")]
-    
-
-    
-    # all_ais = {
-    #     "randomBiasedAI": microrts_ai.randomBiasedAI,
-    #     "randomAI": microrts_ai.randomAI,
-    #     "passiveAI": microrts_ai.passiveAI,
-    #     "workerRushAI": microrts_ai.workerRushAI,
-    #     "lightRushAI": microrts_ai.lightRushAI,
-    #     "coacAI": microrts_ai.coacAI,
-    #     "naiveMCTSAI": microrts_ai.naiveMCTSAI,
-    #     "mixedBot": microrts_ai.mixedBot,
-    #     "rojo": microrts_ai.rojo,
-    #     "izanagi": microrts_ai.izanagi,
-    #     "tiamat": microrts_ai.tiamat,
-    #     "droplet": microrts_ai.droplet,
-    #     "guidedRojoA3N": microrts_ai.guidedRojoA3N,
-    # }
-    # ai_names, ais = list(all_ais.keys()), list(all_ais.values())
-    
-    
-    

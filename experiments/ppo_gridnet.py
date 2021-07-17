@@ -45,7 +45,7 @@ def parse_args():
         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
         help='if toggled, the game will have partial observability')
     parser.add_argument('--n-minibatch', type=int, default=4,
         help='the number of mini batch')
@@ -172,16 +172,29 @@ class Agent(nn.Module):
             nn.ReLU(),
             layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
             nn.MaxPool2d(3, stride=2, padding=1),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(64, 128, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
         )
+
         self.actor = nn.Sequential(
+            layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
+            layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
             layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
             nn.ReLU(),
-            layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1), std=0.01),
+            layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1)),
             Transpose((0, 2, 3, 1)),
         )
         self.critic = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(64 * 4 * 4, 1), std=1),
+            layer_init(nn.Linear(256, 128)),
+            nn.ReLU(),
+            layer_init(nn.Linear(128, 1), std=1),
         )
 
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
