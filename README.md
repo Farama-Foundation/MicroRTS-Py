@@ -29,7 +29,7 @@ Note that the experiments in the technical paper above are done with [`gym_micro
 $ pip install gym_microrts --upgrade
 ```
 
-And run either the `hello_world_v3.py` in this repo or the following file
+And run either the `hello_world.py` in this repo or the following file
 ```python
 import numpy as np
 from gym_microrts import microrts_ai
