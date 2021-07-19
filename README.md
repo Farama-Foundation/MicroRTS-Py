@@ -155,13 +155,12 @@ pyenv install 3.9.5
 pyenv global 3.9.5
 
 # install pipx
-python -m install pipx
+pip install pipx
 
 # install other dev dependencies
 pipx install poetry
 pipx install black
 pipx install autoflake
-pipx install black
 ```
 
 
