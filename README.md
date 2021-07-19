@@ -168,7 +168,7 @@ pipx install black
 ```bash
 # install gym-microrts
 $ git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
-cd gym-microrts && \
+cd gym-microrts 
 pyenv install -s $(sed "s/\/envs.*//" .python-version)
 pyenv virtualenv $(sed "s/\/envs\// /" .python-version)
 poetry install
