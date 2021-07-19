@@ -159,6 +159,7 @@ pip install pipx
 
 # install other dev dependencies
 pipx install poetry
+pipx instal isort
 pipx install black
 pipx install autoflake
 pipx ensurepath
