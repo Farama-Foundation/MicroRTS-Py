@@ -161,6 +161,7 @@ pip install pipx
 pipx install poetry
 pipx install black
 pipx install autoflake
+pipx ensurepath
 ```
 
 
