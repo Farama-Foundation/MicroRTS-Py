@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Huang"
+  given-names: "Shengyi"
+- family-names: "Ontañón"
+  given-names: "Santiago"
+- family-names: "Bamford"
+  given-names: "Chris"
+- family-names: "Grela"
+  given-names: "Lukasz"
+title: "gym-microrts"
+version: 0.3.2
+doi: 10.13140/RG.2.2.18639.82081/1
+date-released: 2021-07-28
+url: "https://arxiv.org/abs/2105.13807"
