@@ -38,7 +38,7 @@ def sample(logits):
     ).reshape(-1, 1)
 
 for i in range(10000):
-    # envs.render()
+    envs.render()
     print(i)
     ### TODO: this `sample` function is very very slow.
     action_mask = envs.get_action_mask()
