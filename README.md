@@ -16,7 +16,7 @@ Prerequisites:
 * Python 3.8+
 * [Poetry](https://python-poetry.org)
 * Java 8.0+
-* ffmpeg (for video recording utilities)
+* FFmpeg (for video recording utilities)
 
 ```bash
 # Make sure you have Java 8.0+ installed
