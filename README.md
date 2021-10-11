@@ -19,7 +19,6 @@ Prerequisites:
 * FFmpeg (for video recording utilities)
 
 ```bash
-# Make sure you have Java 8.0+ installed
 $ git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
 cd gym-microrts 
 poetry install
