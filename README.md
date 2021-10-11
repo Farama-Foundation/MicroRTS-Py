@@ -12,6 +12,12 @@ This repo contains the source code for the gym wrapper of μRTS authored by [San
 
 ## Get Started
 
+Prerequisites:
+* Python 3.8+
+* [Poetry](https://python-poetry.org)
+* Java 8.0+
+* ffmpeg (for video recording utilities)
+
 ```bash
 # Make sure you have Java 8.0+ installed
 $ git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
