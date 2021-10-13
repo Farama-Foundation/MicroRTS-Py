@@ -26,6 +26,13 @@ def POWorkerRush(utt):
     from ai.abstraction.partialobservability import POWorkerRush
     return POWorkerRush(utt)
 
+def POHeavyRush(utt):
+    from ai.abstraction.partialobservability import POHeavyRush
+    return POHeavyRush(utt)
+
+def PORangedRush(utt):
+    from ai.abstraction.partialobservability import PORangedRush
+    return PORangedRush(utt)
 # Competition AIs
 
 def coacAI(utt):
