@@ -4,7 +4,7 @@ from numpy.random import choice
 # from stable_baselines3.common.vec_env import VecVideoRecorder
 
 from gym_microrts import microrts_ai
-from gym_microrts.envs.new_vec_env import MicroRTSGridModeVecEnv
+from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 envs = MicroRTSGridModeVecEnv(
     num_selfplay_envs=0,
