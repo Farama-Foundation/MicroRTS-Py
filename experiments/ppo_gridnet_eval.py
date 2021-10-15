@@ -16,7 +16,7 @@ from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 from stable_baselines3.common.vec_env import VecEnvWrapper, VecMonitor, VecVideoRecorder
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
-from new_ppo_gridnet import Agent, MicroRTSStatsRecorder
+from ppo_gridnet import Agent, MicroRTSStatsRecorder
 
 
 def parse_args():
