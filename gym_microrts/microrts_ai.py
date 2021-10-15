@@ -68,6 +68,11 @@ def droplet(utt):
     from GNS import Droplet
     return Droplet(utt)
 
+# https://github.com/barvazkrav/mayariBot/blob/master/mayari.java
+def mayari(utt):
+    from mayariBot import mayari
+    return mayari(utt)
+
 # # https://github.com/zuozhiyang/MentalSeal
 # def mentalSeal(utt):
 #     from MentalSeal import MentalSeal

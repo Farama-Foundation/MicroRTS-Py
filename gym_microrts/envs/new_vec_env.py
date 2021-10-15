@@ -62,8 +62,9 @@ class MicroRTSGridModeVecEnv:
             registerDomain("ts", alias="tests")
             registerDomain("ai")
             jars = [
-                "microrts.jar", "Coac.jar", "Droplet.jar", "GRojoA3N.jar",
-                "Izanagi.jar", "MixedBot.jar", "RojoBot.jar", "TiamatBot.jar", "UMSBot.jar" # "MindSeal.jar"
+                "microrts.jar", "lib/bots/Coac.jar", "lib/bots/Droplet.jar", "lib/bots/GRojoA3N.jar",
+                "lib/bots/Izanagi.jar", "lib/bots/MixedBot.jar", "lib/bots/TiamatBot.jar", "lib/bots/UMSBot.jar",
+                "lib/bots/mayariBot.jar" # "MindSeal.jar"
             ]
             for jar in jars:
                 jpype.addClassPath(os.path.join(self.microrts_path, jar))
@@ -235,8 +236,9 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
             registerDomain("ts", alias="tests")
             registerDomain("ai")
             jars = [
-                "microrts.jar", "Coac.jar", "Droplet.jar", "GRojoA3N.jar",
-                "Izanagi.jar", "MixedBot.jar", "RojoBot.jar", "TiamatBot.jar", "UMSBot.jar" # "MindSeal.jar"
+                "microrts.jar", "lib/bots/Coac.jar", "lib/bots/Droplet.jar", "lib/bots/GRojoA3N.jar",
+                "lib/bots/Izanagi.jar", "lib/bots/MixedBot.jar", "lib/bots/TiamatBot.jar", "lib/bots/UMSBot.jar",
+                "lib/bots/mayariBot.jar" # "MindSeal.jar"
             ]
             for jar in jars:
                 jpype.addClassPath(os.path.join(self.microrts_path, jar))
