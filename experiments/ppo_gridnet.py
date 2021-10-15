@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.optim as optim
 from gym.spaces import MultiDiscrete
 from gym_microrts import microrts_ai
-from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
+from gym_microrts.envs.new_vec_env import MicroRTSGridModeVecEnv
 from stable_baselines3.common.vec_env import VecEnvWrapper, VecMonitor, VecVideoRecorder
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
@@ -200,13 +200,13 @@ class Agent(nn.Module):
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
         hidden = self.encoder(x)
         logits = self.actor(hidden)
-        grid_logits = logits.reshape(-1, envs.action_space.nvec[1:].sum())
-        split_logits = torch.split(grid_logits, envs.action_space.nvec[1:].tolist(), dim=1)
+        grid_logits = logits.reshape(-1, envs.action_plane_space.nvec.sum())
+        split_logits = torch.split(grid_logits, envs.action_plane_space.nvec.tolist(), dim=1)
 
         if action is None:
-            invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
+            # invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
             invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
-            split_invalid_action_masks = torch.split(invalid_action_masks[:, 1:], envs.action_space.nvec[1:].tolist(), dim=1)
+            split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_plane_space.nvec.tolist(), dim=1)
             multi_categoricals = [
                 CategoricalMasked(logits=logits, masks=iam, device=device)
                 for (logits, iam) in zip(split_logits, split_invalid_action_masks)
@@ -215,18 +215,17 @@ class Agent(nn.Module):
         else:
             invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
             action = action.view(-1, action.shape[-1]).T
-            split_invalid_action_masks = torch.split(invalid_action_masks[:, 1:], envs.action_space.nvec[1:].tolist(), dim=1)
+            split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_plane_space.nvec.tolist(), dim=1)
             multi_categoricals = [
                 CategoricalMasked(logits=logits, masks=iam, device=device)
                 for (logits, iam) in zip(split_logits, split_invalid_action_masks)
             ]
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
         entropy = torch.stack([categorical.entropy() for categorical in multi_categoricals])
-        num_predicted_parameters = len(envs.action_space.nvec) - 1
-        logprob = logprob.T.view(-1, 256, num_predicted_parameters)
-        entropy = entropy.T.view(-1, 256, num_predicted_parameters)
-        action = action.T.view(-1, 256, num_predicted_parameters)
-        invalid_action_masks = invalid_action_masks.view(-1, 256, envs.action_space.nvec[1:].sum() + 1)
+        num_predicted_parameters = len(envs.action_plane_space.nvec)
+        logprob = logprob.T.view(-1, self.mapsize, num_predicted_parameters)
+        entropy = entropy.T.view(-1, self.mapsize, num_predicted_parameters)
+        action = action.T.view(-1, self.mapsize, num_predicted_parameters)
         return action, logprob.sum(1).sum(1), entropy.sum(1).sum(1), invalid_action_masks, self.critic(hidden)
 
     def get_value(self, x):
@@ -291,8 +290,8 @@ if __name__ == "__main__":
 
     # ALGO Logic: Storage for epoch data
     mapsize = 16 * 16
-    action_space_shape = (mapsize, envs.action_space.shape[0] - 1)
-    invalid_action_shape = (mapsize, envs.action_space.nvec[1:].sum() + 1)
+    action_space_shape = (mapsize, len(envs.action_plane_space.nvec))
+    invalid_action_shape = (mapsize, envs.action_plane_space.nvec.sum())
 
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + action_space_shape).to(device)
@@ -346,39 +345,16 @@ if __name__ == "__main__":
             dones[step] = next_done
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
-                action, logproba, _, invalid_action_masks[step], vs = agent.get_action_and_value(
-                    next_obs, envs=envs, device=device
+                invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
+                action, logproba, _, _, vs = agent.get_action_and_value(
+                    next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
                 )
                 values[step] = vs.flatten()
 
             actions[step] = action
             logprobs[step] = logproba
-
-            # TRY NOT TO MODIFY: execute the game and log data.
-            # the real action adds the source units
-            real_action = torch.cat(
-                [torch.stack([torch.arange(0, mapsize, device=device) for i in range(envs.num_envs)]).unsqueeze(2), action], 2
-            )
-
-            # at this point, the `real_action` has shape (num_envs, map_height*map_width, 8)
-            # so as to predict an action for each cell in the map; this obviously include a
-            # lot of invalid actions at cells for which no source units exist, so the rest of
-            # the code removes these invalid actions to speed things up
-            real_action = real_action.cpu().numpy()
-            valid_actions = real_action[invalid_action_masks[step][:, :, 0].bool().cpu().numpy()]
-            valid_actions_counts = invalid_action_masks[step][:, :, 0].sum(1).long().cpu().numpy()
-            java_valid_actions = []
-            valid_action_idx = 0
-            for env_idx, valid_action_count in enumerate(valid_actions_counts):
-                java_valid_action = []
-                for c in range(valid_action_count):
-                    java_valid_action += [JArray(JInt)(valid_actions[valid_action_idx])]
-                    valid_action_idx += 1
-                java_valid_actions += [JArray(JArray(JInt))(java_valid_action)]
-            java_valid_actions = JArray(JArray(JArray(JInt)))(java_valid_actions)
-
             try:
-                next_obs, rs, ds, infos = envs.step(java_valid_actions)
+                next_obs, rs, ds, infos = envs.step(action.cpu().numpy().reshape(envs.num_envs, -1))
                 next_obs = torch.Tensor(next_obs).to(device)
             except Exception as e:
                 e.printStackTrace()
@@ -496,5 +472,5 @@ if __name__ == "__main__":
         writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
 
-    envs.close()
-    writer.close()
+    # envs.close()
+    # writer.close()

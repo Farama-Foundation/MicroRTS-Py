@@ -8,14 +8,16 @@ from distutils.util import strtobool
 
 import numpy as np
 import torch
+import torch.nn as nn
+import torch.optim as optim
 from gym.spaces import MultiDiscrete
-from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 from gym_microrts import microrts_ai
-from stable_baselines3.common.vec_env import VecMonitor, VecVideoRecorder
+from gym_microrts.envs.new_vec_env import MicroRTSGridModeVecEnv
+from stable_baselines3.common.vec_env import VecEnvWrapper, VecMonitor, VecVideoRecorder
+from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
+from new_ppo_gridnet import Agent, MicroRTSStatsRecorder
 
-from ppo_gridnet import Agent, MicroRTSStatsRecorder
-import importlib
 
 def parse_args():
     # fmt: off
@@ -44,18 +46,20 @@ def parse_args():
         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, the game will have partial observability')
     parser.add_argument('--n-minibatch', type=int, default=4,
         help='the number of mini batch')
-    parser.add_argument('--num-selfplay-envs', type=int, default=2,
+    parser.add_argument('--num-bot-envs', type=int, default=0,
+        help='the number of bot game environment; 16 bot envs measn 16 games')
+    parser.add_argument('--num-selfplay-envs', type=int, default=0,
         help='the number of self play envs; 16 self play envs means 8 games')
-    parser.add_argument('--ai', type=str, default="",
-        help='the number of steps per game environment')
     parser.add_argument('--num-steps', type=int, default=256,
         help='the number of steps per game environment')
-    parser.add_argument("--agent-model-path", type=str, default="agent_sota.pt",
+    parser.add_argument("--agent-model-path", type=str, default="POagent.pt",
         help="the path to the agent's model")
+    parser.add_argument('--ai', type=str, default="POHeavyRush",
+        help='the number of steps per game environment')
 
     args = parser.parse_args()
     if not args.seed:
@@ -69,25 +73,23 @@ if __name__ == "__main__":
 
     # TRY NOT TO MODIFY: setup the environment
     experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    writer = SummaryWriter(f"runs/{experiment_name}")
-    writer.add_text(
-        "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))
-    )
     if args.prod_mode:
         import wandb
 
         run = wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            # sync_tensorboard=True,
+            sync_tensorboard=True,
             config=vars(args),
             name=experiment_name,
             monitor_gym=True,
             save_code=True,
         )
-        wandb.tensorboard.patch(save=False)
-        writer = SummaryWriter(f"/tmp/{experiment_name}")
-        CHECKPOINT_FREQUENCY = 50
+        CHECKPOINT_FREQUENCY = 10
+    writer = SummaryWriter(f"runs/{experiment_name}")
+    writer.add_text(
+        "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))
+    )
 
     # TRY NOT TO MODIFY: seeding
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
@@ -95,29 +97,10 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
+
     ais = []
     if args.ai:
         ais = [eval(f"microrts_ai.{args.ai}")]
-    # all_ais = {
-    #     # "randomBiasedAI": microrts_ai.randomBiasedAI,
-    #     # "randomAI": microrts_ai.randomAI,
-    #     # "passiveAI": microrts_ai.passiveAI,
-    #     # "workerRushAI": microrts_ai.workerRushAI,
-    #     # "lightRushAI": microrts_ai.lightRushAI,
-    #     # "coacAI": microrts_ai.coacAI,
-    #     # "naiveMCTSAI": microrts_ai.naiveMCTSAI,
-    #     # "mixedBot": microrts_ai.mixedBot,
-    #     # "rojo": microrts_ai.rojo,
-    #     # "izanagi": microrts_ai.izanagi,
-    #     # "tiamat": microrts_ai.tiamat,
-    #     # "droplet": microrts_ai.droplet,
-    #     # "guidedRojoA3N": microrts_ai.guidedRojoA3N
-    #     # "POLightRush": microrts_ai.POLightRush,
-    #     # "POWorkerRush": microrts_ai.POWorkerRush,
-    # }
-    # ai_names, ais = list(all_ais.keys()), list(all_ais.values())
-    # ai_match_stats = dict(zip(ai_names, np.zeros((len(ais), 3))))
-    args.num_envs = len(ais) + args.num_selfplay_envs
     envs = MicroRTSGridModeVecEnv(
         num_bot_envs=len(ais),
         num_selfplay_envs=args.num_selfplay_envs,
@@ -130,17 +113,20 @@ if __name__ == "__main__":
     )
     envs = MicroRTSStatsRecorder(envs)
     envs = VecMonitor(envs)
+    args.num_envs = len(ais) + args.num_selfplay_envs
     if args.capture_video:
         envs = VecVideoRecorder(
-            envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 1000000 == 0, video_length=2000
+            envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 100000 == 0, video_length=2000
         )
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
     agent = Agent(envs).to(device)
+    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+
     # ALGO Logic: Storage for epoch data
     mapsize = 16 * 16
-    action_space_shape = (mapsize, envs.action_space.shape[0] - 1)
-    invalid_action_shape = (mapsize, envs.action_space.nvec[1:].sum() + 1)
+    action_space_shape = (mapsize, len(envs.action_plane_space.nvec))
+    invalid_action_shape = (mapsize, envs.action_plane_space.nvec.sum())
 
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + action_space_shape).to(device)
@@ -162,10 +148,14 @@ if __name__ == "__main__":
     starting_update = 1
     agent.load_state_dict(torch.load(args.agent_model_path))
     agent.eval()
-    from jpype.types import JArray, JInt
+
+    print("Model's state_dict:")
+    for param_tensor in agent.state_dict():
+        print(param_tensor, "\t", agent.state_dict()[param_tensor].size())
+    total_params = sum([param.nelement() for param in agent.parameters()])
+    print("Model's total parameters:", total_params)
 
     for update in range(starting_update, num_updates + 1):
-
         # TRY NOT TO MODIFY: prepare the execution of the game.
         for step in range(0, args.num_steps):
             envs.render()
@@ -174,74 +164,36 @@ if __name__ == "__main__":
             dones[step] = next_done
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
-                action, logproba, _, invalid_action_masks[step], vs = agent.get_action_and_value(
-                    next_obs, envs=envs, device=device
+                invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
+                action, logproba, _, _, vs = agent.get_action_and_value(
+                    next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
                 )
                 values[step] = vs.flatten()
 
             actions[step] = action
             logprobs[step] = logproba
-
-            # TRY NOT TO MODIFY: execute the game and log data.
-            # the real action adds the source units
-            real_action = torch.cat(
-                [torch.stack([torch.arange(0, mapsize, device=device) for i in range(envs.num_envs)]).unsqueeze(2), action], 2
-            )
-
-            # at this point, the `real_action` has shape (num_envs, map_height*map_width, 8)
-            # so as to predict an action for each cell in the map; this obviously include a
-            # lot of invalid actions at cells for which no source units exist, so the rest of
-            # the code removes these invalid actions to speed things up
-            real_action = real_action.cpu().numpy()
-            valid_actions = real_action[invalid_action_masks[step][:, :, 0].bool().cpu().numpy()]
-            valid_actions_counts = invalid_action_masks[step][:, :, 0].sum(1).long().cpu().numpy()
-            java_valid_actions = []
-            valid_action_idx = 0
-            for env_idx, valid_action_count in enumerate(valid_actions_counts):
-                java_valid_action = []
-                for c in range(valid_action_count):
-                    java_valid_action += [JArray(JInt)(valid_actions[valid_action_idx])]
-                    valid_action_idx += 1
-                java_valid_actions += [JArray(JArray(JInt))(java_valid_action)]
-            java_valid_actions = JArray(JArray(JArray(JInt)))(java_valid_actions)
-
             try:
-                next_obs, rs, ds, infos = envs.step(java_valid_actions)
+                next_obs, rs, ds, infos = envs.step(action.cpu().numpy().reshape(envs.num_envs, -1))
                 next_obs = torch.Tensor(next_obs).to(device)
             except Exception as e:
                 e.printStackTrace()
                 raise
             rewards[step], next_done = torch.Tensor(rs).to(device), torch.Tensor(ds).to(device)
 
-    #         for idx, info in enumerate(infos):
-    #             if "episode" in info.keys():
-    #                 # print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-    #                 # writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+            for info in infos:
+                if "episode" in info.keys():
+                    # print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+                    # writer.add_scalar("charts/episode_reward", info["episode"]["r"], global_step)
+                    # for key in info["microrts_stats"]:
+                    #     writer.add_scalar(f"charts/episode_reward/{key}", info["microrts_stats"][key], global_step)
+                    # break
 
-    #                 print("against", ai_names[idx], info["microrts_stats"]["WinLossRewardFunction"])
-    #                 if info["microrts_stats"]["WinLossRewardFunction"] == -1.0:
-    #                     ai_match_stats[ai_names[idx]][0] += 1
-    #                 elif info["microrts_stats"]["WinLossRewardFunction"] == 0.0:
-    #                     ai_match_stats[ai_names[idx]][1] += 1
-    #                 elif info["microrts_stats"]["WinLossRewardFunction"] == 1.0:
-    #                     ai_match_stats[ai_names[idx]][2] += 1
-    #                 # raise
-    #                 # print(info['microrts_stats']['WinLossRewardFunction'])
-    #                 assert info["microrts_stats"]["WinLossRewardFunction"] != -2.0
-    #                 assert info["microrts_stats"]["WinLossRewardFunction"] != 2.0
-    #                 # for key in info['microrts_stats']:
-    #                 #     writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
-    #                 # print("=============================================")
-    #                 # break
+                    print("against", args.ai, info["microrts_stats"]["WinLossRewardFunction"])
 
-    # n_rows, n_cols = 3, 5
-    # fig = plt.figure(figsize=(5 * 3, 4 * 3))
-    # for i, var_name in enumerate(ai_names):
-    #     ax = fig.add_subplot(n_rows, n_cols, i + 1)
-    #     ax.bar(["loss", "tie", "win"], ai_match_stats[var_name])
-    #     ax.set_title(var_name)
-    # fig.suptitle(args.agent_model_path)
-    # fig.tight_layout()
+        # TRY NOT TO MODIFY: record rewards for plotting purposes
+        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar("charts/update", update, global_step)
+        writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
 
-    envs.close()
-    writer.close()
+    # envs.close()
+    # writer.close()
