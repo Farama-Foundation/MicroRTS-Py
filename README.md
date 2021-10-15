@@ -23,7 +23,7 @@ $ git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
 cd gym-microrts 
 poetry install
 # build microrts
-cd gym_microrts/microrts && bash build.sh > build.log && cd ..&& cd ..
+bash build.sh &> build.log
 python hello_world.py
 ```
 
