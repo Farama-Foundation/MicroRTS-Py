@@ -23,14 +23,14 @@ $ git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
 cd gym-microrts 
 poetry install
 # build microrts
-cd gym_microrts/microrts && bash build.sh > build.log && cd ..&& cd ..
-python new_hello_world.py
+bash build.sh &> build.log
+python hello_world.py
 ```
 
 To train an agent, run the following
 
 ```bash
-python experiments/new_ppo_gridnet.py \
+python experiments/ppo_gridnet.py \
     --total-timesteps 100000000 \
     --wandb-project-name gym-microrts \
     --capture-video \

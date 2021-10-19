@@ -3,6 +3,13 @@ name = "gym-microrts"
 version = "0.0.0"
 description = ""
 authors = ["Costa Huang <costa.huang@outlook.com>"]
+exclude = [
+    "gym_microrts/microrts/build/*",
+    "gym_microrts/microrts/resources",
+    "gym_microrts/microrts/src",
+    "gym_microrts/microrts/data",
+    "gym_microrts/microrts/lib/*.jar",
+]
 
 [tool.poetry.dependencies]
 python = "^3.7"

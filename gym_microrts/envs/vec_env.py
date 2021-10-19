@@ -7,12 +7,11 @@ from PIL import Image
 
 import gym
 import gym_microrts
-from gym_microrts import microrts_ai
 
 import jpype
 from jpype.imports import registerDomain
 import jpype.imports
-from jpype.types import JArray
+from jpype.types import JArray, JInt
 
 class MicroRTSGridModeVecEnv:
     metadata = {
@@ -62,8 +61,9 @@ class MicroRTSGridModeVecEnv:
             registerDomain("ts", alias="tests")
             registerDomain("ai")
             jars = [
-                "microrts.jar", "Coac.jar", "Droplet.jar", "GRojoA3N.jar",
-                "Izanagi.jar", "MixedBot.jar", "RojoBot.jar", "TiamatBot.jar", "UMSBot.jar" # "MindSeal.jar"
+                "microrts.jar", "lib/bots/Coac.jar", "lib/bots/Droplet.jar", "lib/bots/GRojoA3N.jar",
+                "lib/bots/Izanagi.jar", "lib/bots/MixedBot.jar", "lib/bots/TiamatBot.jar", "lib/bots/UMSBot.jar",
+                "lib/bots/mayariBot.jar" # "MindSeal.jar"
             ]
             for jar in jars:
                 jpype.addClassPath(os.path.join(self.microrts_path, jar))
@@ -96,13 +96,12 @@ class MicroRTSGridModeVecEnv:
             shape=(self.height, self.width,
                     sum(self.num_planes)),
                     dtype=np.int32)
-        self.action_space = gym.spaces.MultiDiscrete([
-            self.height * self.width,
-            6, 4, 4, 4, 4,
-            len(self.utt['unitTypes']),
-            7 * 7
-        ])
 
+        self.action_space = gym.spaces.MultiDiscrete(np.array([[6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7]] * self.height * self.width).flatten())
+        self.action_plane_space = gym.spaces.MultiDiscrete([6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7])
+        self.source_unit_idxs = np.stack([np.arange(0, self.height*self.width) for i in range(self.num_envs)])
+        self.source_unit_idxs = self.source_unit_idxs.reshape((self.source_unit_idxs.shape + (1,)))
+        
     def start_client(self):
 
         from ts import JNIGridnetVecClient as Client
@@ -141,7 +140,21 @@ class MicroRTSGridModeVecEnv:
         return obs_planes.reshape(self.height, self.width, -1)
 
     def step_async(self, actions):
-        self.actions = actions
+        actions = actions.reshape((self.num_envs, self.width*self.height, -1))
+        actions = np.concatenate((self.source_unit_idxs, actions), 2) # specify source unit
+        actions = actions[np.where(self.source_unit_mask==1)] # valid actions
+        java_actions = []
+        action_counts_per_env = self.source_unit_mask.sum(1)
+        action_idx = 0
+        for action_count in action_counts_per_env:
+            java_valid_action = []
+            for _ in range(action_count):
+                java_valid_action += [JArray(JInt)(actions[action_idx])]
+                action_idx += 1
+            java_actions += [JArray(JArray(JInt))(java_valid_action)]
+        java_actions = JArray(JArray(JArray(JInt)))(java_actions)
+        
+        self.actions = java_actions
 
     def step_wait(self):
         responses = self.vec_client.gameStep(self.actions, [0 for _ in range(self.num_envs)])
@@ -181,6 +194,12 @@ class MicroRTSGridModeVecEnv:
             self.vec_client.close()
             jpype.shutdownJVM()
 
+    def get_action_mask(self):
+        action_mask = np.array(self.vec_client.getMasks(0))
+        self.source_unit_mask = action_mask[:,:,:,0].reshape(self.num_envs, -1)
+        action_type_and_parameter_mask = action_mask[:,:,:,1:].reshape(self.num_envs, self.height*self.width, -1)
+        return action_type_and_parameter_mask
+
 class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
@@ -216,8 +235,9 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
             registerDomain("ts", alias="tests")
             registerDomain("ai")
             jars = [
-                "microrts.jar", "Coac.jar", "Droplet.jar", "GRojoA3N.jar",
-                "Izanagi.jar", "MixedBot.jar", "RojoBot.jar", "TiamatBot.jar", "UMSBot.jar" # "MindSeal.jar"
+                "microrts.jar", "lib/bots/Coac.jar", "lib/bots/Droplet.jar", "lib/bots/GRojoA3N.jar",
+                "lib/bots/Izanagi.jar", "lib/bots/MixedBot.jar", "lib/bots/TiamatBot.jar", "lib/bots/UMSBot.jar",
+                "lib/bots/mayariBot.jar" # "MindSeal.jar"
             ]
             for jar in jars:
                 jpype.addClassPath(os.path.join(self.microrts_path, jar))
