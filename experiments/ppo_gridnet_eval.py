@@ -108,7 +108,7 @@ if __name__ == "__main__":
         max_steps=5000,
         render_theme=2,
         ai2s=ais,
-        map_path=["maps/16x16/basesWorkers16x16.xml"],
+        map_paths=["maps/16x16/basesWorkers16x16A.xml"],
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
     )
     envs = MicroRTSStatsRecorder(envs)

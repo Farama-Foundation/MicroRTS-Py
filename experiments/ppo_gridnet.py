@@ -271,7 +271,7 @@ if __name__ == "__main__":
         + [microrts_ai.randomBiasedAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.lightRushAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.workerRushAI for _ in range(min(args.num_bot_envs, 2))],
-        map_path=["maps/16x16/basesWorkers16x16.xml"],
+        map_paths=["maps/16x16/basesWorkers16x16.xml"],
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
     )
     envs = MicroRTSStatsRecorder(envs)
