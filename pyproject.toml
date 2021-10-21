@@ -15,10 +15,10 @@ exclude = [
 python = "^3.7"
 gym = "^0.18.3"
 JPype1 = "^1.3.0"
+spyder = {version = "^5.1.5", optional = true}
 
 [tool.poetry.dev-dependencies]
 poetry-dynamic-versioning = "^0.13.0"
-spyder = "^5.0.5"
 tensorboard = "^2.5.0"
 wandb = "^0.11.0"
 trueskill = "^0.4.5"
@@ -35,3 +35,6 @@ files = ["*/__init__.py"]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
 build-backend = "poetry.core.masonry.api"
 
+
+[tool.poetry.extras]
+spyder = ["spyder"]
