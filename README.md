@@ -82,6 +82,34 @@ Here is a description of Gym-μRTS's observation and action space:
 ![image](https://user-images.githubusercontent.com/5555347/120344517-a5bf7300-c2c7-11eb-81b6-172813ba8a0b.png)
 
 
+## Evaluate the Trueskill of the agents
+
+
+Evaluate among built-in AIs
+```bash
+cd experiments
+python league.py --built-in-ais randomBiasedAI workerRushAI lightRushAI coacAI --rl-ais
+```
+
+Evaluate among RL AIs
+```bash
+cd experiments
+python league.py --rl-ais agent1.pt agent2.pt
+```
+
+Evaluate RL AIs against built-in AIs
+```bash
+cd experiments
+python league.py --built-in-ais randomBiasedAI workerRushAI lightRushAI coacAI --rl-ais agent_sota.pt
+```
+
+Evaluate among AIs
+```bash
+cd experiments
+python league.py --built-in-ais randomBiasedAI workerRushAI lightRushAI coacAI --rl-ais agent1.pt agent2.pt
+```
+
+
 ## Known issues
 
 [ ] Rendering does not exactly work in macos. See https://github.com/jpype-project/jpype/issues/906

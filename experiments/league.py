@@ -34,53 +34,17 @@ def parse_args():
 
     parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
         help='if toggled, the game will have partial observability')
-    parser.add_argument('--rl-ais', nargs='+', default= ['agent_sota.pt'], #
+    parser.add_argument('--rl-ais', nargs='+', default= ['agent_sota.pt'],
         help='the ais')
     parser.add_argument('--built-in-ais', nargs='+', default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI"],
         help='the ais')
     parser.add_argument('--num-matches', type=int, default=10,
         help='seed of the experiment')
+    # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
     # fmt: on
     return args
-
-
-def create_envs(mode: int, partial_obs: bool, built_in_ais=None, built_in_ais2=None):
-    # mode 0: rl-ai vs built-in-ai
-    # mode 1: rl-ai vs rl-ai
-    # mode 2: built-in-ai vs built-in-ai
-    max_steps = 5000
-    if mode == 0:
-        return MicroRTSGridModeVecEnv(
-            num_bot_envs=len(built_in_ais),
-            num_selfplay_envs=0,
-            partial_obs=partial_obs,
-            max_steps=max_steps,
-            render_theme=2,
-            ai2s=built_in_ais,
-            map_paths=["maps/16x16/basesWorkers16x16A.xml"],
-            reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
-        )
-    elif mode == 1:
-        return MicroRTSGridModeVecEnv(
-            num_selfplay_envs=2,
-            partial_obs=partial_obs,
-            max_steps=max_steps,
-            render_theme=2,
-            map_paths=["maps/16x16/basesWorkers16x16A.xml"],
-            reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
-        )
-    else:
-        return MicroRTSBotVecEnv(
-            ai1s=built_in_ais,
-            ai2s=built_in_ais2,
-            max_steps=max_steps,
-            render_theme=2,
-            map_paths=["maps/16x16/basesWorkers16x16.xml"],
-            reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
-        )
-        
 
 class Match:
     def __init__(self, mode: int, partial_obs: bool, built_in_ais=None, built_in_ais2=None, rl_ai=None, rl_ai2=None):
@@ -111,6 +75,7 @@ class Match:
             self.agent.eval()
         elif mode == 1:
             self.envs = MicroRTSGridModeVecEnv(
+                num_bot_envs=0,
                 num_selfplay_envs=2,
                 partial_obs=partial_obs,
                 max_steps=max_steps,
@@ -139,6 +104,8 @@ class Match:
     def run(self, num_matches=7):
         if self.mode == 0:
             return self.run_m0(num_matches)
+        elif self.mode == 1:
+            return self.run_m1(num_matches)
         else:
             return self.run_m2(num_matches)
         
@@ -165,6 +132,45 @@ class Match:
                 if "episode" in info.keys():
                     results += [info["microrts_stats"]["WinLossRewardFunction"]]
                     print("against", info["microrts_stats"]["WinLossRewardFunction"])
+                    if len(results) >= num_matches:
+                        return results
+
+    def run_m1(self, num_matches):
+        results = []
+        mapsize = 16 * 16
+        next_obs = torch.Tensor(self.envs.reset()).to(self.device)
+        while True:
+            # self.envs.render()
+            # ALGO LOGIC: put action logic here
+            with torch.no_grad():
+                mask = torch.tensor(np.array(self.envs.get_action_mask())).to(self.device)
+                
+                p1_obs = next_obs[::2]
+                p2_obs = next_obs[1::2]
+                p1_mask = mask[::2]
+                p2_mask = mask[1::2]
+                
+                p1_action, _, _, _, _ = self.agent.get_action_and_value(
+                    p1_obs, envs=self.envs, invalid_action_masks=p1_mask, device=self.device
+                )
+                p2_action, _, _, _, _ = self.agent2.get_action_and_value(
+                    p2_obs, envs=self.envs, invalid_action_masks=p2_mask, device=self.device
+                )
+                action = torch.zeros((self.envs.num_envs, p2_action.shape[1], p2_action.shape[2]))
+                action[::2] = p1_action
+                action[1::2] = p2_action
+
+            try:
+                next_obs, rs, ds, infos = self.envs.step(action.cpu().numpy().reshape(self.envs.num_envs, -1))
+                next_obs = torch.Tensor(next_obs).to(self.device)
+            except Exception as e:
+                e.printStackTrace()
+                raise
+    
+            for idx, info in enumerate(infos):
+                if "episode" in info.keys():
+                    results += [info["microrts_stats"]["WinLossRewardFunction"]]
+                    print(idx, info["microrts_stats"]["WinLossRewardFunction"])
                     if len(results) >= num_matches:
                         return results
 
@@ -214,6 +220,11 @@ if __name__ == "__main__":
                 p0 = rl_ais[0]
                 p1 = built_in_ais[0]
                 m = Match(0, False, rl_ai=p0, built_in_ais=[eval(f"microrts_ai.{p1}")])
+            elif len(rl_ais) == 2:
+                print("mode1")
+                p0 = rl_ais[0]
+                p1 = rl_ais[1]
+                m = Match(1, False, rl_ai=p0, rl_ai2=p1)
             else:
                 print("mode2")
                 p0 = built_in_ais[0]
