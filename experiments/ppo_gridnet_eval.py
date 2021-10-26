@@ -160,40 +160,23 @@ if __name__ == "__main__":
         for step in range(0, args.num_steps):
             envs.render()
             global_step += 1 * args.num_envs
-            obs[step] = next_obs
-            dones[step] = next_done
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
                 invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
                 action, logproba, _, _, vs = agent.get_action_and_value(
                     next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
                 )
-                values[step] = vs.flatten()
 
-            actions[step] = action
-            logprobs[step] = logproba
             try:
                 next_obs, rs, ds, infos = envs.step(action.cpu().numpy().reshape(envs.num_envs, -1))
                 next_obs = torch.Tensor(next_obs).to(device)
             except Exception as e:
                 e.printStackTrace()
                 raise
-            rewards[step], next_done = torch.Tensor(rs).to(device), torch.Tensor(ds).to(device)
 
             for info in infos:
                 if "episode" in info.keys():
-                    # print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                    # writer.add_scalar("charts/episode_reward", info["episode"]["r"], global_step)
-                    # for key in info["microrts_stats"]:
-                    #     writer.add_scalar(f"charts/episode_reward/{key}", info["microrts_stats"][key], global_step)
-                    # break
-
                     print("against", args.ai, info["microrts_stats"]["WinLossRewardFunction"])
 
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
-        writer.add_scalar("charts/update", update, global_step)
-        writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
-
-    # envs.close()
-    # writer.close()
+    envs.close()
+    writer.close()

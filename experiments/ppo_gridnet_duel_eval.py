@@ -185,10 +185,5 @@ if __name__ == "__main__":
                     if idx % 2 == 0:
                         print(f"player{idx % 2}", info["microrts_stats"]["WinLossRewardFunction"])
 
-        # # TRY NOT TO MODIFY: record rewards for plotting purposes
-        # writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
-        # writer.add_scalar("charts/update", update, global_step)
-        # writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
-
-    # envs.close()
-    # writer.close()
+    envs.close()
+    writer.close()
