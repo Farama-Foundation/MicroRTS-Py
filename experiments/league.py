@@ -59,7 +59,7 @@ def create_envs(mode: int, partial_obs: bool, built_in_ais=None, built_in_ais2=N
             max_steps=max_steps,
             render_theme=2,
             ai2s=built_in_ais,
-            map_path="maps/16x16/basesWorkers16x16A.xml",
+            map_paths=["maps/16x16/basesWorkers16x16A.xml"],
             reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
         )
     elif mode == 1:
@@ -68,7 +68,7 @@ def create_envs(mode: int, partial_obs: bool, built_in_ais=None, built_in_ais2=N
             partial_obs=partial_obs,
             max_steps=max_steps,
             render_theme=2,
-            map_path="maps/16x16/basesWorkers16x16A.xml",
+            map_paths=["maps/16x16/basesWorkers16x16A.xml"],
             reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
         )
     else:
@@ -77,7 +77,7 @@ def create_envs(mode: int, partial_obs: bool, built_in_ais=None, built_in_ais2=N
             ai2s=built_in_ais2,
             max_steps=max_steps,
             render_theme=2,
-            map_path="maps/16x16/basesWorkers16x16.xml",
+            map_paths=["maps/16x16/basesWorkers16x16.xml"],
             reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
         )
         
@@ -103,7 +103,7 @@ class Match:
                 max_steps=max_steps,
                 render_theme=2,
                 ai2s=built_in_ais,
-                map_path="maps/16x16/basesWorkers16x16A.xml",
+                map_paths=["maps/16x16/basesWorkers16x16A.xml"],
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
             )
             self.agent = Agent(self.envs).to(self.device)
@@ -115,7 +115,7 @@ class Match:
                 partial_obs=partial_obs,
                 max_steps=max_steps,
                 render_theme=2,
-                map_path="maps/16x16/basesWorkers16x16A.xml",
+                map_paths=["maps/16x16/basesWorkers16x16A.xml"],
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
             )
             self.agent = Agent(self.envs).to(self.device)
@@ -130,7 +130,7 @@ class Match:
                 ai2s=built_in_ais2,
                 max_steps=max_steps,
                 render_theme=2,
-                map_path="maps/16x16/basesWorkers16x16.xml",
+                map_paths=["maps/16x16/basesWorkers16x16.xml"],
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0])
             )
         self.envs = MicroRTSStatsRecorder(self.envs)
@@ -150,35 +150,12 @@ class Match:
             # self.envs.render()
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
-                action, _, _, invalid_action_masks, _ = self.agent.get_action_and_value(
-                    next_obs, envs=self.envs, device=self.device
+                mask = torch.tensor(np.array(self.envs.get_action_mask())).to(self.device)
+                action, _, _, _, _ = self.agent.get_action_and_value(
+                    next_obs, envs=self.envs, invalid_action_masks=mask, device=self.device
                 )
-    
-            # TRY NOT TO MODIFY: execute the game and log data.
-            # the real action adds the source units
-            real_action = torch.cat(
-                [torch.stack([torch.arange(0, mapsize, device=self.device) for i in range(self.envs.num_envs)]).unsqueeze(2), action], 2
-            )
-    
-            # at this point, the `real_action` has shape (num_envs, map_height*map_width, 8)
-            # so as to predict an action for each cell in the map; this obviously include a
-            # lot of invalid actions at cells for which no source units exist, so the rest of
-            # the code removes these invalid actions to speed things up
-            real_action = real_action.cpu().numpy()
-            valid_actions = real_action[invalid_action_masks[:, :, 0].bool().cpu().numpy()]
-            valid_actions_counts = invalid_action_masks[:, :, 0].sum(1).long().cpu().numpy()
-            java_valid_actions = []
-            valid_action_idx = 0
-            for env_idx, valid_action_count in enumerate(valid_actions_counts):
-                java_valid_action = []
-                for c in range(valid_action_count):
-                    java_valid_action += [JArray(JInt)(valid_actions[valid_action_idx])]
-                    valid_action_idx += 1
-                java_valid_actions += [JArray(JArray(JInt))(java_valid_action)]
-            java_valid_actions = JArray(JArray(JArray(JInt)))(java_valid_actions)
-    
             try:
-                next_obs, rs, ds, infos = self.envs.step(java_valid_actions)
+                next_obs, rs, ds, infos = self.envs.step(action.cpu().numpy().reshape(self.envs.num_envs, -1))
                 next_obs = torch.Tensor(next_obs).to(self.device)
             except Exception as e:
                 e.printStackTrace()
@@ -186,20 +163,10 @@ class Match:
     
             for idx, info in enumerate(infos):
                 if "episode" in info.keys():
-                    # print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                    # writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
                     results += [info["microrts_stats"]["WinLossRewardFunction"]]
                     print("against", info["microrts_stats"]["WinLossRewardFunction"])
-                    # raise
-                    # print(info['microrts_stats']['WinLossRewardFunction'])
-                    assert info["microrts_stats"]["WinLossRewardFunction"] != -2.0
-                    assert info["microrts_stats"]["WinLossRewardFunction"] != 2.0
                     if len(results) >= num_matches:
                         return results
-                    # for key in info['microrts_stats']:
-                    #     writer.add_scalar(f"charts/episode_reward/{key}", info['microrts_stats'][key], global_step)
-                    # print("=============================================")
-                    # break
 
     def run_m2(self, num_matches):
         results = []
@@ -212,14 +179,8 @@ class Match:
                   [0, 0, 0, 0, 0, 0, 0, 0],]]) 
             for idx, info in enumerate(infos):
                 if "episode" in info.keys():
-                    # print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                    # writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
                     results += [info["microrts_stats"]["WinLossRewardFunction"]]
                     print(idx, info["microrts_stats"]["WinLossRewardFunction"])
-                    # raise
-                    # print(info['microrts_stats']['WinLossRewardFunction'])
-                    assert info["microrts_stats"]["WinLossRewardFunction"] != -2.0
-                    assert info["microrts_stats"]["WinLossRewardFunction"] != 2.0
                     if len(results) >= num_matches:
                         return results
 

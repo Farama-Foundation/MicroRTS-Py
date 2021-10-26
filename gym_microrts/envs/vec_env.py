@@ -231,7 +231,7 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
 
         # read map
         self.microrts_path = os.path.join(gym_microrts.__path__[0], 'microrts')
-        root = ET.parse(os.path.join(self.microrts_path, self.map_paths)).getroot()
+        root = ET.parse(os.path.join(self.microrts_path, self.map_paths[0])).getroot()
         self.height, self.width = int(root.get("height")), int(root.get("width"))
 
         # launch the JVM
