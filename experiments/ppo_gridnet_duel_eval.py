@@ -52,14 +52,14 @@ def parse_args():
         help='the number of mini batch')
     parser.add_argument('--num-bot-envs', type=int, default=0,
         help='the number of bot game environment; 16 bot envs measn 16 games')
-    parser.add_argument('--num-selfplay-envs', type=int, default=0,
+    parser.add_argument('--num-selfplay-envs', type=int, default=4,
         help='the number of self play envs; 16 self play envs means 8 games')
     parser.add_argument('--num-steps', type=int, default=256,
         help='the number of steps per game environment')
     parser.add_argument("--agent-model-path", type=str, default="POagent.pt",
         help="the path to the agent's model")
-    parser.add_argument('--ai', type=str, default="POHeavyRush",
-        help='the number of steps per game environment')
+    parser.add_argument("--agent2-model-path", type=str, default="POagent.pt",
+        help="the path to the agent's model")
 
     args = parser.parse_args()
     if not args.seed:
@@ -98,22 +98,19 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    ais = []
-    if args.ai:
-        ais = [eval(f"microrts_ai.{args.ai}")]
     envs = MicroRTSGridModeVecEnv(
-        num_bot_envs=len(ais),
+        num_bot_envs=0,
         num_selfplay_envs=args.num_selfplay_envs,
         partial_obs=args.partial_obs,
         max_steps=5000,
         render_theme=2,
-        ai2s=ais,
+        ai2s=[],
         map_paths=["maps/16x16/basesWorkers16x16A.xml"],
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
     )
     envs = MicroRTSStatsRecorder(envs)
     envs = VecMonitor(envs)
-    args.num_envs = len(ais) + args.num_selfplay_envs
+    args.num_envs = 0 + args.num_selfplay_envs
     if args.capture_video:
         envs = VecVideoRecorder(
             envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 100000 == 0, video_length=2000
@@ -121,6 +118,7 @@ if __name__ == "__main__":
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
     agent = Agent(envs).to(device)
+    agent2 = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage for epoch data
@@ -128,12 +126,6 @@ if __name__ == "__main__":
     action_space_shape = (mapsize, len(envs.action_plane_space.nvec))
     invalid_action_shape = (mapsize, envs.action_plane_space.nvec.sum())
 
-    obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
-    actions = torch.zeros((args.num_steps, args.num_envs) + action_space_shape).to(device)
-    logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     invalid_action_masks = torch.zeros((args.num_steps, args.num_envs) + invalid_action_shape).to(device)
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -148,6 +140,8 @@ if __name__ == "__main__":
     starting_update = 1
     agent.load_state_dict(torch.load(args.agent_model_path))
     agent.eval()
+    agent2.load_state_dict(torch.load(args.agent2_model_path))
+    agent2.eval()
 
     print("Model's state_dict:")
     for param_tensor in agent.state_dict():
@@ -163,10 +157,22 @@ if __name__ == "__main__":
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
                 invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
-                action, logproba, _, _, vs = agent.get_action_and_value(
-                    next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
+                
+                p1_obs = next_obs[::2]
+                p2_obs = next_obs[1::2]
+                p1_mask = invalid_action_masks[step][::2]
+                p2_mask = invalid_action_masks[step][1::2]
+                
+                p1_action, _, _, _, _ = agent.get_action_and_value(
+                    p1_obs, envs=envs, invalid_action_masks=p1_mask, device=device
                 )
-
+                p2_action, _, _, _, _ = agent2.get_action_and_value(
+                    p2_obs, envs=envs, invalid_action_masks=p2_mask, device=device
+                )
+                action = torch.zeros((args.num_envs, p2_action.shape[1], p2_action.shape[2]))
+                action[::2] = p1_action
+                action[1::2] = p2_action
+                # raise
             try:
                 next_obs, rs, ds, infos = envs.step(action.cpu().numpy().reshape(envs.num_envs, -1))
                 next_obs = torch.Tensor(next_obs).to(device)
@@ -174,9 +180,10 @@ if __name__ == "__main__":
                 e.printStackTrace()
                 raise
 
-            for info in infos:
+            for idx, info in enumerate(infos):
                 if "episode" in info.keys():
-                    print("against", args.ai, info["microrts_stats"]["WinLossRewardFunction"])
+                    if idx % 2 == 0:
+                        print(f"player{idx % 2}", info["microrts_stats"]["WinLossRewardFunction"])
 
     envs.close()
     writer.close()

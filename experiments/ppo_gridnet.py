@@ -205,7 +205,7 @@ class Agent(nn.Module):
 
         if action is None:
             # invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
-            invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
+            invalid_action_masks = invalid_action_masks.reshape(-1, invalid_action_masks.shape[-1])
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_plane_space.nvec.tolist(), dim=1)
             multi_categoricals = [
                 CategoricalMasked(logits=logits, masks=iam, device=device)
