@@ -88,10 +88,46 @@ class Outcome(Enum):
     LOSS = -1
 
 class Match:
-    def __init__(self, mode: int, partial_obs: bool, built_in_ais=None, built_in_ais2=None, rl_ai=None, rl_ai2=None):
+    def __init__(self, partial_obs: bool, match_up=None):
         # mode 0: rl-ai vs built-in-ai
         # mode 1: rl-ai vs rl-ai
         # mode 2: built-in-ai vs built-in-ai
+        
+        
+        built_in_ais=None
+        built_in_ais2=None
+        rl_ai=None
+        rl_ai2=None
+        
+        # determine mode
+        rl_ais = []
+        built_in_ais = []
+        for ai in match_up:
+            if ai[-3:] == ".pt":
+                rl_ais += [ai]
+            else:
+                built_in_ais += [ai]
+        if len(rl_ais) == 1:
+            mode = 0
+            p0 = rl_ais[0]
+            p1 = built_in_ais[0]
+            rl_ai=p0
+            built_in_ais=[eval(f"microrts_ai.{p1}")]
+        elif len(rl_ais) == 2:
+            mode = 1
+            p0 = rl_ais[0]
+            p1 = rl_ais[1]
+            rl_ai=p0
+            rl_ai2=p1
+        else:
+            mode = 2
+            p0 = built_in_ais[0]
+            p1 = built_in_ais[1]
+            built_in_ais=[eval(f"microrts_ai.{p0}")]
+            built_in_ais2=[eval(f"microrts_ai.{p1}")]
+        
+        self.p0, self.p1 = p0, p1
+        
         self.mode = mode
         self.partial_obs = partial_obs
         self.built_in_ais = built_in_ais
@@ -283,29 +319,10 @@ if __name__ == "__main__":
             for match_up in match_ups:
                 if idx == 0:
                     match_up = list(reversed(match_up))
-                rl_ais = []
-                built_in_ais = []
-                for ai in match_up:
-                    if ai[-3:] == ".pt":
-                        rl_ais += [ai]
-                    else:
-                        built_in_ais += [ai]
-                
-                if len(rl_ais) == 1:
-                    p0 = rl_ais[0]
-                    p1 = built_in_ais[0]
-                    m = Match(0, False, rl_ai=p0, built_in_ais=[eval(f"microrts_ai.{p1}")])
-                elif len(rl_ais) == 2:
-                    p0 = rl_ais[0]
-                    p1 = rl_ais[1]
-                    m = Match(1, False, rl_ai=p0, rl_ai2=p1)
-                else:
-                    p0 = built_in_ais[0]
-                    p1 = built_in_ais[1]
-                    m = Match(2, False, built_in_ais=[eval(f"microrts_ai.{p0}")], built_in_ais2=[eval(f"microrts_ai.{p1}")])
-                
-                challenger = AI.get_or_none(name=p0)
-                defender = AI.get_or_none(name=p1)
+
+                m = Match(False, match_up)
+                challenger = AI.get_or_none(name=m.p0)
+                defender = AI.get_or_none(name=m.p1)
                 
                 r = m.run(args.num_matches // 2)
                 for item in r:
