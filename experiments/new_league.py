@@ -172,7 +172,6 @@ class Match:
             for idx, info in enumerate(infos):
                 if "episode" in info.keys():
                     results += [info["microrts_stats"]["WinLossRewardFunction"]]
-                    print("against", info["microrts_stats"]["WinLossRewardFunction"])
                     if len(results) >= num_matches:
                         return results
 
@@ -211,7 +210,6 @@ class Match:
             for idx, info in enumerate(infos):
                 if "episode" in info.keys():
                     results += [info["microrts_stats"]["WinLossRewardFunction"]]
-                    print(idx, info["microrts_stats"]["WinLossRewardFunction"])
                     if len(results) >= num_matches:
                         return results
 
@@ -227,7 +225,6 @@ class Match:
             for idx, info in enumerate(infos):
                 if "episode" in info.keys():
                     results += [info["microrts_stats"]["WinLossRewardFunction"]]
-                    print(idx, info["microrts_stats"]["WinLossRewardFunction"])
                     if len(results) >= num_matches:
                         return results
 
@@ -295,17 +292,14 @@ if __name__ == "__main__":
                         built_in_ais += [ai]
                 
                 if len(rl_ais) == 1:
-                    print("mode0")
                     p0 = rl_ais[0]
                     p1 = built_in_ais[0]
                     m = Match(0, False, rl_ai=p0, built_in_ais=[eval(f"microrts_ai.{p1}")])
                 elif len(rl_ais) == 2:
-                    print("mode1")
                     p0 = rl_ais[0]
                     p1 = rl_ais[1]
                     m = Match(1, False, rl_ai=p0, rl_ai2=p1)
                 else:
-                    print("mode2")
                     p0 = built_in_ais[0]
                     p1 = built_in_ais[1]
                     m = Match(2, False, built_in_ais=[eval(f"microrts_ai.{p0}")], built_in_ais2=[eval(f"microrts_ai.{p1}")])
@@ -324,6 +318,8 @@ if __name__ == "__main__":
                     else:
                         winner = defender
                         loser = challenger
+                        
+                    print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
                     
                     winner_rating, loser_rating = rate_1vs1(
                         Rating(winner.mu, winner.sigma),
@@ -343,65 +339,6 @@ if __name__ == "__main__":
                         loss=int(item == -1),
                     ).save()
 
-        query = (AI.select(
-                AI.name,
-                AI.mu,
-                AI.sigma,
-                (AI.mu - 3 * AI.sigma).alias('trueskill'),
-            )
-            .order_by((AI.mu - 3 * AI.sigma).desc())
-        )
-            # )
-        # (AI.get(name='agent_sota.pt')
-        #     .challenger_match_histories
-        #     .select(Count)
-
-                    # if item == Outcome.WIN:
-                    #     rate_1vs1(
-                    #         Rating(challenger.mu, challenger.sigma),
-                    #         Rating(defender.mu, defender.sigma))
-                        
-                        
-                    #     ratings[p0], ratings[p1] = rate_1vs1(ratings[p0], ratings[p1])
-                    #     if p1 not in match_historys[p0]:
-                    #         match_historys[p0][p1] = [1, 0, 0]
-                    #     else:
-                    #         match_historys[p0][p1][0] += 1
-                    #     if p0 not in match_historys[p1]:
-                    #         match_historys[p1][p0] = [0, 0, 1]
-                    #     else:
-                    #         match_historys[p1][p0][2] += 1
-                    # elif item == 0:
-                    #     ratings[p0], ratings[p1] = rate_1vs1(ratings[p0], ratings[p1], drawn=True)
-                    #     if p1 not in match_historys[p0]:
-                    #         match_historys[p0][p1] = [0, 1, 0]
-                    #     else:
-                    #         match_historys[p0][p1][1] += 1
-                    #     if p0 not in match_historys[p1]:
-                    #         match_historys[p1][p0] = [0, 1, 0]
-                    #     else:
-                    #         match_historys[p1][p0][1] += 1
-                    # else:
-                    #     ratings[p1], ratings[p0] = rate_1vs1(ratings[p1], ratings[p0])
-                    #     if p1 not in match_historys[p0]:
-                    #         match_historys[p0][p1] = [0, 0, 1]
-                    #     else:
-                    #         match_historys[p0][p1][2] += 1
-                    #     if p0 not in match_historys[p1]:
-                    #         match_historys[p1][p0] = [1, 0, 0]
-                    #     else:
-                    #         match_historys[p1][p0][0] += 1
-        # leaderboard = sorted(ratings, key=lambda item: ratings[item].mu - 3 *ratings[item].sigma, reverse=True)
-        # leaderboard = [(item, round(ratings[item].mu - 3 *ratings[item].sigma,2), ratings[item])  for item in leaderboard]
-        
-        # trueskills = pd.DataFrame(data = [[item[0], item[1], item[2].mu, item[2].sigma] for item in leaderboard], columns=["ai", "trueskill", "mu", "sigma"])
-        
-        # match_historys_dfs = [[key, pd.DataFrame(match_historys[key], index=["win", "tie", "loss"]).T] for key in match_historys]
-        # dataset = [trueskills, match_historys_dfs]
-        # with open('dataset.pickle', 'wb') as handle:
-        #     pickle.dump(dataset, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        
-        
         # if args.prod_mode:
         #     import wandb
 
