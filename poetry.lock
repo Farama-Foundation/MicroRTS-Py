@@ -1063,6 +1063,14 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "peewee"
+version = "3.14.8"
+description = "a little orm"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "pexpect"
 version = "4.8.0"
 description = "Pexpect allows easy control of interactive console applications."
@@ -4030,7 +4038,7 @@ spyder = ["spyder"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "7d777d1db1b729c3e44e7a16d7b0edec25f7580310c34639931a2790d4cf6799"
+content-hash = "2e704b53d7a7b99ff454de18c6f307ff8b5930231f3b022d7caabb0a956a37cd"
 
 [metadata.files]
 absl-py = [
@@ -4679,6 +4687,9 @@ pathspec = [
 ]
 pathtools = [
     {file = "pathtools-0.1.2.tar.gz", hash = "sha256:7c35c5421a39bb82e58018febd90e3b6e5db34c5443aaaf742b3f33d4655f1c0"},
+]
+peewee = [
+    {file = "peewee-3.14.8.tar.gz", hash = "sha256:01bd7f734defb08d7a3346a0c0ca7011bc8d0d685934ec0e001b3371d522ec53"},
 ]
 pexpect = [
     {file = "pexpect-4.8.0-py2.py3-none-any.whl", hash = "sha256:0b48a55dcb3c05f3329815901ea4fc1537514d6ba867a152b581d69ae3710937"},
