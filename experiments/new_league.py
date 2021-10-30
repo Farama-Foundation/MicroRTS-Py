@@ -47,7 +47,7 @@ def parse_args():
 
     parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
         help='if toggled, the game will have partial observability')
-    parser.add_argument('--evals', nargs='+', default=['agent_sota.pt', "randomBiasedAI","workerRushAI","lightRushAI"], # ["coacAI"],
+    parser.add_argument('--evals', nargs='+', default=['agent_sota.pt', "randomBiasedAI","workerRushAI","lightRushAI", "coacAI"], # [],
         help='the ais')
     parser.add_argument('--num-matches', type=int, default=10,
         help='seed of the experiment')
@@ -299,7 +299,7 @@ def get_leaderboard():
 if __name__ == "__main__":
     args = parse_args()
     existing_ai_names = [item.name for item in AI.select()]
-    all_ai_names = existing_ai_names + args.evals
+    all_ai_names = set(existing_ai_names + args.evals)
 
     for ai_name in all_ai_names:  
         ai = AI.get_or_none(name=ai_name)
@@ -355,6 +355,71 @@ if __name__ == "__main__":
                         draw=int(item == 0),
                         loss=int(item == -1),
                     ).save()
+
+    # case 2: new AIs
+    else:
+        leaderboard = get_leaderboard().iloc[:len(existing_ai_names)]
+        new_ai_names = [ai_name for ai_name in args.evals if ai_name not in existing_ai_names]
+
+        def binary_search(leaderboard, low, high, ai, n=5):
+            if n == 0:
+                return
+            
+            if high >= low:
+                mid = (high + low) // 2
+                match_up = (ai, leaderboard.iloc[mid]["name"])
+                
+                
+                for idx in range(2): # switch player 1 and 2's starting locations
+                    if idx == 0:
+                        match_up = list(reversed(match_up))
+                    m = Match(False, match_up)
+                    challenger = AI.get_or_none(name=m.p0)
+                    defender = AI.get_or_none(name=m.p1)
+                    r = m.run(args.num_matches // 2)
+                    for item in r:
+                        drawn = False
+                        if item == Outcome.WIN.value:
+                            winner = challenger
+                            loser = defender
+                        elif item == Outcome.DRAW.value:
+                            drawn = True
+                        else:
+                            winner = defender
+                            loser = challenger
+                        print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
+                        winner_rating, loser_rating = rate_1vs1(
+                            Rating(winner.mu, winner.sigma),
+                            Rating(loser.mu, loser.sigma),
+                            drawn=drawn)
+                        
+                        # freeze existing AIs ratings
+                        if winner.name == ai:
+                            winner.mu, winner.sigma = winner_rating.mu, winner_rating.sigma
+                            winner.save()
+                        else:
+                            loser.mu, loser.sigma = loser_rating.mu, loser_rating.sigma
+                            loser.save()
+                        MatchHistory(
+                            challenger=challenger,
+                            defender=defender,
+                            win=int(item == 1),
+                            draw=int(item == 0),
+                            loss=int(item == -1),
+                        ).save()
+                    
+                if winner.name == ai:
+                    binary_search(leaderboard, low, mid - 1, ai, n=n-1)
+                else:
+                    binary_search(leaderboard, mid + 1, high, ai, n=n-1)
+            else:
+                return
+
+        for new_ai_name in new_ai_names:
+            ai = AI.get(name=new_ai_name)
+            binary_search(leaderboard, 0, len(leaderboard), ai.name, n=5)
+            
+
 
         # if args.prod_mode:
         #     import wandb
