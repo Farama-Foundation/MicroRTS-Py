@@ -418,8 +418,9 @@ if __name__ == "__main__":
         for new_ai_name in new_ai_names:
             ai = AI.get(name=new_ai_name)
             binary_search(leaderboard, 0, len(leaderboard), ai.name, n=5)
-            
-
+    
+    print("=======================")
+    print(get_leaderboard())
 
         # if args.prod_mode:
         #     import wandb
