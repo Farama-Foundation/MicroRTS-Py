@@ -32,6 +32,7 @@ from peewee import (
 )
 import datetime
 from enum import Enum
+import shutil
 
 def parse_args():
     # fmt: off
@@ -47,10 +48,12 @@ def parse_args():
 
     parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
         help='if toggled, the game will have partial observability')
-    parser.add_argument('--evals', nargs='+', default=['agent_sota.pt', "randomBiasedAI","workerRushAI","lightRushAI", "coacAI"], # [],
+    parser.add_argument('--evals', nargs='+', default=["randomBiasedAI","workerRushAI","lightRushAI", "coacAI"], # [],
         help='the ais')
     parser.add_argument('--num-matches', type=int, default=10,
         help='seed of the experiment')
+    parser.add_argument('--update-db', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+        help='if toggled, the database will be updated')
     # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
@@ -300,6 +303,8 @@ if __name__ == "__main__":
     args = parse_args()
     existing_ai_names = [item.name for item in AI.select()]
     all_ai_names = set(existing_ai_names + args.evals)
+    if not args.update_db:
+        shutil.copyfile("league.db", "league.db.backup")
 
     for ai_name in all_ai_names:  
         ai = AI.get_or_none(name=ai_name)
@@ -368,45 +373,47 @@ if __name__ == "__main__":
             if high >= low:
                 mid = (high + low) // 2
                 match_up = (ai, leaderboard.iloc[mid]["name"])
-                
-                
-                for idx in range(2): # switch player 1 and 2's starting locations
-                    if idx == 0:
-                        match_up = list(reversed(match_up))
-                    m = Match(False, match_up)
-                    challenger = AI.get_or_none(name=m.p0)
-                    defender = AI.get_or_none(name=m.p1)
-                    r = m.run(args.num_matches // 2)
-                    for item in r:
-                        drawn = False
-                        if item == Outcome.WIN.value:
-                            winner = challenger
-                            loser = defender
-                        elif item == Outcome.DRAW.value:
-                            drawn = True
-                        else:
-                            winner = defender
-                            loser = challenger
-                        print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
-                        winner_rating, loser_rating = rate_1vs1(
-                            Rating(winner.mu, winner.sigma),
-                            Rating(loser.mu, loser.sigma),
-                            drawn=drawn)
-                        
-                        # freeze existing AIs ratings
-                        if winner.name == ai:
-                            winner.mu, winner.sigma = winner_rating.mu, winner_rating.sigma
-                            winner.save()
-                        else:
-                            loser.mu, loser.sigma = loser_rating.mu, loser_rating.sigma
-                            loser.save()
-                        MatchHistory(
-                            challenger=challenger,
-                            defender=defender,
-                            win=int(item == 1),
-                            draw=int(item == 0),
-                            loss=int(item == -1),
-                        ).save()
+                winner = AI.get(name=ai) # dummy setting
+                if ai != leaderboard.iloc[mid]["name"]:
+                    for idx in range(2): # switch player 1 and 2's starting locations
+                        if idx == 0:
+                            match_up = list(reversed(match_up))
+                        m = Match(False, match_up)
+                        challenger = AI.get(name=m.p0)
+                        defender = AI.get(name=m.p1)
+                        r = m.run(2)
+                        for item in r:
+                            drawn = False
+                            if item == Outcome.WIN.value:
+                                winner = challenger
+                                loser = defender
+                            elif item == Outcome.DRAW.value:
+                                drawn = True
+                                winner = defender
+                                loser = challenger
+                            else:
+                                winner = defender
+                                loser = challenger
+                            print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
+                            winner_rating, loser_rating = rate_1vs1(
+                                Rating(winner.mu, winner.sigma),
+                                Rating(loser.mu, loser.sigma),
+                                drawn=drawn)
+                            
+                            # freeze existing AIs ratings
+                            if winner.name == ai:
+                                winner.mu, winner.sigma = winner_rating.mu, winner_rating.sigma
+                                winner.save()
+                            else:
+                                loser.mu, loser.sigma = loser_rating.mu, loser_rating.sigma
+                                loser.save()
+                            MatchHistory(
+                                challenger=challenger,
+                                defender=defender,
+                                win=int(item == 1),
+                                draw=int(item == 0),
+                                loss=int(item == -1),
+                            ).save()
                     
                 if winner.name == ai:
                     binary_search(leaderboard, low, mid - 1, ai, n=n-1)
@@ -421,6 +428,10 @@ if __name__ == "__main__":
     
     print("=======================")
     print(get_leaderboard())
+    get_leaderboard().to_csv("league.csv", index=False)
+    if not args.update_db:
+        os.remove("league.db")
+        shutil.move("league.db.backup", "league.db")
 
         # if args.prod_mode:
         #     import wandb
