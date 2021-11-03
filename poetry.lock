@@ -112,14 +112,14 @@ toml = "*"
 
 [[package]]
 name = "awscli"
-version = "1.21.9"
+version = "1.21.10"
 description = "Universal Command Line Environment for AWS."
 category = "main"
 optional = true
 python-versions = ">= 3.6"
 
 [package.dependencies]
-botocore = "1.22.9"
+botocore = "1.22.10"
 colorama = ">=0.2.5,<0.4.4"
 docutils = ">=0.10,<0.16"
 PyYAML = ">=3.10,<5.5"
@@ -212,14 +212,14 @@ webencodings = "*"
 
 [[package]]
 name = "boto3"
-version = "1.19.9"
+version = "1.19.10"
 description = "The AWS SDK for Python"
 category = "main"
 optional = true
 python-versions = ">= 3.6"
 
 [package.dependencies]
-botocore = ">=1.22.9,<1.23.0"
+botocore = ">=1.22.10,<1.23.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.5.0,<0.6.0"
 
@@ -228,7 +228,7 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.22.9"
+version = "1.22.10"
 description = "Low-level, data-driven core of boto 3."
 category = "main"
 optional = true
@@ -290,7 +290,7 @@ unicode_backport = ["unicodedata2"]
 
 [[package]]
 name = "cleanrl"
-version = "0.5.0.dev2"
+version = "0.5.0.dev4"
 description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
 category = "main"
 optional = true
@@ -4154,7 +4154,7 @@ spyder = ["spyder"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "b9d7928bc48fa2e5f32bc8f677167ba2f83fb936e6c41b251243d8541685629a"
+content-hash = "b3f5a880eda60051e0b00a4dd3c2f3d7499233ea01974b312af8ac783bec43a0"
 
 [metadata.files]
 absl-py = [
@@ -4198,8 +4198,8 @@ autopep8 = [
     {file = "autopep8-1.5.7.tar.gz", hash = "sha256:276ced7e9e3cb22e5d7c14748384a5cf5d9002257c0ed50c0e075b68011bb6d0"},
 ]
 awscli = [
-    {file = "awscli-1.21.9-py3-none-any.whl", hash = "sha256:e1a6ce2de2e97a6a781159ccd9b625d54bc22e5b4e78bbbbc3e76ef29ea0f188"},
-    {file = "awscli-1.21.9.tar.gz", hash = "sha256:b7870eb0ca32be34b06dabc217fd7027a286df0d41e57e474419d312a7622fb9"},
+    {file = "awscli-1.21.10-py3-none-any.whl", hash = "sha256:4f1cca1f962daff58ab932bd9df572dcdacc82d8b3ecea3f0d23f0c176d2b617"},
+    {file = "awscli-1.21.10.tar.gz", hash = "sha256:594bc64f4fab4f36a6ffa8956e243260cf5afdb362e9a470c7d9dfcbb6eb71cf"},
 ]
 babel = [
     {file = "Babel-2.9.1-py2.py3-none-any.whl", hash = "sha256:ab49e12b91d937cd11f0b67cb259a57ab4ad2b59ac7a3b41d6c06c0ac5b0def9"},
@@ -4231,12 +4231,12 @@ bleach = [
     {file = "bleach-4.1.0.tar.gz", hash = "sha256:0900d8b37eba61a802ee40ac0061f8c2b5dee29c1927dd1d233e075ebf5a71da"},
 ]
 boto3 = [
-    {file = "boto3-1.19.9-py3-none-any.whl", hash = "sha256:efa4aea4d30e93f8913a5731ab4de7b6d2020ee77cdde7e61bfae56670da1a14"},
-    {file = "boto3-1.19.9.tar.gz", hash = "sha256:2fe4edec0e02705059e6baac52e29f97fae6086bf8b817e6ca0e49b48c0fbbf2"},
+    {file = "boto3-1.19.10-py3-none-any.whl", hash = "sha256:57ee38d02772f44a52d2d836cee61d039d405f6eaefc68f92ae0d80e0260c097"},
+    {file = "boto3-1.19.10.tar.gz", hash = "sha256:79c982c5930f989292ca849b0caaa1ffeb9eb9d27c32992c3b2f6736b3b14ad2"},
 ]
 botocore = [
-    {file = "botocore-1.22.9-py3-none-any.whl", hash = "sha256:612d26b58f790d267cc7714e82262104b681db799655b6dd6b64fcd9caf08bef"},
-    {file = "botocore-1.22.9.tar.gz", hash = "sha256:7b59367bace96595e9feeed9765c7178278c55531b2b9e07b7618911e9f0a00b"},
+    {file = "botocore-1.22.10-py3-none-any.whl", hash = "sha256:543cd69e9b248be942d181a097a4715312939ec998602a7b4b07e9fda36d30e9"},
+    {file = "botocore-1.22.10.tar.gz", hash = "sha256:dffa1e7e7e3a8da73bbdead3aeff7d52fd5a159a1a93b2896ac67b2aa79a461c"},
 ]
 cachetools = [
     {file = "cachetools-4.2.4-py3-none-any.whl", hash = "sha256:92971d3cb7d2a97efff7c7bb1657f21a8f5fb309a37530537c71b1774189f2d1"},
@@ -4307,8 +4307,8 @@ charset-normalizer = [
     {file = "charset_normalizer-2.0.7-py3-none-any.whl", hash = "sha256:f7af805c321bfa1ce6714c51f254e0d5bb5e5834039bc17db7ebe3a4cec9492b"},
 ]
 cleanrl = [
-    {file = "cleanrl-0.5.0.dev2-py3-none-any.whl", hash = "sha256:892015d2955196c8a251d5b251e547de3c3c8032d0794dcea9ca9e9f42a36d41"},
-    {file = "cleanrl-0.5.0.dev2.tar.gz", hash = "sha256:0f797e207835c8874454c57927c8bb8b12b56a56f4e4a0001a4316f2fea8a3ce"},
+    {file = "cleanrl-0.5.0.dev4-py3-none-any.whl", hash = "sha256:095871007da2519eb6a4dac3447424751356d35ce94cbab0801254a03ee15017"},
+    {file = "cleanrl-0.5.0.dev4.tar.gz", hash = "sha256:6644bfbfc2cf611badf1201cb46b72e7a4260d038ea1766c82bde08f05336c6f"},
 ]
 click = [
     {file = "click-8.0.3-py3-none-any.whl", hash = "sha256:353f466495adaeb40b6b5f592f9f91cb22372351c84caeb068132442a4518ef3"},
