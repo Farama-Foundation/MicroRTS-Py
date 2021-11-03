@@ -95,8 +95,7 @@ class Match:
         # mode 0: rl-ai vs built-in-ai
         # mode 1: rl-ai vs rl-ai
         # mode 2: built-in-ai vs built-in-ai
-        
-        
+
         built_in_ais=None
         built_in_ais2=None
         rl_ai=None
@@ -372,6 +371,7 @@ if __name__ == "__main__":
             
             if high >= low:
                 mid = (high + low) // 2
+                print(f"high {high}, low {low}, len(leaderboard) {len(leaderboard)}, mid {mid}")
                 match_up = (ai, leaderboard.iloc[mid]["name"])
                 winner = AI.get(name=ai) # dummy setting
                 if ai != leaderboard.iloc[mid]["name"]:

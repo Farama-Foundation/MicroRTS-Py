@@ -468,14 +468,13 @@ if __name__ == "__main__":
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
                 subprocess.Popen(["python", "new_league.py", "--evals", f"models/{experiment_name}/{global_step}.pt"])
                 eval_queue += [f"models/{experiment_name}/{global_step}.pt"]
-                print("called")
+                print(f"Evaluating models/{experiment_name}/{global_step}.pt")
 
             ## EVALUATION LOGIC:
             if os.path.exists("league.csv"):
                 league = pd.read_csv("league.csv", index_col="name")
                 if len(eval_queue) > 0:
                     model_path = eval_queue[0]
-                    print(f"Evaluating {model_path}")
                     if model_path in league.index:
                         model_global_step = int(model_path.split("/")[-1][:-3])
                         print(f"Model global step: {model_global_step}")
