@@ -372,7 +372,11 @@ if __name__ == "__main__":
             if high >= low:
                 mid = (high + low) // 2
                 print(f"high {high}, low {low}, len(leaderboard) {len(leaderboard)}, mid {mid}")
-                match_up = (ai, leaderboard.iloc[mid]["name"])
+                try:
+                    match_up = (ai, leaderboard.iloc[mid]["name"])
+                except Exception as e:
+                    print(f"match_up invalid, terminating binary search {e}")
+                    return
                 winner = AI.get(name=ai) # dummy setting
                 if ai != leaderboard.iloc[mid]["name"]:
                     for idx in range(2): # switch player 1 and 2's starting locations
