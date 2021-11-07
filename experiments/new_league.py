@@ -54,6 +54,8 @@ def parse_args():
         help='seed of the experiment')
     parser.add_argument('--update-db', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, the database will be updated')
+    parser.add_argument('--cuda', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+        help='if toggled, cuda will not be enabled by default')
     # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
@@ -136,7 +138,7 @@ class Match:
         self.built_in_ais2 = built_in_ais2
         self.rl_ai = rl_ai
         self.rl_ai2 = rl_ai2
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
         max_steps = 5000
         if mode == 0:
             self.envs = MicroRTSGridModeVecEnv(
