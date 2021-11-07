@@ -300,6 +300,18 @@ def get_leaderboard():
     )
     return pd.DataFrame(list(query.dicts()))
 
+def get_leaderboard_existing_ais(existing_ai_names):
+    query = (AI.select(
+            AI.name,
+            AI.mu,
+            AI.sigma,
+            (AI.mu - 3 * AI.sigma).alias('trueskill'),
+        )
+        .where((AI.name.in_(existing_ai_names)))
+        .order_by((AI.mu - 3 * AI.sigma).desc())
+    )
+    return pd.DataFrame(list(query.dicts()))
+
 if __name__ == "__main__":
     args = parse_args()
     existing_ai_names = [item.name for item in AI.select()]
@@ -364,7 +376,7 @@ if __name__ == "__main__":
 
     # case 2: new AIs
     else:
-        leaderboard = get_leaderboard().iloc[:len(existing_ai_names)]
+        leaderboard = get_leaderboard_existing_ais(existing_ai_names)
         new_ai_names = [ai_name for ai_name in args.evals if ai_name not in existing_ai_names]
 
         def binary_search(leaderboard, low, high, ai, n=5):
