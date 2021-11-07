@@ -166,42 +166,57 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 
+
 class Agent(nn.Module):
     def __init__(self, envs, mapsize=16 * 16):
         super(Agent, self).__init__()
+        # self.mapsize = mapsize
+        # h, w, c = envs.observation_space.shape
+        # self.encoder = nn.Sequential(
+        #     Transpose((0, 3, 1, 2)),
+        #     layer_init(nn.Conv2d(c, 32, kernel_size=3, padding=1)),
+        #     nn.MaxPool2d(3, stride=2, padding=1),
+        #     nn.ReLU(),
+        #     layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
+        #     nn.MaxPool2d(3, stride=2, padding=1),
+        #     nn.ReLU(),
+        #     layer_init(nn.Conv2d(64, 128, kernel_size=3, padding=1)),
+        #     nn.MaxPool2d(3, stride=2, padding=1),
+        #     nn.ReLU(),
+        #     layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
+        #     nn.MaxPool2d(3, stride=2, padding=1),
+        # )
+
+        # self.actor = nn.Sequential(
+        #     layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
+        #     nn.ReLU(),
+        #     layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
+        #     nn.ReLU(),
+        #     layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
+        #     nn.ReLU(),
+        #     layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1)),
+        #     Transpose((0, 2, 3, 1)),
+        # )
+        # self.critic = nn.Sequential(
+        #     nn.Flatten(),
+        #     layer_init(nn.Linear(256, 128)),
+        #     nn.ReLU(),
+        #     layer_init(nn.Linear(128, 1), std=1),
+        # )
         self.mapsize = mapsize
         h, w, c = envs.observation_space.shape
         self.encoder = nn.Sequential(
             Transpose((0, 3, 1, 2)),
-            layer_init(nn.Conv2d(c, 32, kernel_size=3, padding=1)),
-            nn.MaxPool2d(3, stride=2, padding=1),
+            layer_init(nn.Conv2d(c, 16, kernel_size=3, stride=2)),
             nn.ReLU(),
-            layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
-            nn.MaxPool2d(3, stride=2, padding=1),
+            layer_init(nn.Conv2d(16, 32, kernel_size=2)),
             nn.ReLU(),
-            layer_init(nn.Conv2d(64, 128, kernel_size=3, padding=1)),
-            nn.MaxPool2d(3, stride=2, padding=1),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
-            nn.MaxPool2d(3, stride=2, padding=1),
-        )
-
-        self.actor = nn.Sequential(
-            layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
-            nn.ReLU(),
-            layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
-            nn.ReLU(),
-            layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
-            nn.ReLU(),
-            layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1)),
-            Transpose((0, 2, 3, 1)),
-        )
-        self.critic = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(256, 128)),
+            layer_init(nn.Linear(32*6*6, 256)),
             nn.ReLU(),
-            layer_init(nn.Linear(128, 1), std=1),
         )
+        self.actor = layer_init(nn.Linear(256, envs.action_space.nvec.sum()), std=0.01)
+        self.critic = layer_init(nn.Linear(256, 1), std=1)
 
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
         hidden = self.encoder(x)
@@ -211,7 +226,7 @@ class Agent(nn.Module):
 
         if action is None:
             # invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
-            invalid_action_masks = invalid_action_masks.reshape(-1, invalid_action_masks.shape[-1])
+            invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_plane_space.nvec.tolist(), dim=1)
             multi_categoricals = [
                 CategoricalMasked(logits=logits, masks=iam, device=device)
@@ -236,6 +251,7 @@ class Agent(nn.Module):
 
     def get_value(self, x):
         return self.critic(self.encoder(x))
+
 
 
 if __name__ == "__main__":
@@ -466,7 +482,7 @@ if __name__ == "__main__":
                 torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
                 torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-                subprocess.Popen(["python", "new_league.py", "--evals", f"models/{experiment_name}/{global_step}.pt"])
+                subprocess.Popen(["python", "new_league.py", "--evals", f"models/{experiment_name}/{global_step}.pt", "--update-db", "false"])
                 eval_queue += [f"models/{experiment_name}/{global_step}.pt"]
                 print(f"Evaluating models/{experiment_name}/{global_step}.pt")
 
