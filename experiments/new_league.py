@@ -54,6 +54,8 @@ def parse_args():
         help='seed of the experiment')
     parser.add_argument('--update-db', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, the database will be updated')
+    parser.add_argument('--cuda', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+        help='if toggled, cuda will not be enabled by default')
     # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
@@ -136,7 +138,7 @@ class Match:
         self.built_in_ais2 = built_in_ais2
         self.rl_ai = rl_ai
         self.rl_ai2 = rl_ai2
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
         max_steps = 5000
         if mode == 0:
             self.envs = MicroRTSGridModeVecEnv(
@@ -298,6 +300,18 @@ def get_leaderboard():
     )
     return pd.DataFrame(list(query.dicts()))
 
+def get_leaderboard_existing_ais(existing_ai_names):
+    query = (AI.select(
+            AI.name,
+            AI.mu,
+            AI.sigma,
+            (AI.mu - 3 * AI.sigma).alias('trueskill'),
+        )
+        .where((AI.name.in_(existing_ai_names)))
+        .order_by((AI.mu - 3 * AI.sigma).desc())
+    )
+    return pd.DataFrame(list(query.dicts()))
+
 if __name__ == "__main__":
     args = parse_args()
     existing_ai_names = [item.name for item in AI.select()]
@@ -362,7 +376,7 @@ if __name__ == "__main__":
 
     # case 2: new AIs
     else:
-        leaderboard = get_leaderboard().iloc[:len(existing_ai_names)]
+        leaderboard = get_leaderboard_existing_ais(existing_ai_names)
         new_ai_names = [ai_name for ai_name in args.evals if ai_name not in existing_ai_names]
 
         def binary_search(leaderboard, low, high, ai, n=5):

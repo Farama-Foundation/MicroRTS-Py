@@ -1,3 +1,4 @@
+debug.sh.docker.sh
 .DS_Store
 *.tfevents.*
 wandb

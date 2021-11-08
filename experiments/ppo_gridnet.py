@@ -166,6 +166,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 
+
 class Agent(nn.Module):
     def __init__(self, envs, mapsize=16 * 16):
         super(Agent, self).__init__()
@@ -211,7 +212,7 @@ class Agent(nn.Module):
 
         if action is None:
             # invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
-            invalid_action_masks = invalid_action_masks.reshape(-1, invalid_action_masks.shape[-1])
+            invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_plane_space.nvec.tolist(), dim=1)
             multi_categoricals = [
                 CategoricalMasked(logits=logits, masks=iam, device=device)
@@ -236,6 +237,7 @@ class Agent(nn.Module):
 
     def get_value(self, x):
         return self.critic(self.encoder(x))
+
 
 
 if __name__ == "__main__":
@@ -466,7 +468,7 @@ if __name__ == "__main__":
                 torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
                 torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-                subprocess.Popen(["python", "new_league.py", "--evals", f"models/{experiment_name}/{global_step}.pt"])
+                subprocess.Popen(["python", "new_league.py", "--evals", f"models/{experiment_name}/{global_step}.pt", "--update-db", "false"])
                 eval_queue += [f"models/{experiment_name}/{global_step}.pt"]
                 print(f"Evaluating models/{experiment_name}/{global_step}.pt")
 
