@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.4.2-runtime-ubuntu20.04
+FROM nvidia/cuda:11.3.1-runtime-ubuntu20.04
 
 # install ubuntu dependencies
 ENV DEBIAN_FRONTEND=noninteractive 

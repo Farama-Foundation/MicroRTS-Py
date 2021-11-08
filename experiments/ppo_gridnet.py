@@ -170,53 +170,39 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 class Agent(nn.Module):
     def __init__(self, envs, mapsize=16 * 16):
         super(Agent, self).__init__()
-        # self.mapsize = mapsize
-        # h, w, c = envs.observation_space.shape
-        # self.encoder = nn.Sequential(
-        #     Transpose((0, 3, 1, 2)),
-        #     layer_init(nn.Conv2d(c, 32, kernel_size=3, padding=1)),
-        #     nn.MaxPool2d(3, stride=2, padding=1),
-        #     nn.ReLU(),
-        #     layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
-        #     nn.MaxPool2d(3, stride=2, padding=1),
-        #     nn.ReLU(),
-        #     layer_init(nn.Conv2d(64, 128, kernel_size=3, padding=1)),
-        #     nn.MaxPool2d(3, stride=2, padding=1),
-        #     nn.ReLU(),
-        #     layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
-        #     nn.MaxPool2d(3, stride=2, padding=1),
-        # )
-
-        # self.actor = nn.Sequential(
-        #     layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
-        #     nn.ReLU(),
-        #     layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
-        #     nn.ReLU(),
-        #     layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
-        #     nn.ReLU(),
-        #     layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1)),
-        #     Transpose((0, 2, 3, 1)),
-        # )
-        # self.critic = nn.Sequential(
-        #     nn.Flatten(),
-        #     layer_init(nn.Linear(256, 128)),
-        #     nn.ReLU(),
-        #     layer_init(nn.Linear(128, 1), std=1),
-        # )
         self.mapsize = mapsize
         h, w, c = envs.observation_space.shape
         self.encoder = nn.Sequential(
             Transpose((0, 3, 1, 2)),
-            layer_init(nn.Conv2d(c, 16, kernel_size=3, stride=2)),
+            layer_init(nn.Conv2d(c, 32, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
             nn.ReLU(),
-            layer_init(nn.Conv2d(16, 32, kernel_size=2)),
+            layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Flatten(),
-            layer_init(nn.Linear(32*6*6, 256)),
+            layer_init(nn.Conv2d(64, 128, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
             nn.ReLU(),
+            layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
         )
-        self.actor = layer_init(nn.Linear(256, envs.action_space.nvec.sum()), std=0.01)
-        self.critic = layer_init(nn.Linear(256, 1), std=1)
+
+        self.actor = nn.Sequential(
+            layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
+            layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
+            layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
+            layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1)),
+            Transpose((0, 2, 3, 1)),
+        )
+        self.critic = nn.Sequential(
+            nn.Flatten(),
+            layer_init(nn.Linear(256, 128)),
+            nn.ReLU(),
+            layer_init(nn.Linear(128, 1), std=1),
+        )
 
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
         hidden = self.encoder(x)
