@@ -388,6 +388,7 @@ if __name__ == "__main__":
                 print(f"high {high}, low {low}, len(leaderboard) {len(leaderboard)}, mid {mid}")
                 try:
                     match_up = (ai, leaderboard.iloc[mid]["name"])
+                    print(f"match_up {match_up}")
                 except Exception as e:
                     print(f"match_up invalid, terminating binary search {e}")
                     return
