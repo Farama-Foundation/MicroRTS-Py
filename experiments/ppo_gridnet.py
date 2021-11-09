@@ -337,6 +337,7 @@ if __name__ == "__main__":
         print(param_tensor, "\t", agent.state_dict()[param_tensor].size())
     total_params = sum([param.nelement() for param in agent.parameters()])
     print("Model's total parameters:", total_params)
+    eval_queue = []
     all_league_df = None
 
     for update in range(starting_update, args.num_updates + 1):
