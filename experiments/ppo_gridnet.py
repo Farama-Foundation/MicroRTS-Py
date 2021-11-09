@@ -479,7 +479,6 @@ if __name__ == "__main__":
                 league = pd.read_csv("league.csv", index_col="name")
                 if len(eval_queue) > 0:
                     model_path = eval_queue[0]
-                    print("model_path in league.index", model_path, league.index, model_path in league.index)
                     if model_path in league.index:
                         model_global_step = int(model_path.split("/")[-1][:-3])
                         print(f"Model global step: {model_global_step}")
