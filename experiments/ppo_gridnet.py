@@ -487,7 +487,7 @@ if __name__ == "__main__":
                         writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
 
                         if all_league_df is None:
-                            all_league_df = league
+                            all_league_df = pd.read_csv("league.csv")
                         else:
                             all_league_df = all_league_df.append({"name": league.loc[model_path].name, "mu": league.loc[model_path]["mu"], "sigma":league.loc[model_path]["sigma"], "trueskill": league.loc[model_path]["trueskill"]}, ignore_index=True)
                         wandb.log({"trueskill": wandb.Table(dataframe=all_league_df)})
