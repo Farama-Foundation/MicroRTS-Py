@@ -318,6 +318,7 @@ if __name__ == "__main__":
     all_ai_names = set(existing_ai_names + args.evals)
     if not args.update_db:
         shutil.copyfile("league.db", "league.db.backup")
+        shutil.copyfile("league.csv", "league.csv.backup")
 
     for ai_name in all_ai_names:  
         ai = AI.get_or_none(name=ai_name)
@@ -388,6 +389,7 @@ if __name__ == "__main__":
                 print(f"high {high}, low {low}, len(leaderboard) {len(leaderboard)}, mid {mid}")
                 try:
                     match_up = (ai, leaderboard.iloc[mid]["name"])
+                    print(f"match_up {match_up}")
                 except Exception as e:
                     print(f"match_up invalid, terminating binary search {e}")
                     return
@@ -449,7 +451,9 @@ if __name__ == "__main__":
     get_leaderboard().to_csv("league.csv", index=False)
     if not args.update_db:
         os.remove("league.db")
+        os.remove("league.csv")
         shutil.move("league.db.backup", "league.db")
+        shutil.move("league.csv.backup", "league.csv")
 
         # if args.prod_mode:
         #     import wandb

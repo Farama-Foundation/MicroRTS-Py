@@ -336,7 +336,9 @@ if __name__ == "__main__":
         print(param_tensor, "\t", agent.state_dict()[param_tensor].size())
     total_params = sum([param.nelement() for param in agent.parameters()])
     print("Model's total parameters:", total_params)
-    eval_queue = []
+    if args.prod_mode:
+        all_league_df = pd.read_csv("league.csv")
+        eval_queue = []
 
     for update in range(starting_update, args.num_updates + 1):
         # Annealing the rate if instructed to do so.
@@ -483,6 +485,9 @@ if __name__ == "__main__":
                         eval_queue = eval_queue[1:]
                         print("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
                         writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
+
+                        all_league_df = all_league_df.append({"name": league.loc[model_path].name, "mu": league.loc[model_path]["mu"], "sigma":league.loc[model_path]["sigma"], "trueskill": league.loc[model_path]["trueskill"]}, ignore_index=True)
+                        wandb.log({"trueskill": wandb.Table(dataframe=all_league_df)})
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
