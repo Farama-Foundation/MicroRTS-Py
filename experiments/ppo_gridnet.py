@@ -251,12 +251,13 @@ if __name__ == "__main__":
         run = wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            sync_tensorboard=True,
+            # sync_tensorboard=True,
             config=vars(args),
             name=experiment_name,
             monitor_gym=True,
             save_code=True,
         )
+        wandb.tensorboard.patch(save=False)
         CHECKPOINT_FREQUENCY = 50
     writer = SummaryWriter(f"runs/{experiment_name}")
     writer.add_text(
