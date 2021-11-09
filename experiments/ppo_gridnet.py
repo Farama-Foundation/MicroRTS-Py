@@ -337,9 +337,7 @@ if __name__ == "__main__":
         print(param_tensor, "\t", agent.state_dict()[param_tensor].size())
     total_params = sum([param.nelement() for param in agent.parameters()])
     print("Model's total parameters:", total_params)
-    if args.prod_mode:
-        all_league_df = pd.read_csv("league.csv")
-        eval_queue = []
+    all_league_df = None
 
     for update in range(starting_update, args.num_updates + 1):
         # Annealing the rate if instructed to do so.
@@ -480,6 +478,7 @@ if __name__ == "__main__":
                 league = pd.read_csv("league.csv", index_col="name")
                 if len(eval_queue) > 0:
                     model_path = eval_queue[0]
+                    print("model_path in league.index", model_path, league.index, model_path in league.index)
                     if model_path in league.index:
                         model_global_step = int(model_path.split("/")[-1][:-3])
                         print(f"Model global step: {model_global_step}")
@@ -487,7 +486,10 @@ if __name__ == "__main__":
                         print("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
                         writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
 
-                        all_league_df = all_league_df.append({"name": league.loc[model_path].name, "mu": league.loc[model_path]["mu"], "sigma":league.loc[model_path]["sigma"], "trueskill": league.loc[model_path]["trueskill"]}, ignore_index=True)
+                        if all_league_df is None:
+                            all_league_df = league
+                        else:
+                            all_league_df = all_league_df.append({"name": league.loc[model_path].name, "mu": league.loc[model_path]["mu"], "sigma":league.loc[model_path]["sigma"], "trueskill": league.loc[model_path]["trueskill"]}, ignore_index=True)
                         wandb.log({"trueskill": wandb.Table(dataframe=all_league_df)})
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
@@ -502,5 +504,5 @@ if __name__ == "__main__":
         writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
 
-    # envs.close()
-    # writer.close()
+    envs.close()
+    writer.close()
