@@ -318,6 +318,7 @@ if __name__ == "__main__":
     all_ai_names = set(existing_ai_names + args.evals)
     if not args.update_db:
         shutil.copyfile("league.db", "league.db.backup")
+        shutil.copyfile("league.csv", "league.csv.backup")
 
     for ai_name in all_ai_names:  
         ai = AI.get_or_none(name=ai_name)
@@ -450,7 +451,9 @@ if __name__ == "__main__":
     get_leaderboard().to_csv("league.csv", index=False)
     if not args.update_db:
         os.remove("league.db")
+        os.remove("league.csv")
         shutil.move("league.db.backup", "league.db")
+        shutil.move("league.csv.backup", "league.csv")
 
         # if args.prod_mode:
         #     import wandb
