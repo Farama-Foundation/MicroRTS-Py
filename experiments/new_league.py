@@ -373,6 +373,7 @@ if __name__ == "__main__":
                         draw=int(item == 0),
                         loss=int(item == -1),
                     ).save()
+        get_leaderboard().to_csv("league.csv", index=False)
 
     # case 2: new AIs
     else:
@@ -444,10 +445,11 @@ if __name__ == "__main__":
         for new_ai_name in new_ai_names:
             ai = AI.get(name=new_ai_name)
             binary_search(leaderboard, 0, len(leaderboard), ai.name, n=5)
+        
+        get_leaderboard().to_csv("league.temp.csv", index=False)
     
     print("=======================")
     print(get_leaderboard())
-    get_leaderboard().to_csv("league.csv", index=False)
     if not args.update_db:
         os.remove("league.db")
         shutil.move("league.db.backup", "league.db")

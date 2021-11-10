@@ -85,7 +85,7 @@ def parse_args():
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--clip-vloss', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
-    parser.add_argument('--num-models', type=int, default=100,
+    parser.add_argument('--num-models', type=int, default=200,
         help='the number of models saved')
 
     args = parser.parse_args()
@@ -337,8 +337,14 @@ if __name__ == "__main__":
         print(param_tensor, "\t", agent.state_dict()[param_tensor].size())
     total_params = sum([param.nelement() for param in agent.parameters()])
     print("Model's total parameters:", total_params)
+
+    ## EVALUATION LOGIC:
     eval_queue = []
-    all_league_df = None
+    trueskill_df = pd.read_csv("league.csv")
+    trueskill_step_df = pd.read_csv("league.csv")
+    trueskill_step_df["type"] = trueskill_step_df["name"]
+    trueskill_step_df["step"] = 0
+    preset_trueskill_step_df = trueskill_step_df.copy()
 
     for update in range(starting_update, args.num_updates + 1):
         # Annealing the rate if instructed to do so.
@@ -475,8 +481,8 @@ if __name__ == "__main__":
                 print(f"Evaluating models/{experiment_name}/{global_step}.pt")
 
             ## EVALUATION LOGIC:
-            if os.path.exists("league.csv"):
-                league = pd.read_csv("league.csv", index_col="name")
+            if os.path.exists("league.temp.csv"):
+                league = pd.read_csv("league.temp.csv", index_col="name")
                 if len(eval_queue) > 0:
                     model_path = eval_queue[0]
                     if model_path in league.index:
@@ -486,11 +492,22 @@ if __name__ == "__main__":
                         print("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
                         writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
 
-                        if all_league_df is None:
-                            all_league_df = pd.read_csv("league.csv")
-                        else:
-                            all_league_df = all_league_df.append({"name": league.loc[model_path].name, "mu": league.loc[model_path]["mu"], "sigma":league.loc[model_path]["sigma"], "trueskill": league.loc[model_path]["trueskill"]}, ignore_index=True)
-                        wandb.log({"trueskill": wandb.Table(dataframe=all_league_df)})
+                        # Table visualization logic
+                        trueskill_data = {
+                            "name": league.loc[model_path].name,
+                            "mu": league.loc[model_path]["mu"],
+                            "sigma":league.loc[model_path]["sigma"],
+                            "trueskill": league.loc[model_path]["trueskill"]
+                        }
+                        trueskill_df = trueskill_df.append(trueskill_data, ignore_index=True)
+                        wandb.log({"trueskill": wandb.Table(dataframe=trueskill_df)})
+                        trueskill_data["type"] = "training"
+                        trueskill_data["step"] = model_global_step
+                        trueskill_step_df = trueskill_step_df.append(trueskill_data, ignore_index=True)
+                        preset_trueskill_step_df_clone = preset_trueskill_step_df.copy()
+                        preset_trueskill_step_df_clone["step"] = model_global_step
+                        trueskill_step_df = trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True) 
+                        wandb.log({"trueskill_step": wandb.Table(dataframe=trueskill_step_df)})
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
