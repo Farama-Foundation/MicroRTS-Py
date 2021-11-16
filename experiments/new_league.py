@@ -62,9 +62,11 @@ def parse_args():
     # fmt: on
     return args
 
-
-db = SqliteDatabase('league.db')
-
+args = parse_args()
+dbname = "league"
+if(args.partial_obs):
+    dbname = 'po_league'
+db = SqliteDatabase(f"{dbname}.db")
 class BaseModel(Model):
     class Meta:
         database = db
@@ -313,11 +315,10 @@ def get_leaderboard_existing_ais(existing_ai_names):
     return pd.DataFrame(list(query.dicts()))
 
 if __name__ == "__main__":
-    args = parse_args()
     existing_ai_names = [item.name for item in AI.select()]
     all_ai_names = set(existing_ai_names + args.evals)
     if not args.update_db:
-        shutil.copyfile("league.db", "league.db.backup")
+        shutil.copyfile(f"{dbname}.db", f"{dbname}.db.backup")
 
     for ai_name in all_ai_names:  
         ai = AI.get_or_none(name=ai_name)
@@ -338,7 +339,7 @@ if __name__ == "__main__":
                 if idx == 0:
                     match_up = list(reversed(match_up))
 
-                m = Match(False, match_up)
+                m = Match(args.partial_obs, match_up)
                 challenger = AI.get_or_none(name=m.p0)
                 defender = AI.get_or_none(name=m.p1)
                 
@@ -373,7 +374,7 @@ if __name__ == "__main__":
                         draw=int(item == 0),
                         loss=int(item == -1),
                     ).save()
-        get_leaderboard().to_csv("league.csv", index=False)
+        get_leaderboard().to_csv(f"{dbname}.csv", index=False)
 
     # case 2: new AIs
     else:
@@ -398,7 +399,7 @@ if __name__ == "__main__":
                     for idx in range(2): # switch player 1 and 2's starting locations
                         if idx == 0:
                             match_up = list(reversed(match_up))
-                        m = Match(False, match_up)
+                        m = Match(args.partial_obs, match_up)
                         challenger = AI.get(name=m.p0)
                         defender = AI.get(name=m.p1)
                         r = m.run(2)
@@ -446,13 +447,13 @@ if __name__ == "__main__":
             ai = AI.get(name=new_ai_name)
             binary_search(leaderboard, 0, len(leaderboard), ai.name, n=5)
         
-        get_leaderboard().to_csv("league.temp.csv", index=False)
+        get_leaderboard().to_csv(f"{dbname}.temp.csv", index=False)
     
     print("=======================")
     print(get_leaderboard())
     if not args.update_db:
-        os.remove("league.db")
-        shutil.move("league.db.backup", "league.db")
+        os.remove(f"{dbname}.db")
+        shutil.move(f"{dbname}.db.backup", f"{dbname}.db")
 
         # if args.prod_mode:
         #     import wandb
