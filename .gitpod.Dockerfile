@@ -1,6 +1,7 @@
 FROM gitpod/workspace-full-vnc:latest
 USER gitpod
 RUN if ! grep -q "export PIP_USER=no" "$HOME/.bashrc"; then printf '%s\n' "export PIP_USER=no" >> "$HOME/.bashrc"; fi
+RUN echo export JAVA_TOOL_OPTIONS=\"\$JAVA_TOOL_OPTIONS -Dsun.java2d.xrender=false\" >> /home/gitpod/.bashrc
 
 # install ubuntu dependencies
 ENV DEBIAN_FRONTEND=noninteractive 
