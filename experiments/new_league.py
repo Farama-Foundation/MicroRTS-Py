@@ -68,6 +68,8 @@ args = parse_args()
 dbname = "league"
 if(args.partial_obs):
     dbname = 'po_league'
+
+print(dbname)
 db = SqliteDatabase(f"{dbname}.db")
 class BaseModel(Model):
     class Meta:
@@ -146,6 +148,7 @@ class Match:
         self.device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
         max_steps = 5000
         if mode == 0:
+            print(partial_obs)
             self.envs = MicroRTSGridModeVecEnv(
                 num_bot_envs=len(built_in_ais),
                 num_selfplay_envs=0,
@@ -452,7 +455,7 @@ if __name__ == "__main__":
             ai = AI.get(name=new_ai_name)
             binary_search(leaderboard, 0, len(leaderboard), ai.name, n=5)
         
-        get_leaderboard().to_csv(f"{dbname}.temp.csv", index=False)
+        get_leaderboard().to_csv(f"league.temp.csv", index=False)
     
     print("=======================")
     print(get_leaderboard())

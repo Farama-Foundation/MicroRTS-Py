@@ -280,7 +280,7 @@ if __name__ == "__main__":
         + [microrts_ai.randomBiasedAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.lightRushAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.workerRushAI for _ in range(min(args.num_bot_envs, 2))],
-        map_paths=["maps/16x16/basesWorkers16x16.xml"],
+        map_paths=["maps/16x16/basesWorkers16x16A.xml","maps/16x16/basesWorkers16x16A.xml","maps/16x16/basesWorkers16x16B.xml","maps/16x16/basesWorkers16x16B.xml","maps/16x16/basesWorkers16x16C.xml","maps/16x16/basesWorkers16x16C.xml","maps/16x16/basesWorkers16x16D.xml","maps/16x16/basesWorkers16x16D.xml","maps/16x16/basesWorkers16x16E.xml","maps/16x16/basesWorkers16x16E.xml","maps/16x16/basesWorkers16x16F.xml","maps/16x16/basesWorkers16x16F.xml","maps/16x16/basesWorkers16x16G.xml","maps/16x16/basesWorkers16x16G.xml","maps/16x16/basesWorkers16x16H.xml","maps/16x16/basesWorkers16x16H.xml","maps/16x16/basesWorkers16x16I.xml","maps/16x16/basesWorkers16x16I.xml","maps/16x16/basesWorkers16x16J.xml","maps/16x16/basesWorkers16x16J.xml","maps/16x16/basesWorkers16x16K.xml","maps/16x16/basesWorkers16x16K.xml","maps/16x16/basesWorkers16x16L.xml","maps/16x16/basesWorkers16x16L.xml"],
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
     )
     envs = MicroRTSStatsRecorder(envs)
@@ -340,8 +340,8 @@ if __name__ == "__main__":
 
     ## EVALUATION LOGIC:
     eval_queue = []
-    trueskill_df = pd.read_csv("league.csv")
-    trueskill_step_df = pd.read_csv("league.csv")
+    trueskill_df = pd.read_csv("po_league.csv")
+    trueskill_step_df = pd.read_csv("po_league.csv")
     trueskill_step_df["type"] = trueskill_step_df["name"]
     trueskill_step_df["step"] = 0
     preset_trueskill_step_df = trueskill_step_df.copy()
@@ -476,7 +476,7 @@ if __name__ == "__main__":
                 torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
                 torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-                subprocess.Popen(["python", "new_league.py", "--evals", f"models/{experiment_name}/{global_step}.pt", "--update-db", "false"])
+                subprocess.Popen(["python", "new_league.py", "--evals", f"models/{experiment_name}/{global_step}.pt", "--update-db", "false", "--partial-obs", str(args.partial_obs)])
                 eval_queue += [f"models/{experiment_name}/{global_step}.pt"]
                 print(f"Evaluating models/{experiment_name}/{global_step}.pt")
 
@@ -500,6 +500,7 @@ if __name__ == "__main__":
                             "trueskill": league.loc[model_path]["trueskill"]
                         }
                         trueskill_df = trueskill_df.append(trueskill_data, ignore_index=True)
+                        print(trueskill_df)
                         wandb.log({"trueskill": wandb.Table(dataframe=trueskill_df)})
                         trueskill_data["type"] = "training"
                         trueskill_data["step"] = model_global_step
