@@ -25,23 +25,15 @@ def test_resource_gather_reward():
     num_planes = len(envs.action_plane_space.nvec)
 
 
-    # mine
+    # produce a worker
     np.array(envs.get_action_mask())
     action = np.zeros(len(envs.action_space.nvec), np.int32)
-    action[1*num_planes:(1+1)*num_planes] = [2, 0, 3, 0, 0, 0, 0]
+    action[5*num_planes:(5+1)*num_planes] = [4, 0, 0, 0, 1, 3, 0]
     assert envs.step(action)[1].flatten() > 0
     if render: envs.render()
 
-    # wait for action to finish
-    for _ in range(20):
-        np.array(envs.get_action_mask())
-        action = np.zeros(len(envs.action_space.nvec), np.int32)
-        envs.step(action)
-        if render: envs.render()
 
-    # return
-    np.array(envs.get_action_mask())
-    action = np.zeros(len(envs.action_space.nvec), np.int32)
-    action[1*num_planes:(1+1)*num_planes] = [3, 0, 0, 2, 0, 0, 0]
-    assert envs.step(action)[1].flatten() > 0
-    if render: envs.render()
+# assert env.step([5, 4, 0, 0, 0, 1, 3, 0], True)[1] > 0
+# env.render()
+
+# env.close()
