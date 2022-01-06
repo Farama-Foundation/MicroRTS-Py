@@ -137,7 +137,7 @@ class MicroRTSGridModeVecEnv:
 
     def _encode_obs(self, obs):
         obs = obs.reshape(len(obs), -1).clip(0, np.array([self.num_planes]).T-1)
-        obs_planes = np.zeros((self.height * self.width, self.num_planes_prefix_sum[-1]), dtype=np.int)
+        obs_planes = np.zeros((self.height * self.width, self.num_planes_prefix_sum[-1]), dtype=np.int32)
         obs_planes_idx = np.arange(len(obs_planes))
         obs_planes[obs_planes_idx,obs[0]] = 1
 
