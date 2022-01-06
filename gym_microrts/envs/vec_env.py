@@ -101,9 +101,14 @@ class MicroRTSGridModeVecEnv:
                     sum(self.num_planes)),
                     dtype=np.int32)
 
+        self.num_planes_len = len(self.num_planes)
+        self.num_planes_prefix_sum = [0]
+        for num_plane in self.num_planes:
+            self.num_planes_prefix_sum.append(self.num_planes_prefix_sum[-1] + num_plane)
+
         self.action_space = gym.spaces.MultiDiscrete(np.array([[6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7]] * self.height * self.width).flatten())
         self.action_plane_space = gym.spaces.MultiDiscrete([6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7])
-        self.source_unit_idxs = np.stack([np.arange(0, self.height*self.width) for i in range(self.num_envs)])
+        self.source_unit_idxs = np.tile(np.arange(self.height*self.width), (self.num_envs,1))
         self.source_unit_idxs = self.source_unit_idxs.reshape((self.source_unit_idxs.shape + (1,)))
         
     def start_client(self):
@@ -126,46 +131,39 @@ class MicroRTSGridModeVecEnv:
         self.utt = json.loads(str(self.render_client.sendUTT()))
 
     def reset(self):
-        responses = self.vec_client.reset([0 for _ in range(self.num_envs)])
-        raw_obs, reward, done, info = np.array(responses.observation), np.array(responses.reward), np.array(responses.done), {}
-        obs = []
-        for ro in raw_obs:
-            obs += [self._encode_obs(ro)]
+        responses = self.vec_client.reset([0]*self.num_envs)
+        obs = [self._encode_obs(np.array(ro)) for ro in responses.observation]
         return np.array(obs)
 
     def _encode_obs(self, obs):
         obs = obs.reshape(len(obs), -1).clip(0, np.array([self.num_planes]).T-1)
-        obs_planes = np.zeros((self.height * self.width, 
-                               sum(self.num_planes)), dtype=np.int)
-        obs_planes[np.arange(len(obs_planes)),obs[0]] = 1
+        obs_planes = np.zeros((self.height * self.width, self.num_planes_prefix_sum[-1]), dtype=np.int)
+        obs_planes_idx = np.arange(len(obs_planes))
+        obs_planes[obs_planes_idx,obs[0]] = 1
 
-        for i in range(1, len(self.num_planes)):
-            obs_planes[np.arange(len(obs_planes)),obs[i]+sum(self.num_planes[:i])] = 1
+        for i in range(1, self.num_planes_len):
+            obs_planes[obs_planes_idx,obs[i]+self.num_planes_prefix_sum[i]] = 1
         return obs_planes.reshape(self.height, self.width, -1)
 
     def step_async(self, actions):
         actions = actions.reshape((self.num_envs, self.width*self.height, -1))
         actions = np.concatenate((self.source_unit_idxs, actions), 2) # specify source unit
         actions = actions[np.where(self.source_unit_mask==1)] # valid actions
-        java_actions = []
         action_counts_per_env = self.source_unit_mask.sum(1)
+        java_actions = [None]*len(action_counts_per_env)
         action_idx = 0
-        for action_count in action_counts_per_env:
-            java_valid_action = []
-            for _ in range(action_count):
-                java_valid_action += [JArray(JInt)(actions[action_idx])]
+        for outer_idx, action_count in enumerate(action_counts_per_env):
+            java_valid_action = [None]*action_count
+            for idx in range(action_count):
+                java_valid_action[idx] = JArray(JInt)(actions[action_idx])
                 action_idx += 1
-            java_actions += [JArray(JArray(JInt))(java_valid_action)]
-        java_actions = JArray(JArray(JArray(JInt)))(java_actions)
-        
-        self.actions = java_actions
+            java_actions[outer_idx] = JArray(JArray(JInt))(java_valid_action)
+        self.actions = JArray(JArray(JArray(JInt)))(java_actions)
 
     def step_wait(self):
-        responses = self.vec_client.gameStep(self.actions, [0 for _ in range(self.num_envs)])
-        raw_obs, reward, done = np.array(responses.observation), np.array(responses.reward), np.array(responses.done)
-        obs = []
-        for ro in raw_obs:
-            obs += [self._encode_obs(ro)]
+        responses = self.vec_client.gameStep(self.actions, [0]*self.num_envs)
+        reward, done = np.array(responses.reward), np.array(responses.done)
+        obs = [self._encode_obs(np.array(ro)) for ro in responses.observation]
         infos = [{"raw_rewards": item} for item in reward]
         return np.array(obs), reward @ self.reward_weight, done[:,0], infos
 
