@@ -18,6 +18,14 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+    - name: Set up JDK 8 and 
+      uses: actions/setup-java@v1
+      with:
+        java-version: '8.x' # The JDK version to make available on the path.
+        java-package: jdk # (jre, jdk, or jdk+fx) - defaults to jdk
+        architecture: x64 # (x64 or x86) - defaults to x64
+    - name: Build microrts
+      run: bash build.sh
       #----------------------------------------------
       #  -----  install & configure poetry  -----
       #----------------------------------------------
