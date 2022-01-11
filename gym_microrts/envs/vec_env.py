@@ -199,6 +199,7 @@ class MicroRTSGridModeVecEnv:
         action_type_and_parameter_mask = action_mask[:,:,:,1:].reshape(self.num_envs, self.height*self.width, -1)
         return action_type_and_parameter_mask
 
+
 class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
@@ -233,6 +234,7 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         if not jpype._jpype.isStarted():
             registerDomain("ts", alias="tests")
             registerDomain("ai")
+            registerDomain("rts")
             jars = [
                 "microrts.jar", "lib/bots/Coac.jar", "lib/bots/Droplet.jar", "lib/bots/GRojoA3N.jar",
                 "lib/bots/Izanagi.jar", "lib/bots/MixedBot.jar", "lib/bots/TiamatBot.jar", "lib/bots/UMSBot.jar",
@@ -376,15 +378,11 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
 
         from ts import JNIGridnetSharedMemVecClient as Client
         from ai.core import AI
+        from rts import GameState
 
-        # xxx(okachaiev): there's a race condition here...
-        # in order to start client, I need to pre-allocate buffers
-        # to pre-allocate buffers I need to know dims of all array,
-        # which will be determined by UTT requested from the running client
-        # need to introduce new API for getting this information prior to
-        # running the client
-        self.num_feature_planes = 27
-        self.masks_dim = 78
+        self.num_feature_planes = GameState.numFeaturePlanes
+        # xxx(okachaiev): that might be wrong UTT
+        self.masks_dim = 6+4+4+4+4+len(self.real_utt.getUnitTypes())+(self.real_utt.getMaxAttackRange()*2+1)**2
 
         # pre-allocate shared buffers with JVM
         obs_nbytes = self.num_envs * self.height * self.width * self.num_feature_planes * 4
