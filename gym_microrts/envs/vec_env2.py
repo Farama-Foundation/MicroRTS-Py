@@ -22,7 +22,9 @@ class MicroRTSGridModeVecEnv:
     [[0]x_coordinate*y_coordinate(x*y), [1]a_t(6), [2]p_move(4), [3]p_harvest(4), 
     [4]p_return(4), [5]p_produce_direction(4), [6]p_produce_unit_type(z), 
     [7]x_coordinate*y_coordinate(x*y)]
+
     Create a baselines VecEnv environment from a gym3 environment.
+
     :param env: gym3 environment to adapt
     """
 
@@ -111,37 +113,51 @@ class MicroRTSGridModeVecEnv:
         
     def start_client(self):
 
-        from ts import JNIGridnetVecClient as Client
+        from java.nio import ByteBuffer, ByteOrder
+        from ts import JNIGridnetVecClient2 as Client
         from ai.core import AI
+
+        # shared buffer with JVM
+        num_planes = 27
+        nbytes = self.num_envs * self.height * self.width * num_planes * 4
+        jvm_buffer = ByteBuffer.allocateDirect(nbytes).order(ByteOrder.nativeOrder()).asIntBuffer()
+        np_buffer = np.asarray(jvm_buffer, order="C")
+        self.obs = np_buffer.reshape((self.num_envs, self.height, self.width, num_planes))
+
         self.vec_client = Client(
             self.num_selfplay_envs,
             self.num_bot_envs,
             self.max_steps,
             self.rfs,
             os.path.expanduser(self.microrts_path),
-            self.map_paths,
+            self.map_paths[0],
             JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
             self.real_utt,
             self.partial_obs,
+            jvm_buffer,
         )
         self.render_client = self.vec_client.selfPlayClients[0] if len(self.vec_client.selfPlayClients) > 0 else self.vec_client.clients[0]
         # get the unit type table
         self.utt = json.loads(str(self.render_client.sendUTT()))
 
+    # def reset(self):
+    #     responses = self.vec_client.reset([0]*self.num_envs)
+    #     obs = [self._encode_obs(np.array(ro)) for ro in responses.observation]
+    #     return np.array(obs)
+
     def reset(self):
-        responses = self.vec_client.reset([0]*self.num_envs)
-        obs = [self._encode_obs(np.array(ro)) for ro in responses.observation]
-        return np.array(obs)
+        self.vec_client.reset([0]*self.num_envs)
+        return self.obs
 
-    def _encode_obs(self, obs):
-        obs = obs.reshape(len(obs), -1).clip(0, np.array([self.num_planes]).T-1)
-        obs_planes = np.zeros((self.height * self.width, self.num_planes_prefix_sum[-1]), dtype=np.int32)
-        obs_planes_idx = np.arange(len(obs_planes))
-        obs_planes[obs_planes_idx,obs[0]] = 1
+    # def _encode_obs(self, obs):
+    #     obs = obs.reshape(len(obs), -1).clip(0, np.array([self.num_planes]).T-1)
+    #     obs_planes = np.zeros((self.height * self.width, self.num_planes_prefix_sum[-1]), dtype=np.int32)
+    #     obs_planes_idx = np.arange(len(obs_planes))
+    #     obs_planes[obs_planes_idx,obs[0]] = 1
 
-        for i in range(1, self.num_planes_len):
-            obs_planes[obs_planes_idx,obs[i]+self.num_planes_prefix_sum[i]] = 1
-        return obs_planes.reshape(self.height, self.width, -1)
+    #     for i in range(1, self.num_planes_len):
+    #         obs_planes[obs_planes_idx,obs[i]+self.num_planes_prefix_sum[i]] = 1
+    #     return obs_planes.reshape(self.height, self.width, -1)
 
     def step_async(self, actions):
         actions = actions.reshape((self.num_envs, self.width*self.height, -1))
@@ -158,12 +174,18 @@ class MicroRTSGridModeVecEnv:
             java_actions[outer_idx] = JArray(JArray(JInt))(java_valid_action)
         self.actions = JArray(JArray(JArray(JInt)))(java_actions)
 
+    # def step_wait(self):
+    #     responses = self.vec_client.gameStep(self.actions, [0]*self.num_envs)
+    #     reward, done = np.array(responses.reward), np.array(responses.done)
+    #     obs = [self._encode_obs(np.array(ro)) for ro in responses.observation]
+    #     infos = [{"raw_rewards": item} for item in reward]
+    #     return np.array(obs), reward @ self.reward_weight, done[:,0], infos
+
     def step_wait(self):
         responses = self.vec_client.gameStep(self.actions, [0]*self.num_envs)
         reward, done = np.array(responses.reward), np.array(responses.done)
-        obs = [self._encode_obs(np.array(ro)) for ro in responses.observation]
         infos = [{"raw_rewards": item} for item in reward]
-        return np.array(obs), reward @ self.reward_weight, done[:,0], infos
+        return self.obs, reward @ self.reward_weight, done[:,0], infos
 
     def step(self, ac):
         self.step_async(ac)
@@ -171,6 +193,7 @@ class MicroRTSGridModeVecEnv:
 
     def getattr_depth_check(self, name, already_found):
         """Check if an attribute reference is being hidden in a recursive call to __getattr__
+
         :param name: (str) name of attribute to check for
         :param already_found: (bool) whether this attribute has already been found in a wrapper
         :return: (str or None) name of module whose attribute is being shadowed, if any.
@@ -305,6 +328,7 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
 
     def getattr_depth_check(self, name, already_found):
         """Check if an attribute reference is being hidden in a recursive call to __getattr__
+
         :param name: (str) name of attribute to check for
         :param already_found: (bool) whether this attribute has already been found in a wrapper
         :return: (str or None) name of module whose attribute is being shadowed, if any.
