@@ -381,7 +381,6 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         from rts import GameState
 
         self.num_feature_planes = GameState.numFeaturePlanes
-        # xxx(okachaiev): that might be wrong UTT
         self.masks_dim = 6+4+4+4+4+len(self.real_utt.getUnitTypes())+(self.real_utt.getMaxAttackRange()*2+1)**2
 
         # pre-allocate shared buffers with JVM
