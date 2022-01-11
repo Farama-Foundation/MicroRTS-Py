@@ -364,17 +364,17 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         )
 
     def _allocate_shared_buffer(self, nbytes):
-        from java.nio import ByteBuffer, ByteOrder
+        from java.nio import ByteOrder
+        from jpype.nio import convertToDirectBuffer
 
-        # xxx(okachaiev): allocate bytearray on CPython side to avoid
-        # mem corruption when JVM is shutting down
-        jvm_buffer = ByteBuffer.allocateDirect(nbytes).order(ByteOrder.nativeOrder()).asIntBuffer()
+        c_buffer = bytearray(nbytes)
+        jvm_buffer = convertToDirectBuffer(c_buffer).order(ByteOrder.nativeOrder()).asIntBuffer()
         np_buffer = np.asarray(jvm_buffer, order="C")
         return jvm_buffer, np_buffer
 
     def start_client(self):
 
-        from ts import JNIGridnetVecClient2 as Client
+        from ts import JNIGridnetSharedMemVecClient as Client
         from ai.core import AI
 
         # xxx(okachaiev): there's a race condition here...
@@ -389,15 +389,15 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         # pre-allocate shared buffers with JVM
         obs_nbytes = self.num_envs * self.height * self.width * self.num_feature_planes * 4
         obs_jvm_buffer, obs_np_buffer = self._allocate_shared_buffer(obs_nbytes)
-        self.obs = obs_np_buffer.reshape((total_env_slots, self.height, self.width, self.num_feature_planes))
+        self.obs = obs_np_buffer.reshape((self.num_envs, self.height, self.width, self.num_feature_planes))
 
         unit_mask_nbytes = self.num_envs * self.height * self.width * 4
         unit_mask_jvm_buffer, unit_mask_np_buffer = self._allocate_shared_buffer(unit_mask_nbytes)
-        self.source_unit_mask = unit_mask_np_buffer.reshape((total_env_slots, self.height*self.width))
+        self.source_unit_mask = unit_mask_np_buffer.reshape((self.num_envs, self.height*self.width))
 
         action_mask_nbytes = self.num_envs * self.height * self.width * self.masks_dim * 4
         action_mask_jvm_buffer, action_mask_np_buffer = self._allocate_shared_buffer(action_mask_nbytes)
-        self.action_mask = action_mask_np_buffer.reshape((total_env_slots, self.height*self.width, self.masks_dim))
+        self.action_mask = action_mask_np_buffer.reshape((self.num_envs, self.height*self.width, self.masks_dim))
 
         self.vec_client = Client(
             self.num_selfplay_envs,
