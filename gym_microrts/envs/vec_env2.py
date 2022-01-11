@@ -110,19 +110,42 @@ class MicroRTSGridModeVecEnv:
         self.action_plane_space = gym.spaces.MultiDiscrete([6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7])
         self.source_unit_idxs = np.tile(np.arange(self.height*self.width), (self.num_envs,1))
         self.source_unit_idxs = self.source_unit_idxs.reshape((self.source_unit_idxs.shape + (1,)))
+
+    def allocate_shared_buffer(self, nbytes):
+        from java.nio import ByteBuffer, ByteOrder
         
+        jvm_buffer = ByteBuffer.allocateDirect(nbytes).order(ByteOrder.nativeOrder()).asIntBuffer()
+        np_buffer = np.asarray(jvm_buffer, order="C")
+        return jvm_buffer, np_buffer
+
     def start_client(self):
 
-        from java.nio import ByteBuffer, ByteOrder
         from ts import JNIGridnetVecClient2 as Client
         from ai.core import AI
 
-        # shared buffer with JVM
-        num_planes = 27
-        nbytes = self.num_envs * self.height * self.width * num_planes * 4
-        jvm_buffer = ByteBuffer.allocateDirect(nbytes).order(ByteOrder.nativeOrder()).asIntBuffer()
-        np_buffer = np.asarray(jvm_buffer, order="C")
-        self.obs = np_buffer.reshape((self.num_envs, self.height, self.width, num_planes))
+        # xxx(okachaiev): there's a race condition here...
+        # in order to start client, I need to pre-allocate buffers
+        # to pre-allocate buffers I need to know dims of all array,
+        # which will be determined by UTT requested from the running client
+        # need to introduce new API for getting this information prior to
+        # running the client
+        self.num_feature_planes = 27
+        self.masks_dim = 78
+
+        # pre-allocate shared buffers with JVM
+        total_env_slots = (self.num_selfplay_envs*2 + self.num_bot_envs)
+
+        obs_nbytes = total_env_slots * self.height * self.width * self.num_feature_planes * 4
+        obs_jvm_buffer, obs_np_buffer = self.allocate_shared_buffer(obs_nbytes)
+        self.obs = obs_np_buffer.reshape((total_env_slots, self.height, self.width, self.num_feature_planes))
+
+        unit_mask_nbytes = total_env_slots * self.height * self.width * 4
+        unit_mask_jvm_buffer, unit_mask_np_buffer = self.allocate_shared_buffer(unit_mask_nbytes)
+        self.source_unit_mask = unit_mask_np_buffer.reshape((total_env_slots, self.height*self.width))
+
+        action_mask_nbytes = total_env_slots * self.height * self.width * self.masks_dim * 4
+        action_mask_jvm_buffer, action_mask_np_buffer = self.allocate_shared_buffer(action_mask_nbytes)
+        self.action_mask = action_mask_np_buffer.reshape((total_env_slots, self.height*self.width, self.masks_dim))
 
         self.vec_client = Client(
             self.num_selfplay_envs,
@@ -134,7 +157,9 @@ class MicroRTSGridModeVecEnv:
             JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
             self.real_utt,
             self.partial_obs,
-            jvm_buffer,
+            obs_jvm_buffer,
+            unit_mask_jvm_buffer,
+            action_mask_jvm_buffer,
         )
         self.render_client = self.vec_client.selfPlayClients[0] if len(self.vec_client.selfPlayClients) > 0 else self.vec_client.clients[0]
         # get the unit type table
@@ -216,11 +241,15 @@ class MicroRTSGridModeVecEnv:
             self.vec_client.close()
             jpype.shutdownJVM()
 
+    # def get_action_mask(self):
+    #     action_mask = np.array(self.vec_client.getMasks(0))
+    #     self.source_unit_mask = action_mask[:,:,:,0].reshape(self.num_envs, -1)
+    #     action_type_and_parameter_mask = action_mask[:,:,:,1:].reshape(self.num_envs, self.height*self.width, -1)
+    #     return action_type_and_parameter_mask
+
     def get_action_mask(self):
-        action_mask = np.array(self.vec_client.getMasks(0))
-        self.source_unit_mask = action_mask[:,:,:,0].reshape(self.num_envs, -1)
-        action_type_and_parameter_mask = action_mask[:,:,:,1:].reshape(self.num_envs, self.height*self.width, -1)
-        return action_type_and_parameter_mask
+        self.vec_client.getMasks(0)
+        return self.action_mask
 
 class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
     metadata = {

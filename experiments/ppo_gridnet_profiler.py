@@ -21,6 +21,26 @@ After the change:
 
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
      4096   15.620    0.004   15.980    0.004 vec_env2.py:184(step_wait)
+
+Masks, before the change:
+
+         992307 function calls (990003 primitive calls) in 12.858 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      768    0.281    0.000    5.841    0.008 vec_env.py:196(get_action_mask)
+    39940    7.300    0.000    7.300    0.000 {built-in method numpy.array}
+
+Masks, after the change:
+
+         378698 function calls (376394 primitive calls) in 5.340 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      768    0.878    0.001    0.878    0.001 vec_env2.py:250(get_action_mask)
+     1538    0.069    0.000    0.069    0.000 {built-in method numpy.array}
 """
 
 import argparse
@@ -387,7 +407,10 @@ if __name__ == "__main__":
             dones[step] = next_done
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
-                invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
+                profiler.enable()
+                invalid_action_masks[step] = torch.from_numpy(envs.get_action_mask()).to(device)
+                profiler.disable()
+
                 action, logproba, _, _, vs = agent.get_action_and_value(
                     next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
                 )
