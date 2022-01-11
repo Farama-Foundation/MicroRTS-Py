@@ -124,22 +124,9 @@ class MicroRTSStatsRecorder(VecEnvWrapper):
 
 # ALGO LOGIC: initialize agent here:
 class CategoricalMasked(Categorical):
-    def __init__(self, probs=None, logits=None, validate_args=None, masks=[], device=None):
-        self.masks = masks
-        self.device = device
-        if len(self.masks) == 0:
-            super(CategoricalMasked, self).__init__(probs, logits, validate_args)
-        else:
-            self.masks = masks.bool()
-            logits = torch.where(self.masks, logits, torch.tensor(-1e8, device=self.device))
-            super(CategoricalMasked, self).__init__(probs, logits, validate_args)
-
-    def entropy(self):
-        if len(self.masks) == 0:
-            return super(CategoricalMasked, self).entropy()
-        p_log_p = self.logits * self.probs
-        p_log_p = torch.where(self.masks, p_log_p, torch.tensor(0.0).to(self.device))
-        return -p_log_p.sum(-1)
+    def __init__(self, probs=None, logits=None, validate_args=None, masks=[], mask_value=None):
+        logits = torch.where(masks.bool(), logits, mask_value)
+        super(CategoricalMasked, self).__init__(probs, logits, validate_args)
 
 
 class Scale(nn.Module):
@@ -203,6 +190,7 @@ class Agent(nn.Module):
             nn.ReLU(),
             layer_init(nn.Linear(128, 1), std=1),
         )
+        self.register_buffer('mask_value', torch.tensor(-1e8))
 
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
         hidden = self.encoder(x)
@@ -215,7 +203,7 @@ class Agent(nn.Module):
             invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_plane_space.nvec.tolist(), dim=1)
             multi_categoricals = [
-                CategoricalMasked(logits=logits, masks=iam, device=device)
+                CategoricalMasked(logits=logits, masks=iam, mask_value=self.mask_value)
                 for (logits, iam) in zip(split_logits, split_invalid_action_masks)
             ]
             action = torch.stack([categorical.sample() for categorical in multi_categoricals])
@@ -224,7 +212,7 @@ class Agent(nn.Module):
             action = action.view(-1, action.shape[-1]).T
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_plane_space.nvec.tolist(), dim=1)
             multi_categoricals = [
-                CategoricalMasked(logits=logits, masks=iam, device=device)
+                CategoricalMasked(logits=logits, masks=iam, mask_value=self.mask_value)
                 for (logits, iam) in zip(split_logits, split_invalid_action_masks)
             ]
         logprob = torch.stack([categorical.log_prob(a) for a, categorical in zip(action, multi_categoricals)])
@@ -355,7 +343,7 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: prepare the execution of the game.
         for step in range(0, args.num_steps):
-            envs.render()
+            # envs.render()
             global_step += 1 * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
