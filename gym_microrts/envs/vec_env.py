@@ -326,3 +326,107 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         if jpype._jpype.isStarted():
             self.vec_client.close()
             jpype.shutdownJVM()
+
+
+class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
+    """
+    Similar function to `MicroRTSGridModeVecEnv` but uses shared mem buffers for
+    zero-copy data exchange between NumPy and JVM runtimes. Drastically improves
+    performance of the environment with some limitations introduced to the API.
+    Notably, all games should be performed on the same map.
+    """
+
+    def __init__(
+        self,
+        num_selfplay_envs,
+        num_bot_envs,
+        partial_obs=False,
+        max_steps=2000,
+        render_theme=2,
+        frame_skip=0,
+        ai2s=[],
+        map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
+        reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0])
+    ):
+        if len(map_paths) > 1 and len(set(map_paths)) > 1:
+            raise ValueError("Mem shared environment requires all games to be played on the same map.")
+
+        super(MicroRTSGridModeSharedMemVecEnv, self).__init__(
+            num_selfplay_envs,
+            num_bot_envs,
+            partial_obs,
+            max_steps,
+            render_theme,
+            frame_skip,
+            ai2s,
+            map_paths,
+            reward_weight,
+        )
+
+    def _allocate_shared_buffer(self, nbytes):
+        from java.nio import ByteBuffer, ByteOrder
+
+        # xxx(okachaiev): allocate bytearray on CPython side to avoid
+        # mem corruption when JVM is shutting down
+        jvm_buffer = ByteBuffer.allocateDirect(nbytes).order(ByteOrder.nativeOrder()).asIntBuffer()
+        np_buffer = np.asarray(jvm_buffer, order="C")
+        return jvm_buffer, np_buffer
+
+    def start_client(self):
+
+        from ts import JNIGridnetVecClient2 as Client
+        from ai.core import AI
+
+        # xxx(okachaiev): there's a race condition here...
+        # in order to start client, I need to pre-allocate buffers
+        # to pre-allocate buffers I need to know dims of all array,
+        # which will be determined by UTT requested from the running client
+        # need to introduce new API for getting this information prior to
+        # running the client
+        self.num_feature_planes = 27
+        self.masks_dim = 78
+
+        # pre-allocate shared buffers with JVM
+        obs_nbytes = self.num_envs * self.height * self.width * self.num_feature_planes * 4
+        obs_jvm_buffer, obs_np_buffer = self._allocate_shared_buffer(obs_nbytes)
+        self.obs = obs_np_buffer.reshape((total_env_slots, self.height, self.width, self.num_feature_planes))
+
+        unit_mask_nbytes = self.num_envs * self.height * self.width * 4
+        unit_mask_jvm_buffer, unit_mask_np_buffer = self._allocate_shared_buffer(unit_mask_nbytes)
+        self.source_unit_mask = unit_mask_np_buffer.reshape((total_env_slots, self.height*self.width))
+
+        action_mask_nbytes = self.num_envs * self.height * self.width * self.masks_dim * 4
+        action_mask_jvm_buffer, action_mask_np_buffer = self._allocate_shared_buffer(action_mask_nbytes)
+        self.action_mask = action_mask_np_buffer.reshape((total_env_slots, self.height*self.width, self.masks_dim))
+
+        self.vec_client = Client(
+            self.num_selfplay_envs,
+            self.num_bot_envs,
+            self.max_steps,
+            self.rfs,
+            os.path.expanduser(self.microrts_path),
+            self.map_paths[0],
+            JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
+            self.real_utt,
+            self.partial_obs,
+            obs_jvm_buffer,
+            unit_mask_jvm_buffer,
+            action_mask_jvm_buffer,
+        )
+        self.render_client = self.vec_client.selfPlayClients[0] if len(self.vec_client.selfPlayClients) > 0 else self.vec_client.clients[0]
+        # get the unit type table
+        self.utt = json.loads(str(self.render_client.sendUTT()))
+
+    def reset(self):
+        self.vec_client.reset([0]*self.num_envs)
+        return self.obs
+
+    def step_wait(self):
+        responses = self.vec_client.gameStep(self.actions, [0]*self.num_envs)
+        reward, done = np.array(responses.reward), np.array(responses.done)
+        infos = [{"raw_rewards": item} for item in reward]
+        return self.obs, reward @ self.reward_weight, done[:,0], infos
+
+    def get_action_mask(self):
+        self.vec_client.getMasks(0)
+        return self.action_mask

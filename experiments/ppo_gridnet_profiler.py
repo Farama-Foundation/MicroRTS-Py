@@ -58,7 +58,7 @@ import torch.nn as nn
 import torch.optim as optim
 from gym.spaces import MultiDiscrete
 from gym_microrts import microrts_ai
-from gym_microrts.envs.vec_env2 import MicroRTSGridModeVecEnv
+from gym_microrts.envs.vec_env import MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv
 from stable_baselines3.common.vec_env import VecEnvWrapper, VecMonitor, VecVideoRecorder
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
