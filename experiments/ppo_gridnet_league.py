@@ -96,6 +96,10 @@ def parse_args():
     args.minibatch_size = int(args.batch_size // args.n_minibatch)
     args.num_updates = args.total_timesteps // args.batch_size
     args.save_frequency = int(args.num_updates // 100)
+    
+    # learning from only agent's experience (i.e., excluding agent2's experience)
+    args.batch_size =  int(args.batch_size // 2)
+    args.minibatch_size = int(args.minibatch_size // 2)
     # fmt: on
     return args
 
@@ -421,14 +425,15 @@ if __name__ == "__main__":
                     returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
                 advantages = returns - values
 
+        # raise
         # flatten the batch
-        b_obs = obs.reshape((-1,) + envs.observation_space.shape)
-        b_logprobs = logprobs.reshape(-1)
-        b_actions = actions.reshape((-1,) + action_space_shape)
-        b_advantages = advantages.reshape(-1)
-        b_returns = returns.reshape(-1)
-        b_values = values.reshape(-1)
-        b_invalid_action_masks = invalid_action_masks.reshape((-1,) + invalid_action_shape)
+        b_obs = obs[:,::2].reshape((-1,) + envs.observation_space.shape)
+        b_logprobs = logprobs[:,::2].reshape(-1)
+        b_actions = actions[:,::2].reshape((-1,) + action_space_shape)
+        b_advantages = advantages[:,::2].reshape(-1)
+        b_returns = returns[:,::2].reshape(-1)
+        b_values = values[:,::2].reshape(-1)
+        b_invalid_action_masks = invalid_action_masks[:,::2].reshape((-1,) + invalid_action_shape)
 
         # Optimizaing the policy and value network
         inds = np.arange(
