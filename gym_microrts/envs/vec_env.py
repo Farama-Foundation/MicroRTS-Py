@@ -348,10 +348,13 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         frame_skip=0,
         ai2s=[],
         map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
-        reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0])
+        reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
+        thread_pool_size=0,
     ):
         if len(map_paths) > 1 and len(set(map_paths)) > 1:
             raise ValueError("Mem shared environment requires all games to be played on the same map.")
+
+        self.thread_pool_size = thread_pool_size
 
         super(MicroRTSGridModeSharedMemVecEnv, self).__init__(
             num_selfplay_envs,
@@ -409,6 +412,7 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
             obs_jvm_buffer,
             unit_mask_jvm_buffer,
             action_mask_jvm_buffer,
+            self.thread_pool_size,
         )
         self.render_client = self.vec_client.selfPlayClients[0] if len(self.vec_client.selfPlayClients) > 0 else self.vec_client.clients[0]
         # get the unit type table

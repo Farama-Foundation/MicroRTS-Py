@@ -56,6 +56,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from tqdm import trange
 from gym.spaces import MultiDiscrete
 from gym_microrts import microrts_ai
 from gym_microrts.envs.vec_env import MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv
@@ -327,6 +328,7 @@ if __name__ == "__main__":
         + [microrts_ai.workerRushAI for _ in range(min(args.num_bot_envs, 2))],
         map_paths=["maps/16x16/basesWorkers16x16.xml"],
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
+        thread_pool_size=8,
     )
     envs = MicroRTSStatsRecorder(envs)
     envs = VecMonitor(envs)
@@ -399,8 +401,7 @@ if __name__ == "__main__":
             optimizer.param_groups[0]["lr"] = lrnow
 
         # TRY NOT TO MODIFY: prepare the execution of the game.
-        for step in range(0, args.num_steps):
-            print(f"update: {update}, step: {step}")
+        for step in trange(args.num_steps, desc=f"update #{update}"):
             # envs.render()
             global_step += 1 * args.num_envs
             obs[step] = next_obs
@@ -431,7 +432,7 @@ if __name__ == "__main__":
 
             for info in infos:
                 if "episode" in info.keys():
-                    print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+                    # print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
                     writer.add_scalar("charts/episode_reward", info["episode"]["r"], global_step)
                     for key in info["microrts_stats"]:
                         writer.add_scalar(f"charts/episode_reward/{key}", info["microrts_stats"][key], global_step)
