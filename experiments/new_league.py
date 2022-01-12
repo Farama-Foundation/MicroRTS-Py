@@ -15,7 +15,7 @@ from gym_microrts import microrts_ai # fmt: off
 from stable_baselines3.common.vec_env import VecMonitor, VecVideoRecorder
 from torch.utils.tensorboard import SummaryWriter
 from trueskill import TrueSkill, Rating, rate_1vs1, quality_1vs1
-from ppo_gridnet import Agent, MicroRTSStatsRecorder, CategoricalMasked
+from ppo_gridnet_league import Agent, MicroRTSStatsRecorder
 import itertools
 from peewee import (
     Model,

@@ -488,7 +488,9 @@ if __name__ == "__main__":
             # randomly load an opponent: fictitious self-play
             list_of_agents = os.listdir(f"models/{experiment_name}")
             list_of_agents.remove('agent.pt')
-            agent2.load_state_dict(torch.load(f"models/{experiment_name}/{random.choice(list_of_agents)}"))
+            chosen_agent2pt = random.choice(list_of_agents)
+            agent2.load_state_dict(torch.load(f"models/{experiment_name}/{chosen_agent2pt}"))
+            print(f"agent2 has loaded {chosen_agent2pt}")
 
             ## EVALUATION LOGIC:
             subprocess.Popen(["python", "new_league.py", "--evals", f"models/{experiment_name}/{global_step}.pt", "--update-db", "false"])
