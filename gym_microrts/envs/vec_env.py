@@ -104,8 +104,9 @@ class MicroRTSGridModeVecEnv:
         for num_plane in self.num_planes:
             self.num_planes_prefix_sum.append(self.num_planes_prefix_sum[-1] + num_plane)
 
-        self.action_space = gym.spaces.MultiDiscrete(np.array([[6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7]] * self.height * self.width).flatten())
-        self.action_plane_space = gym.spaces.MultiDiscrete([6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7])
+        self.action_space_dims = [6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7]
+        self.action_space = gym.spaces.MultiDiscrete(np.array([self.action_space_dims] * self.height * self.width).flatten())
+        self.action_plane_space = gym.spaces.MultiDiscrete(self.action_space_dims)
         self.source_unit_idxs = np.tile(np.arange(self.height*self.width), (self.num_envs,1))
         self.source_unit_idxs = self.source_unit_idxs.reshape((self.source_unit_idxs.shape + (1,)))
         
@@ -384,7 +385,10 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         from rts import GameState
 
         self.num_feature_planes = GameState.numFeaturePlanes
-        self.masks_dim = 6+4+4+4+4+len(self.real_utt.getUnitTypes())+(self.real_utt.getMaxAttackRange()*2+1)**2
+        num_unit_types = len(self.real_utt.getUnitTypes())
+        self.action_space_dims = [6, 4, 4, 4, 4, num_unit_types, (self.real_utt.getMaxAttackRange()*2+1)**2]
+        self.masks_dim = sum(self.action_space_dims)
+        self.action_dim = len(self.action_space_dims)
 
         # pre-allocate shared buffers with JVM
         obs_nbytes = self.num_envs * self.height * self.width * self.num_feature_planes * 4
@@ -399,6 +403,10 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         action_mask_jvm_buffer, action_mask_np_buffer = self._allocate_shared_buffer(action_mask_nbytes)
         self.action_mask = action_mask_np_buffer.reshape((self.num_envs, self.height*self.width, self.masks_dim))
 
+        action_nbytes = self.num_envs * self.width*self.height * (1+self.action_dim) * 4
+        action_jvm_buffer, action_np_buffer = self._allocate_shared_buffer(action_nbytes)
+        self.actions = action_np_buffer.reshape((self.num_envs, self.height*self.width, (1+self.action_dim)))
+
         self.vec_client = Client(
             self.num_selfplay_envs,
             self.num_bot_envs,
@@ -412,6 +420,7 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
             obs_jvm_buffer,
             unit_mask_jvm_buffer,
             action_mask_jvm_buffer,
+            action_jvm_buffer,
             self.thread_pool_size,
         )
         self.render_client = self.vec_client.selfPlayClients[0] if len(self.vec_client.selfPlayClients) > 0 else self.vec_client.clients[0]
@@ -422,8 +431,15 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         self.vec_client.reset([0]*self.num_envs)
         return self.obs
 
+    def step_async(self, actions):
+        actions = actions.reshape((self.num_envs, self.width*self.height, self.action_dim))
+        # xxx: as we are passing all units, there's no need to attach source unit idx
+        # in the first place, should reduce number of arrays we allocate
+        actions = np.concatenate((self.source_unit_idxs, actions), 2) # specify source unit
+        np.copyto(self.actions, actions)
+
     def step_wait(self):
-        responses = self.vec_client.gameStep(self.actions, [0]*self.num_envs)
+        responses = self.vec_client.gameStep([0]*self.num_envs)
         reward, done = np.array(responses.reward), np.array(responses.done)
         infos = [{"raw_rewards": item} for item in reward]
         return self.obs, reward @ self.reward_weight, done[:,0], infos
