@@ -395,12 +395,6 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         obs_jvm_buffer, obs_np_buffer = self._allocate_shared_buffer(obs_nbytes)
         self.obs = obs_np_buffer.reshape((self.num_envs, self.height, self.width, self.num_feature_planes))
 
-        # xxx(okachaiev): actually, we no longer need source_unit_mask
-        # and should just remove it from here
-        unit_mask_nbytes = self.num_envs * self.height * self.width * 4
-        unit_mask_jvm_buffer, unit_mask_np_buffer = self._allocate_shared_buffer(unit_mask_nbytes)
-        self.source_unit_mask = unit_mask_np_buffer.reshape((self.num_envs, self.height*self.width))
-
         action_mask_nbytes = self.num_envs * self.height * self.width * self.masks_dim * 4
         action_mask_jvm_buffer, action_mask_np_buffer = self._allocate_shared_buffer(action_mask_nbytes)
         self.action_mask = action_mask_np_buffer.reshape((self.num_envs, self.height*self.width, self.masks_dim))
@@ -420,7 +414,6 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
             self.real_utt,
             self.partial_obs,
             obs_jvm_buffer,
-            unit_mask_jvm_buffer,
             action_mask_jvm_buffer,
             action_jvm_buffer,
             self.thread_pool_size,
