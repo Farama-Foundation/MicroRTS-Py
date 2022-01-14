@@ -395,6 +395,8 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         obs_jvm_buffer, obs_np_buffer = self._allocate_shared_buffer(obs_nbytes)
         self.obs = obs_np_buffer.reshape((self.num_envs, self.height, self.width, self.num_feature_planes))
 
+        # xxx(okachaiev): actually, we no longer need source_unit_mask
+        # and should just remove it from here
         unit_mask_nbytes = self.num_envs * self.height * self.width * 4
         unit_mask_jvm_buffer, unit_mask_np_buffer = self._allocate_shared_buffer(unit_mask_nbytes)
         self.source_unit_mask = unit_mask_np_buffer.reshape((self.num_envs, self.height*self.width))
@@ -403,9 +405,9 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         action_mask_jvm_buffer, action_mask_np_buffer = self._allocate_shared_buffer(action_mask_nbytes)
         self.action_mask = action_mask_np_buffer.reshape((self.num_envs, self.height*self.width, self.masks_dim))
 
-        action_nbytes = self.num_envs * self.width*self.height * (1+self.action_dim) * 4
+        action_nbytes = self.num_envs * self.width*self.height * self.action_dim * 4
         action_jvm_buffer, action_np_buffer = self._allocate_shared_buffer(action_nbytes)
-        self.actions = action_np_buffer.reshape((self.num_envs, self.height*self.width, (1+self.action_dim)))
+        self.actions = action_np_buffer.reshape((self.num_envs, self.height*self.width, self.action_dim))
 
         self.vec_client = Client(
             self.num_selfplay_envs,
@@ -433,9 +435,6 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
 
     def step_async(self, actions):
         actions = actions.reshape((self.num_envs, self.width*self.height, self.action_dim))
-        # xxx: as we are passing all units, there's no need to attach source unit idx
-        # in the first place, should reduce number of arrays we allocate
-        actions = np.concatenate((self.source_unit_idxs, actions), 2) # specify source unit
         np.copyto(self.actions, actions)
 
     def step_wait(self):
