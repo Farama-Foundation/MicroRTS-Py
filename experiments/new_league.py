@@ -56,6 +56,8 @@ def parse_args():
         help='if toggled, the database will be updated')
     parser.add_argument('--cuda', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, cuda will not be enabled by default')
+    parser.add_argument('--highest-sigma', type=float, default=1.4,
+        help='the highest sigma of the trueskill evaluation')
     # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
@@ -381,10 +383,11 @@ if __name__ == "__main__":
         leaderboard = get_leaderboard_existing_ais(existing_ai_names)
         new_ai_names = [ai_name for ai_name in args.evals if ai_name not in existing_ai_names]
 
-        def binary_search(leaderboard, low, high, ai, n=5):
-            if n == 0:
+        def binary_search(leaderboard, low, high, ai, highest_sigma):
+            print(AI.get(name=ai).sigma, highest_sigma, high, low)
+            if AI.get(name=ai).sigma <= highest_sigma:
                 return
-            
+
             if high >= low:
                 mid = (high + low) // 2
                 print(f"high {high}, low {low}, len(leaderboard) {len(leaderboard)}, mid {mid}")
@@ -437,15 +440,24 @@ if __name__ == "__main__":
                             ).save()
                     
                 if winner.name == ai:
-                    binary_search(leaderboard, low, mid - 1, ai, n=n-1)
+                    binary_search(leaderboard, low, mid - 1, ai, args.highest_sigma)
                 else:
-                    binary_search(leaderboard, mid + 1, high, ai, n=n-1)
+                    binary_search(leaderboard, mid + 1, high, ai, args.highest_sigma)
             else:
-                return
+                # expand the search area if binary search converged
+                # before the agent's highest sigma is converged
+                area_of_search = 3
+                binary_search(
+                    leaderboard,
+                    min(len(leaderboard), low - random.randint(1, area_of_search)),
+                    min(len(leaderboard), high + random.randint(1, area_of_search)),
+                    ai,
+                    args.highest_sigma,
+                )
 
         for new_ai_name in new_ai_names:
             ai = AI.get(name=new_ai_name)
-            binary_search(leaderboard, 0, len(leaderboard), ai.name, n=5)
+            binary_search(leaderboard, 0, len(leaderboard), ai.name, args.highest_sigma)
         
         get_leaderboard().to_csv(f"{dbname}.temp.csv", index=False)
     
