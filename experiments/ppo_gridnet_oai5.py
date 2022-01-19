@@ -233,6 +233,18 @@ class Agent(nn.Module):
         return self.critic(self.encoder(x))
 
 
+def extract_p1(x, num_selfplay_envs, use_batch=False):
+    """
+    Extracts the first player's actions from the state.
+
+    If num_selfplay_envs = 24, num_past_selfplay_envs = 12,
+    x collects the first 0-23 indexed obs, and the 24th 26th 28th 32th 34th
+    """
+    if not use_batch:
+        return torch.cat((x[:num_selfplay_envs], x[num_selfplay_envs::2]))
+    else:
+        return torch.cat((x[:,:num_selfplay_envs], x[:,num_selfplay_envs::2]), 1)
+
 
 if __name__ == "__main__":
     args = parse_args()
@@ -358,13 +370,9 @@ if __name__ == "__main__":
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
                 invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
-                
-                # if num_selfplay_envs = 24, num_past_selfplay_envs = 12,
-                # p1_obs collects the first 0-23 indexed obs, and the 24th 26th 28th 32th 34th
-                # p2_obs collects the 25th 27th 29th 33th 35th
-                p1_obs = torch.cat((next_obs[:args.num_selfplay_envs], next_obs[args.num_selfplay_envs::2]))
+                p1_obs = extract_p1(next_obs, args.num_selfplay_envs)
                 p2_obs = next_obs[args.num_selfplay_envs+1::2]
-                p1_mask = torch.cat((invalid_action_masks[step][:args.num_selfplay_envs], invalid_action_masks[step][args.num_selfplay_envs::2]))
+                p1_mask = extract_p1(invalid_action_masks[step], args.num_selfplay_envs)
                 p2_mask = invalid_action_masks[step][args.num_selfplay_envs+1::2]
                 
                 p1_action, p1_logproba, _, _, p1_vs = agent.get_action_and_value(
@@ -430,14 +438,15 @@ if __name__ == "__main__":
                     returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
                 advantages = returns - values
 
+
         # flatten the batch
-        b_obs = torch.cat((obs[:,:args.num_selfplay_envs], obs[:,args.num_selfplay_envs::2]), 1).reshape((-1,) + envs.observation_space.shape)
-        b_logprobs = torch.cat((logprobs[:,:args.num_selfplay_envs], logprobs[:,args.num_selfplay_envs::2]), 1).reshape(-1)
-        b_actions = torch.cat((actions[:,:args.num_selfplay_envs], actions[:,args.num_selfplay_envs::2]), 1).reshape((-1,) + action_space_shape)
-        b_advantages = torch.cat((advantages[:,:args.num_selfplay_envs], advantages[:,args.num_selfplay_envs::2]), 1).reshape(-1)
-        b_returns = torch.cat((returns[:,:args.num_selfplay_envs], returns[:,args.num_selfplay_envs::2]), 1).reshape(-1)
-        b_values = torch.cat((values[:,:args.num_selfplay_envs], values[:,args.num_selfplay_envs::2]), 1).reshape(-1)
-        b_invalid_action_masks = torch.cat((invalid_action_masks[:,:args.num_selfplay_envs], invalid_action_masks[:,args.num_selfplay_envs::2]), 1).reshape((-1,) + invalid_action_shape)
+        b_obs = extract_p1(obs, args.num_selfplay_envs, True).reshape((-1,) + envs.observation_space.shape)
+        b_logprobs = extract_p1(logprobs, args.num_selfplay_envs, True).reshape(-1)
+        b_actions = extract_p1(actions, args.num_selfplay_envs, True).reshape((-1,) + action_space_shape)
+        b_advantages = extract_p1(advantages, args.num_selfplay_envs, True).reshape(-1)
+        b_returns = extract_p1(returns, args.num_selfplay_envs, True).reshape(-1)
+        b_values = extract_p1(values, args.num_selfplay_envs, True).reshape(-1)
+        b_invalid_action_masks = extract_p1(invalid_action_masks, args.num_selfplay_envs, True).reshape((-1,) + invalid_action_shape)
 
         # Optimizaing the policy and value network
         inds = np.arange(
