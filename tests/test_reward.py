@@ -6,7 +6,7 @@ from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 render = False
 
-def test_resource_gather_reward():
+def test_reward():
     envs = MicroRTSGridModeVecEnv(
         num_selfplay_envs=0,
         num_bot_envs=1,
