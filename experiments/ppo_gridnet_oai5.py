@@ -233,19 +233,6 @@ class Agent(nn.Module):
         return self.critic(self.encoder(x))
 
 
-def extract_p1(x, num_selfplay_envs, use_batch=False):
-    """
-    Extracts the first player's actions from the state.
-
-    If num_selfplay_envs = 24, num_past_selfplay_envs = 12,
-    x collects the first 0-23 indexed obs, and the 24th 26th 28th 32th 34th
-    """
-    if not use_batch:
-        return torch.cat((x[:num_selfplay_envs], x[num_selfplay_envs::2]))
-    else:
-        return torch.cat((x[:,:num_selfplay_envs], x[:,num_selfplay_envs::2]), 1)
-
-
 if __name__ == "__main__":
     args = parse_args()
 
@@ -353,6 +340,17 @@ if __name__ == "__main__":
     trueskill_step_df["type"] = trueskill_step_df["name"]
     trueskill_step_df["step"] = 0
     preset_trueskill_step_df = trueskill_step_df.copy()
+    
+    ## SELFPLAY LOGIC:
+    p1_idxs = torch.cat((
+        torch.arange(args.num_selfplay_envs),
+        torch.arange(args.num_selfplay_envs, args.num_selfplay_envs + args.num_past_selfplay_envs, 2)),
+    ).to(device)
+    p2_idxs = torch.arange(
+        args.num_selfplay_envs+1,
+        args.num_selfplay_envs + args.num_past_selfplay_envs,
+        2,
+    ).to(device)
 
     for update in range(starting_update, args.num_updates + 1):
         # Annealing the rate if instructed to do so.
@@ -370,10 +368,10 @@ if __name__ == "__main__":
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
                 invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
-                p1_obs = extract_p1(next_obs, args.num_selfplay_envs)
-                p2_obs = next_obs[args.num_selfplay_envs+1::2]
-                p1_mask = extract_p1(invalid_action_masks[step], args.num_selfplay_envs)
-                p2_mask = invalid_action_masks[step][args.num_selfplay_envs+1::2]
+                p1_obs = next_obs[p1_idxs]
+                p2_obs = next_obs[p2_idxs]
+                p1_mask = invalid_action_masks[step][p1_idxs]
+                p2_mask = invalid_action_masks[step][p2_idxs]
                 
                 p1_action, p1_logproba, _, _, p1_vs = agent.get_action_and_value(
                     p1_obs, envs=envs, invalid_action_masks=p1_mask, device=device
@@ -381,21 +379,17 @@ if __name__ == "__main__":
                 p2_action, p2_logproba, _, _, p2_vs = agent2.get_action_and_value(
                     p2_obs, envs=envs, invalid_action_masks=p2_mask, device=device
                 )
-                action = torch.zeros((args.num_envs, p2_action.shape[1], p2_action.shape[2]))
-                action[:args.num_selfplay_envs] = p1_action[:args.num_selfplay_envs]
-                action[args.num_selfplay_envs::2] = p1_action[args.num_selfplay_envs:]
-                action[args.num_selfplay_envs+1::2] = p2_action
+                actions[step][p1_idxs] = p1_action.float()
+                actions[step][p2_idxs] = p2_action.float()
                 p1_vs = p1_vs.flatten()
-                values[step][:args.num_selfplay_envs] = p1_vs[:args.num_selfplay_envs]
-                values[step][args.num_selfplay_envs::2] = p1_vs[args.num_selfplay_envs:]
-                values[step][args.num_selfplay_envs+1::2] = p2_vs.flatten()
+                values[step][p1_idxs] = p1_vs
+                values[step][p2_idxs] = p2_vs.flatten()
 
-            actions[step] = action
-            logprobs[step][:args.num_selfplay_envs] = p1_logproba[:args.num_selfplay_envs]
-            logprobs[step][args.num_selfplay_envs::2] = p1_logproba[args.num_selfplay_envs:]
-            logprobs[step][args.num_selfplay_envs+1::2] = p2_logproba
+            # actions[step] = action
+            logprobs[step][p1_idxs] = p1_logproba
+            logprobs[step][p2_idxs] = p2_logproba
             try:
-                next_obs, rs, ds, infos = envs.step(action.cpu().numpy().reshape(envs.num_envs, -1))
+                next_obs, rs, ds, infos = envs.step(actions[step].long().cpu().numpy().reshape(envs.num_envs, -1))
                 next_obs = torch.Tensor(next_obs).to(device)
             except Exception as e:
                 e.printStackTrace()
@@ -440,13 +434,13 @@ if __name__ == "__main__":
 
 
         # flatten the batch
-        b_obs = extract_p1(obs, args.num_selfplay_envs, True).reshape((-1,) + envs.observation_space.shape)
-        b_logprobs = extract_p1(logprobs, args.num_selfplay_envs, True).reshape(-1)
-        b_actions = extract_p1(actions, args.num_selfplay_envs, True).reshape((-1,) + action_space_shape)
-        b_advantages = extract_p1(advantages, args.num_selfplay_envs, True).reshape(-1)
-        b_returns = extract_p1(returns, args.num_selfplay_envs, True).reshape(-1)
-        b_values = extract_p1(values, args.num_selfplay_envs, True).reshape(-1)
-        b_invalid_action_masks = extract_p1(invalid_action_masks, args.num_selfplay_envs, True).reshape((-1,) + invalid_action_shape)
+        b_obs = obs[:,p1_idxs].reshape((-1,) + envs.observation_space.shape)
+        b_logprobs = logprobs[:,p1_idxs].reshape(-1)
+        b_actions = actions[:,p1_idxs].reshape((-1,) + action_space_shape)
+        b_advantages = advantages[:,p1_idxs].reshape(-1)
+        b_returns = returns[:,p1_idxs].reshape(-1)
+        b_values = values[:,p1_idxs].reshape(-1)
+        b_invalid_action_masks = invalid_action_masks[:,p1_idxs].reshape((-1,) + invalid_action_shape)
 
         # Optimizaing the policy and value network
         inds = np.arange(
