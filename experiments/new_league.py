@@ -15,7 +15,7 @@ from gym_microrts import microrts_ai # fmt: off
 from stable_baselines3.common.vec_env import VecMonitor, VecVideoRecorder
 from torch.utils.tensorboard import SummaryWriter
 from trueskill import TrueSkill, Rating, rate_1vs1, quality_1vs1
-from ppo_gridnet import Agent, MicroRTSStatsRecorder, CategoricalMasked
+from ppo_gridnet import Agent, MicroRTSStatsRecorder
 import itertools
 from peewee import (
     Model,
@@ -156,7 +156,7 @@ class Match:
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
             )
             self.agent = Agent(self.envs).to(self.device)
-            self.agent.load_state_dict(torch.load(self.rl_ai))
+            self.agent.load_state_dict(torch.load(self.rl_ai, map_location=self.device))
             self.agent.eval()
         elif mode == 1:
             self.envs = MicroRTSGridModeVecEnv(
@@ -169,10 +169,10 @@ class Match:
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
             )
             self.agent = Agent(self.envs).to(self.device)
-            self.agent.load_state_dict(torch.load(self.rl_ai))
+            self.agent.load_state_dict(torch.load(self.rl_ai, map_location=self.device))
             self.agent.eval()
             self.agent2 = Agent(self.envs).to(self.device)
-            self.agent2.load_state_dict(torch.load(self.rl_ai2))
+            self.agent2.load_state_dict(torch.load(self.rl_ai2, map_location=self.device))
             self.agent2.eval()
         else:
             self.envs = MicroRTSBotVecEnv(
