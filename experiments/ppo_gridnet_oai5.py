@@ -497,12 +497,15 @@ if __name__ == "__main__":
             if args.prod_mode:
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
 
-            # randomly load an opponent: fictitious self-play
-            list_of_agents = os.listdir(f"models/{experiment_name}")
-            list_of_agents.remove('agent.pt')
-            chosen_agent2pt = random.choice(list_of_agents)
-            agent2.load_state_dict(torch.load(f"models/{experiment_name}/{chosen_agent2pt}"))
-            print(f"agent2 has loaded {chosen_agent2pt}")
+            # sample an opponent based on trueskill
+            if update >= 2:
+                list_of_agents = trueskill_df[trueskill_df.name.str.endswith(".pt")]
+                their_trueskills = torch.tensor(list_of_agents["trueskill"].to_numpy())
+                chosen_agent2pt = list_of_agents["name"].to_numpy()[
+                    Categorical(their_trueskills).sample().item()
+                ]
+                agent2.load_state_dict(torch.load(f"{chosen_agent2pt}"))
+                print(f"agent2 has loaded {chosen_agent2pt}")
 
             ## EVALUATION LOGIC:
             subprocess.Popen(["python", "new_league.py", "--evals", f"models/{experiment_name}/{global_step}.pt", "--update-db", "false"])
