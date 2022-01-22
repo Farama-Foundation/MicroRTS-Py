@@ -449,7 +449,7 @@ if __name__ == "__main__":
                 area_of_search = 3
                 binary_search(
                     leaderboard,
-                    min(len(leaderboard), low - random.randint(1, area_of_search)),
+                    max(0, low - random.randint(1, area_of_search)),
                     min(len(leaderboard), high + random.randint(1, area_of_search)),
                     ai,
                     args.highest_sigma,
