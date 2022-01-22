@@ -388,59 +388,64 @@ if __name__ == "__main__":
             ai = AI.get(name=new_ai_name)
 
             while ai.sigma > args.highest_sigma:
-                # sample an opponent from the leaderboard
-                opponent_idx = np.random.randint(0, len(leaderboard))
-                opponent_ai = AI.get(name=leaderboard.iloc[opponent_idx]["name"])
-                if ai.name == opponent_ai.name:
-                    continue
+
+                match_qualities = []
+                for ai2_name in leaderboard["name"]:
+                    opponent_ai = AI.get(name=ai2_name)
+                    if ai.name == opponent_ai.name:
+                        continue
+                    match_qualities += [[opponent_ai, quality_1vs1(ai, opponent_ai)]]
+                
+                # sort by quality
+                match_qualities = sorted(match_qualities, key=lambda x: x[1], reverse=True)
+                print("match_qualities[:3]", match_qualities[:3])
 
                 # run a match if the quality of the opponent is high enough
+                top_3_ai = [item[0] for item in match_qualities[:3]]
+                opponent_ai = random.choice(top_3_ai)
                 match_up = (ai.name, opponent_ai.name)
                 match_quality = quality_1vs1(ai, opponent_ai)
-                if match_quality > 0.5:
-                    print(f"the match up is ({ai}, {opponent_ai}), quality is {round(match_quality, 4)}")
-                    # print(f"{ai.name} with N({ai.mu}, {ai.sigma})")
-                    # print(f"{opponent_ai.name} with N({opponent_ai.mu}, {opponent_ai.sigma})")
-                    winner = ai # dummy setting
-                    for idx in range(2): # switch player 1 and 2's starting locations
-                        if idx == 0:
-                            match_up = list(reversed(match_up))
-                        m = Match(args.partial_obs, match_up)
-                        challenger = AI.get(name=m.p0)
-                        defender = AI.get(name=m.p1)
-                        r = m.run(1)
-                        for item in r:
-                            drawn = False
-                            if item == Outcome.WIN.value:
-                                winner = challenger
-                                loser = defender
-                            elif item == Outcome.DRAW.value:
-                                drawn = True
-                                winner = defender
-                                loser = challenger
-                            else:
-                                winner = defender
-                                loser = challenger
-                            print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
-                            winner_rating, loser_rating = rate_1vs1(
-                                Rating(winner.mu, winner.sigma),
-                                Rating(loser.mu, loser.sigma),
-                                drawn=drawn)
-                            
-                            # freeze existing AIs ratings
-                            if winner.name == ai.name:
-                                ai.mu, ai.sigma = winner_rating.mu, winner_rating.sigma
-                                ai.save()
-                            else:
-                                ai.mu, ai.sigma = loser_rating.mu, loser_rating.sigma
-                                ai.save()
-                            MatchHistory(
-                                challenger=challenger,
-                                defender=defender,
-                                win=int(item == 1),
-                                draw=int(item == 0),
-                                loss=int(item == -1),
-                            ).save()
+                print(f"the match up is ({ai}, {opponent_ai}), quality is {round(match_quality, 4)}")
+                winner = ai # dummy setting
+                for idx in range(2): # switch player 1 and 2's starting locations
+                    if idx == 0:
+                        match_up = list(reversed(match_up))
+                    m = Match(args.partial_obs, match_up)
+                    challenger = AI.get(name=m.p0)
+                    defender = AI.get(name=m.p1)
+                    r = m.run(1)
+                    for item in r:
+                        drawn = False
+                        if item == Outcome.WIN.value:
+                            winner = challenger
+                            loser = defender
+                        elif item == Outcome.DRAW.value:
+                            drawn = True
+                            winner = defender
+                            loser = challenger
+                        else:
+                            winner = defender
+                            loser = challenger
+                        print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
+                        winner_rating, loser_rating = rate_1vs1(
+                            Rating(winner.mu, winner.sigma),
+                            Rating(loser.mu, loser.sigma),
+                            drawn=drawn)
+                        
+                        # freeze existing AIs ratings
+                        if winner.name == ai.name:
+                            ai.mu, ai.sigma = winner_rating.mu, winner_rating.sigma
+                            ai.save()
+                        else:
+                            ai.mu, ai.sigma = loser_rating.mu, loser_rating.sigma
+                            ai.save()
+                        MatchHistory(
+                            challenger=challenger,
+                            defender=defender,
+                            win=int(item == 1),
+                            draw=int(item == 0),
+                            loss=int(item == -1),
+                        ).save()
         
         get_leaderboard().to_csv(f"{dbname}.temp.csv", index=False)
     
