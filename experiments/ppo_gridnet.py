@@ -464,7 +464,7 @@ if __name__ == "__main__":
                 torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
                 torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-                subprocess.Popen(["python", "new_league.py", "--evals", f"models/{experiment_name}/{global_step}.pt", "--update-db", "false"])
+                subprocess.Popen(["python", "league.py", "--evals", f"models/{experiment_name}/{global_step}.pt", "--update-db", "false", "--cuda", "false"])
                 eval_queue += [f"models/{experiment_name}/{global_step}.pt"]
                 print(f"Evaluating models/{experiment_name}/{global_step}.pt")
 
