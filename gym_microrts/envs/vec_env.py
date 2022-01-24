@@ -22,9 +22,7 @@ class MicroRTSGridModeVecEnv:
     [[0]x_coordinate*y_coordinate(x*y), [1]a_t(6), [2]p_move(4), [3]p_harvest(4), 
     [4]p_return(4), [5]p_produce_direction(4), [6]p_produce_unit_type(z), 
     [7]x_coordinate*y_coordinate(x*y)]
-
     Create a baselines VecEnv environment from a gym3 environment.
-
     :param env: gym3 environment to adapt
     """
 
@@ -106,8 +104,9 @@ class MicroRTSGridModeVecEnv:
         for num_plane in self.num_planes:
             self.num_planes_prefix_sum.append(self.num_planes_prefix_sum[-1] + num_plane)
 
-        self.action_space = gym.spaces.MultiDiscrete(np.array([[6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7]] * self.height * self.width).flatten())
-        self.action_plane_space = gym.spaces.MultiDiscrete([6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7])
+        self.action_space_dims = [6, 4, 4, 4, 4, len(self.utt['unitTypes']), 7 * 7]
+        self.action_space = gym.spaces.MultiDiscrete(np.array([self.action_space_dims] * self.height * self.width).flatten())
+        self.action_plane_space = gym.spaces.MultiDiscrete(self.action_space_dims)
         self.source_unit_idxs = np.tile(np.arange(self.height*self.width), (self.num_envs,1))
         self.source_unit_idxs = self.source_unit_idxs.reshape((self.source_unit_idxs.shape + (1,)))
         
@@ -173,7 +172,6 @@ class MicroRTSGridModeVecEnv:
 
     def getattr_depth_check(self, name, already_found):
         """Check if an attribute reference is being hidden in a recursive call to __getattr__
-
         :param name: (str) name of attribute to check for
         :param already_found: (bool) whether this attribute has already been found in a wrapper
         :return: (str or None) name of module whose attribute is being shadowed, if any.
@@ -201,6 +199,7 @@ class MicroRTSGridModeVecEnv:
         self.source_unit_mask = action_mask[:,:,:,0].reshape(self.num_envs, -1)
         action_type_and_parameter_mask = action_mask[:,:,:,1:].reshape(self.num_envs, self.height*self.width, -1)
         return action_type_and_parameter_mask
+
 
 class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
     metadata = {
@@ -236,6 +235,7 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         if not jpype._jpype.isStarted():
             registerDomain("ts", alias="tests")
             registerDomain("ai")
+            registerDomain("rts")
             jars = [
                 "microrts.jar", "lib/bots/Coac.jar", "lib/bots/Droplet.jar", "lib/bots/GRojoA3N.jar",
                 "lib/bots/Izanagi.jar", "lib/bots/MixedBot.jar", "lib/bots/TiamatBot.jar", "lib/bots/UMSBot.jar",
@@ -308,7 +308,6 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
 
     def getattr_depth_check(self, name, already_found):
         """Check if an attribute reference is being hidden in a recursive call to __getattr__
-
         :param name: (str) name of attribute to check for
         :param already_found: (bool) whether this attribute has already been found in a wrapper
         :return: (str or None) name of module whose attribute is being shadowed, if any.
@@ -330,3 +329,110 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         if jpype._jpype.isStarted():
             self.vec_client.close()
             jpype.shutdownJVM()
+
+
+class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
+    """
+    Similar function to `MicroRTSGridModeVecEnv` but uses shared mem buffers for
+    zero-copy data exchange between NumPy and JVM runtimes. Drastically improves
+    performance of the environment with some limitations introduced to the API.
+    Notably, all games should be performed on the same map.
+    """
+
+    def __init__(
+        self,
+        num_selfplay_envs,
+        num_bot_envs,
+        partial_obs=False,
+        max_steps=2000,
+        render_theme=2,
+        frame_skip=0,
+        ai2s=[],
+        map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
+        reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
+    ):
+        if len(map_paths) > 1 and len(set(map_paths)) > 1:
+            raise ValueError("Mem shared environment requires all games to be played on the same map.")
+
+        super(MicroRTSGridModeSharedMemVecEnv, self).__init__(
+            num_selfplay_envs,
+            num_bot_envs,
+            partial_obs,
+            max_steps,
+            render_theme,
+            frame_skip,
+            ai2s,
+            map_paths,
+            reward_weight,
+        )
+
+    def _allocate_shared_buffer(self, nbytes):
+        from java.nio import ByteOrder
+        from jpype.nio import convertToDirectBuffer
+
+        c_buffer = bytearray(nbytes)
+        jvm_buffer = convertToDirectBuffer(c_buffer).order(ByteOrder.nativeOrder()).asIntBuffer()
+        np_buffer = np.asarray(jvm_buffer, order="C")
+        return jvm_buffer, np_buffer
+
+    def start_client(self):
+
+        from ts import JNIGridnetSharedMemVecClient as Client
+        from ai.core import AI
+        from rts import GameState
+
+        self.num_feature_planes = GameState.numFeaturePlanes
+        num_unit_types = len(self.real_utt.getUnitTypes())
+        self.action_space_dims = [6, 4, 4, 4, 4, num_unit_types, (self.real_utt.getMaxAttackRange()*2+1)**2]
+        self.masks_dim = sum(self.action_space_dims)
+        self.action_dim = len(self.action_space_dims)
+
+        # pre-allocate shared buffers with JVM
+        obs_nbytes = self.num_envs * self.height * self.width * self.num_feature_planes * 4
+        obs_jvm_buffer, obs_np_buffer = self._allocate_shared_buffer(obs_nbytes)
+        self.obs = obs_np_buffer.reshape((self.num_envs, self.height, self.width, self.num_feature_planes))
+
+        action_mask_nbytes = self.num_envs * self.height * self.width * self.masks_dim * 4
+        action_mask_jvm_buffer, action_mask_np_buffer = self._allocate_shared_buffer(action_mask_nbytes)
+        self.action_mask = action_mask_np_buffer.reshape((self.num_envs, self.height*self.width, self.masks_dim))
+
+        action_nbytes = self.num_envs * self.width*self.height * self.action_dim * 4
+        action_jvm_buffer, action_np_buffer = self._allocate_shared_buffer(action_nbytes)
+        self.actions = action_np_buffer.reshape((self.num_envs, self.height*self.width, self.action_dim))
+
+        self.vec_client = Client(
+            self.num_selfplay_envs,
+            self.num_bot_envs,
+            self.max_steps,
+            self.rfs,
+            os.path.expanduser(self.microrts_path),
+            self.map_paths[0],
+            JArray(AI)([ai2(self.real_utt) for ai2 in self.ai2s]),
+            self.real_utt,
+            self.partial_obs,
+            obs_jvm_buffer,
+            action_mask_jvm_buffer,
+            action_jvm_buffer,
+            0,
+        )
+        self.render_client = self.vec_client.selfPlayClients[0] if len(self.vec_client.selfPlayClients) > 0 else self.vec_client.clients[0]
+        # get the unit type table
+        self.utt = json.loads(str(self.render_client.sendUTT()))
+
+    def reset(self):
+        self.vec_client.reset([0]*self.num_envs)
+        return self.obs
+
+    def step_async(self, actions):
+        actions = actions.reshape((self.num_envs, self.width*self.height, self.action_dim))
+        np.copyto(self.actions, actions)
+
+    def step_wait(self):
+        responses = self.vec_client.gameStep([0]*self.num_envs)
+        reward, done = np.array(responses.reward), np.array(responses.done)
+        infos = [{"raw_rewards": item} for item in reward]
+        return self.obs, reward @ self.reward_weight, done[:,0], infos
+
+    def get_action_mask(self):
+        self.vec_client.getMasks(0)
+        return self.action_mask
