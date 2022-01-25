@@ -84,31 +84,19 @@ Here is a description of Gym-μRTS's observation and action space:
 
 ## Evaluate the Trueskill of the agents
 
+This repository already contains a preset Trueskill database in `experiments/league.db`. To evaluate a new AI, try running the following command, which will iteratively find good matches for `agent.pt` until the engine is confident `agent.pt`'s Trueskill (by having the agent's Trueskill sigma below `--highest-sigma 1.4`).
 
-Evaluate among built-in AIs
 ```bash
 cd experiments
-python league.py --built-in-ais randomBiasedAI workerRushAI lightRushAI coacAI --rl-ais
+python league.py --evals agent.pt --highest-sigma 1.4
 ```
 
-Evaluate among RL AIs
+To recreate the preset Trueskill database, start a round-robin Trueskill evaluation among built-in AIs by removing the database in `experiments/league.db`.
 ```bash
 cd experiments
-python league.py --rl-ais agent1.pt agent2.pt
+rm league.csv league.db
+python league.py --evals randomBiasedAI workerRushAI lightRushAI coacAI
 ```
-
-Evaluate RL AIs against built-in AIs
-```bash
-cd experiments
-python league.py --built-in-ais randomBiasedAI workerRushAI lightRushAI coacAI --rl-ais agent_sota.pt
-```
-
-Evaluate among AIs
-```bash
-cd experiments
-python league.py --built-in-ais randomBiasedAI workerRushAI lightRushAI coacAI --rl-ais agent1.pt agent2.pt
-```
-
 
 ## Known issues
 

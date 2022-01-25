@@ -10,15 +10,29 @@ import numpy as np
 import pickle
 import pandas as pd
 import torch
-from gym.spaces import MultiDiscrete
 from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv, MicroRTSBotVecEnv
-from gym_microrts import microrts_ai
+from gym_microrts import microrts_ai # fmt: off
 from stable_baselines3.common.vec_env import VecMonitor, VecVideoRecorder
 from torch.utils.tensorboard import SummaryWriter
 from trueskill import TrueSkill, Rating, rate_1vs1, quality_1vs1
-from ppo_gridnet import Agent, MicroRTSStatsRecorder, CategoricalMasked
-from jpype.types import JArray, JInt
+from ppo_gridnet import Agent, MicroRTSStatsRecorder
 import itertools
+from peewee import (
+    Model,
+    SqliteDatabase,
+    CharField,
+    ForeignKeyField,
+    TextField,
+    DateTimeField,
+    BooleanField,
+    FloatField,
+    SmallIntegerField,
+    JOIN,
+    fn,
+)
+import datetime
+from enum import Enum
+import shutil
 
 def parse_args():
     # fmt: off
@@ -34,30 +48,103 @@ def parse_args():
 
     parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
         help='if toggled, the game will have partial observability')
-    parser.add_argument('--rl-ais', nargs='+', default= ['agent_sota.pt'],
-        help='the ais')
-    parser.add_argument('--built-in-ais', nargs='+', default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI"],
+    parser.add_argument('--evals', nargs='+', default=["randomBiasedAI","workerRushAI","lightRushAI", "coacAI"], # [],
         help='the ais')
     parser.add_argument('--num-matches', type=int, default=10,
         help='seed of the experiment')
+    parser.add_argument('--update-db', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+        help='if toggled, the database will be updated')
+    parser.add_argument('--cuda', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+        help='if toggled, cuda will not be enabled by default')
+    parser.add_argument('--highest-sigma', type=float, default=1.4,
+        help='the highest sigma of the trueskill evaluation')
     # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
     # fmt: on
     return args
 
+args = parse_args()
+dbname = "league"
+if(args.partial_obs):
+    dbname = 'po_league'
+db = SqliteDatabase(f"{dbname}.db")
+class BaseModel(Model):
+    class Meta:
+        database = db
+
+class AI(BaseModel):
+    name = CharField(unique=True)
+    mu = FloatField()
+    sigma = FloatField()
+    ai_type = CharField()
+    def __str__(self):
+        return f"🤖 {self.name} with N({round(self.mu, 3)}, {round(self.sigma, 3)})"
+
+class MatchHistory(BaseModel):
+    challenger = ForeignKeyField(AI, backref='challenger_match_histories')
+    defender = ForeignKeyField(AI, backref='defender_match_histories')
+    win = SmallIntegerField()
+    draw = SmallIntegerField()
+    loss = SmallIntegerField()
+    created_date = DateTimeField(default=datetime.datetime.now)
+
+db.connect()
+db.create_tables([AI, MatchHistory])
+
+
+class Outcome(Enum):
+    WIN = 1
+    DRAW = 0
+    LOSS = -1
+
 class Match:
-    def __init__(self, mode: int, partial_obs: bool, built_in_ais=None, built_in_ais2=None, rl_ai=None, rl_ai2=None):
+    def __init__(self, partial_obs: bool, match_up=None):
         # mode 0: rl-ai vs built-in-ai
         # mode 1: rl-ai vs rl-ai
         # mode 2: built-in-ai vs built-in-ai
+
+        built_in_ais=None
+        built_in_ais2=None
+        rl_ai=None
+        rl_ai2=None
+        
+        # determine mode
+        rl_ais = []
+        built_in_ais = []
+        for ai in match_up:
+            if ai[-3:] == ".pt":
+                rl_ais += [ai]
+            else:
+                built_in_ais += [ai]
+        if len(rl_ais) == 1:
+            mode = 0
+            p0 = rl_ais[0]
+            p1 = built_in_ais[0]
+            rl_ai=p0
+            built_in_ais=[eval(f"microrts_ai.{p1}")]
+        elif len(rl_ais) == 2:
+            mode = 1
+            p0 = rl_ais[0]
+            p1 = rl_ais[1]
+            rl_ai=p0
+            rl_ai2=p1
+        else:
+            mode = 2
+            p0 = built_in_ais[0]
+            p1 = built_in_ais[1]
+            built_in_ais=[eval(f"microrts_ai.{p0}")]
+            built_in_ais2=[eval(f"microrts_ai.{p1}")]
+        
+        self.p0, self.p1 = p0, p1
+        
         self.mode = mode
         self.partial_obs = partial_obs
         self.built_in_ais = built_in_ais
         self.built_in_ais2 = built_in_ais2
         self.rl_ai = rl_ai
         self.rl_ai2 = rl_ai2
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
         max_steps = 5000
         if mode == 0:
             self.envs = MicroRTSGridModeVecEnv(
@@ -71,7 +158,7 @@ class Match:
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
             )
             self.agent = Agent(self.envs).to(self.device)
-            self.agent.load_state_dict(torch.load(self.rl_ai))
+            self.agent.load_state_dict(torch.load(self.rl_ai, map_location=self.device))
             self.agent.eval()
         elif mode == 1:
             self.envs = MicroRTSGridModeVecEnv(
@@ -84,10 +171,10 @@ class Match:
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
             )
             self.agent = Agent(self.envs).to(self.device)
-            self.agent.load_state_dict(torch.load(self.rl_ai))
+            self.agent.load_state_dict(torch.load(self.rl_ai, map_location=self.device))
             self.agent.eval()
             self.agent2 = Agent(self.envs).to(self.device)
-            self.agent2.load_state_dict(torch.load(self.rl_ai2))
+            self.agent2.load_state_dict(torch.load(self.rl_ai2, map_location=self.device))
             self.agent2.eval()
         else:
             self.envs = MicroRTSBotVecEnv(
@@ -131,7 +218,6 @@ class Match:
             for idx, info in enumerate(infos):
                 if "episode" in info.keys():
                     results += [info["microrts_stats"]["WinLossRewardFunction"]]
-                    print("against", info["microrts_stats"]["WinLossRewardFunction"])
                     if len(results) >= num_matches:
                         return results
 
@@ -170,7 +256,6 @@ class Match:
             for idx, info in enumerate(infos):
                 if "episode" in info.keys():
                     results += [info["microrts_stats"]["WinLossRewardFunction"]]
-                    print(idx, info["microrts_stats"]["WinLossRewardFunction"])
                     if len(results) >= num_matches:
                         return results
 
@@ -186,111 +271,186 @@ class Match:
             for idx, info in enumerate(infos):
                 if "episode" in info.keys():
                     results += [info["microrts_stats"]["WinLossRewardFunction"]]
-                    print(idx, info["microrts_stats"]["WinLossRewardFunction"])
                     if len(results) >= num_matches:
                         return results
 
-if __name__ == "__main__":
-    args = parse_args()
-    # m = Match(0, False, built_in_ais=built_in_ais, rl_ai=rl_ai)
-    # m.run()
+def get_ai_type(ai_name):
+    if ai_name[-3:] == ".pt":
+        return 'rl_ai'
+    else:
+        return 'built_in_ai'
 
-    # env = TrueSkill(mu=50)
-    # m = Match(2, False, built_in_ais=built_in_ais, built_in_ais2=built_in_ais)
-    # r = m.run()
-    all_ais = args.built_in_ais + args.rl_ais
-    ratings = dict(zip(all_ais, [Rating() for _ in range (len(all_ais))]))
-    match_historys = dict(zip(all_ais, [{} for _ in range (len(all_ais))]))
-    match_ups = list(itertools.combinations(all_ais, 2))
-    np.random.shuffle(match_ups)
-    for idx in range(2):
-        for match_up in match_ups:
-            if idx == 0:
-                match_up = list(reversed(match_up))
-            rl_ais = []
-            built_in_ais = []
-            for ai in match_up:
-                if ai[-3:] == ".pt":
-                    rl_ais += [ai]
-                else:
-                    built_in_ais += [ai]
-            
-            if len(rl_ais) == 1:
-                print("mode0")
-                p0 = rl_ais[0]
-                p1 = built_in_ais[0]
-                m = Match(0, False, rl_ai=p0, built_in_ais=[eval(f"microrts_ai.{p1}")])
-            elif len(rl_ais) == 2:
-                print("mode1")
-                p0 = rl_ais[0]
-                p1 = rl_ais[1]
-                m = Match(1, False, rl_ai=p0, rl_ai2=p1)
-            else:
-                print("mode2")
-                p0 = built_in_ais[0]
-                p1 = built_in_ais[1]
-                m = Match(2, False, built_in_ais=[eval(f"microrts_ai.{p0}")], built_in_ais2=[eval(f"microrts_ai.{p1}")])
-            
-            r = m.run(args.num_matches // 2)
-            for item in r:
-                if item == 1:
-                    ratings[p0], ratings[p1] = rate_1vs1(ratings[p0], ratings[p1])
-                    if p1 not in match_historys[p0]:
-                        match_historys[p0][p1] = [1, 0, 0]
-                    else:
-                        match_historys[p0][p1][0] += 1
-                    if p0 not in match_historys[p1]:
-                        match_historys[p1][p0] = [0, 0, 1]
-                    else:
-                        match_historys[p1][p0][2] += 1
-                elif item == 0:
-                    ratings[p0], ratings[p1] = rate_1vs1(ratings[p0], ratings[p1], drawn=True)
-                    if p1 not in match_historys[p0]:
-                        match_historys[p0][p1] = [0, 1, 0]
-                    else:
-                        match_historys[p0][p1][1] += 1
-                    if p0 not in match_historys[p1]:
-                        match_historys[p1][p0] = [0, 1, 0]
-                    else:
-                        match_historys[p1][p0][1] += 1
-                else:
-                    ratings[p1], ratings[p0] = rate_1vs1(ratings[p1], ratings[p0])
-                    if p1 not in match_historys[p0]:
-                        match_historys[p0][p1] = [0, 0, 1]
-                    else:
-                        match_historys[p0][p1][2] += 1
-                    if p0 not in match_historys[p1]:
-                        match_historys[p1][p0] = [1, 0, 0]
-                    else:
-                        match_historys[p1][p0][0] += 1
-    leaderboard = sorted(ratings, key=lambda item: ratings[item].mu - 3 *ratings[item].sigma, reverse=True)
-    leaderboard = [(item, round(ratings[item].mu - 3 *ratings[item].sigma,2), ratings[item])  for item in leaderboard]
-    
-    trueskills = pd.DataFrame(data = [[item[0], item[1], item[2].mu, item[2].sigma] for item in leaderboard], columns=["ai", "trueskill", "mu", "sigma"])
-    
-    match_historys_dfs = [[key, pd.DataFrame(match_historys[key], index=["win", "tie", "loss"]).T] for key in match_historys]
-    dataset = [trueskills, match_historys_dfs]
-    with open('dataset.pickle', 'wb') as handle:
-        pickle.dump(dataset, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    
-    
-    if args.prod_mode:
-        import wandb
 
-        experiment_name = f"{args.exp_name}__{int(time.time())}"
-        run = wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=True,
-            config=vars(args),
-            name=experiment_name,
-            monitor_gym=True,
-            save_code=True,
+def get_match_history(ai_name):
+    query = (MatchHistory
+        .select(
+            AI.name,
+            fn.SUM(MatchHistory.win).alias('wins'),
+            fn.SUM(MatchHistory.draw).alias('draws'),
+            fn.SUM(MatchHistory.loss).alias('losss'),
         )
-        wandb.save('dataset.pickle')
-        wandb.log({"trueskills": wandb.Table(dataframe=trueskills)})
-        artifact = wandb.Artifact("trueskills", type="dataset")
-        artifact.add(wandb.Table(dataframe=trueskills), "trueskills")
-        run.log_artifact(artifact)
-        for item in match_historys_dfs:
-            wandb.log({item[0].rstrip(".pt"): wandb.Table(dataframe=item[1].reset_index(level=0))})
+        .join(AI, JOIN.LEFT_OUTER, on=MatchHistory.defender)
+        .group_by(MatchHistory.defender)
+        .where(MatchHistory.challenger == AI.get(name=ai_name))
+    )
+    return pd.DataFrame(list(query.dicts()))
+
+def get_leaderboard():
+    query = (AI.select(
+            AI.name,
+            AI.mu,
+            AI.sigma,
+            (AI.mu - 3 * AI.sigma).alias('trueskill'),
+        )
+        .order_by((AI.mu - 3 * AI.sigma).desc())
+    )
+    return pd.DataFrame(list(query.dicts()))
+
+def get_leaderboard_existing_ais(existing_ai_names):
+    query = (AI.select(
+            AI.name,
+            AI.mu,
+            AI.sigma,
+            (AI.mu - 3 * AI.sigma).alias('trueskill'),
+        )
+        .where((AI.name.in_(existing_ai_names)))
+        .order_by((AI.mu - 3 * AI.sigma).desc())
+    )
+    return pd.DataFrame(list(query.dicts()))
+
+if __name__ == "__main__":
+    existing_ai_names = [item.name for item in AI.select()]
+    all_ai_names = set(existing_ai_names + args.evals)
+    if not args.update_db:
+        shutil.copyfile(f"{dbname}.db", f"{dbname}.db.backup")
+
+    for ai_name in all_ai_names:  
+        ai = AI.get_or_none(name=ai_name)
+        if ai is None:
+            ai = AI(
+                name=ai_name, 
+                mu=25.0,
+                sigma=8.333333333333334,
+                ai_type=get_ai_type(ai_name))
+            ai.save()
+
+    # case 1: initialize the league with round robin
+    if len(existing_ai_names) == 0:
+        match_ups = list(itertools.combinations(all_ai_names, 2))
+        np.random.shuffle(match_ups)
+        for idx in range(2): # switch player 1 and 2's starting locations
+            for match_up in match_ups:
+                if idx == 0:
+                    match_up = list(reversed(match_up))
+
+                m = Match(args.partial_obs, match_up)
+                challenger = AI.get_or_none(name=m.p0)
+                defender = AI.get_or_none(name=m.p1)
+                
+                r = m.run(args.num_matches // 2)
+                for item in r:
+                    drawn = False
+                    if item == Outcome.WIN.value:
+                        winner = challenger
+                        loser = defender
+                    elif item == Outcome.DRAW.value:
+                        drawn = True
+                    else:
+                        winner = defender
+                        loser = challenger
+                        
+                    print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
+                    
+                    winner_rating, loser_rating = rate_1vs1(
+                        Rating(winner.mu, winner.sigma),
+                        Rating(loser.mu, loser.sigma),
+                        drawn=drawn)
+
+                    winner.mu, winner.sigma = winner_rating.mu, winner_rating.sigma
+                    loser.mu, loser.sigma = loser_rating.mu, loser_rating.sigma
+                    winner.save()
+                    loser.save()
+                    
+                    MatchHistory(
+                        challenger=challenger,
+                        defender=defender,
+                        win=int(item == 1),
+                        draw=int(item == 0),
+                        loss=int(item == -1),
+                    ).save()
+        get_leaderboard().to_csv(f"{dbname}.csv", index=False)
+
+    # case 2: new AIs
+    else:
+        leaderboard = get_leaderboard_existing_ais(existing_ai_names)
+        new_ai_names = [ai_name for ai_name in args.evals if ai_name not in existing_ai_names]
+        for new_ai_name in new_ai_names:
+            ai = AI.get(name=new_ai_name)
+
+            while ai.sigma > args.highest_sigma:
+
+                match_qualities = []
+                for ai2_name in leaderboard["name"]:
+                    opponent_ai = AI.get(name=ai2_name)
+                    if ai.name == opponent_ai.name:
+                        continue
+                    match_qualities += [[opponent_ai, quality_1vs1(ai, opponent_ai)]]
+                
+                # sort by quality
+                match_qualities = sorted(match_qualities, key=lambda x: x[1], reverse=True)
+                print("match_qualities[:3]", match_qualities[:3])
+
+                # run a match if the quality of the opponent is high enough
+                top_3_ai = [item[0] for item in match_qualities[:3]]
+                opponent_ai = random.choice(top_3_ai)
+                match_up = (ai.name, opponent_ai.name)
+                match_quality = quality_1vs1(ai, opponent_ai)
+                print(f"the match up is ({ai}, {opponent_ai}), quality is {round(match_quality, 4)}")
+                winner = ai # dummy setting
+                for idx in range(2): # switch player 1 and 2's starting locations
+                    if idx == 0:
+                        match_up = list(reversed(match_up))
+                    m = Match(args.partial_obs, match_up)
+                    challenger = AI.get(name=m.p0)
+                    defender = AI.get(name=m.p1)
+                    r = m.run(1)
+                    for item in r:
+                        drawn = False
+                        if item == Outcome.WIN.value:
+                            winner = challenger
+                            loser = defender
+                        elif item == Outcome.DRAW.value:
+                            drawn = True
+                            winner = defender
+                            loser = challenger
+                        else:
+                            winner = defender
+                            loser = challenger
+                        print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
+                        winner_rating, loser_rating = rate_1vs1(
+                            Rating(winner.mu, winner.sigma),
+                            Rating(loser.mu, loser.sigma),
+                            drawn=drawn)
+                        
+                        # freeze existing AIs ratings
+                        if winner.name == ai.name:
+                            ai.mu, ai.sigma = winner_rating.mu, winner_rating.sigma
+                            ai.save()
+                        else:
+                            ai.mu, ai.sigma = loser_rating.mu, loser_rating.sigma
+                            ai.save()
+                        MatchHistory(
+                            challenger=challenger,
+                            defender=defender,
+                            win=int(item == 1),
+                            draw=int(item == 0),
+                            loss=int(item == -1),
+                        ).save()
+        
+        get_leaderboard().to_csv(f"{dbname}.temp.csv", index=False)
+    
+    print("=======================")
+    print(get_leaderboard())
+    if not args.update_db:
+        os.remove(f"{dbname}.db")
+        shutil.move(f"{dbname}.db.backup", f"{dbname}.db")
