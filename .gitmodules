@@ -1,3 +1,6 @@
 [submodule "gym_microrts/microrts"]
 	path = gym_microrts/microrts
 	url = https://github.com/vwxyzjn/microrts
+[submodule "experiments/gym-microrts-static-files"]
+	path = experiments/gym-microrts-static-files
+	url = https://github.com/vwxyzjn/gym-microrts-static-files
