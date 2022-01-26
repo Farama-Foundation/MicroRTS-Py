@@ -30,7 +30,7 @@ def parse_args():
         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=100000000,
+    parser.add_argument('--total-timesteps', type=int, default=1000000,
         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -46,24 +46,27 @@ def parse_args():
         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
         help='if toggled, the game will have partial observability')
-    parser.add_argument('--n-minibatch', type=int, default=4,
-        help='the number of mini batch')
-    parser.add_argument('--num-bot-envs', type=int, default=0,
-        help='the number of bot game environment; 16 bot envs measn 16 games')
-    parser.add_argument('--num-selfplay-envs', type=int, default=0,
-        help='the number of self play envs; 16 self play envs means 8 games')
     parser.add_argument('--num-steps', type=int, default=256,
         help='the number of steps per game environment')
-    parser.add_argument("--agent-model-path", type=str, default="POagent.pt",
+    parser.add_argument("--agent-model-path", type=str, default="gym-microrts-static-files/agent_sota.pt",
         help="the path to the agent's model")
-    parser.add_argument('--ai', type=str, default="POHeavyRush",
-        help='the number of steps per game environment')
+    parser.add_argument("--agent2-model-path", type=str, default="gym-microrts-static-files/agent_sota.pt",
+        help="the path to the agent's model")
+    parser.add_argument('--ai', type=str, default="",
+        help='the opponent AI to evaluate against')
 
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
+    if args.ai:
+        args.num_bot_envs, args.num_selfplay_envs = 1, 0
+    else:
+        args.num_bot_envs, args.num_selfplay_envs = 0, 2
+    args.num_envs = args.num_selfplay_envs + args.num_bot_envs
+    args.batch_size = int(args.num_envs * args.num_steps)
+    args.num_updates = args.total_timesteps // args.batch_size
     # fmt: on
     return args
 
@@ -98,6 +101,7 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
+
     ais = []
     if args.ai:
         ais = [eval(f"microrts_ai.{args.ai}")]
@@ -113,7 +117,6 @@ if __name__ == "__main__":
     )
     envs = MicroRTSStatsRecorder(envs)
     envs = VecMonitor(envs)
-    args.num_envs = len(ais) + args.num_selfplay_envs
     if args.capture_video:
         envs = VecVideoRecorder(
             envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 100000 == 0, video_length=2000
@@ -121,6 +124,7 @@ if __name__ == "__main__":
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
     agent = Agent(envs).to(device)
+    agent2 = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage for epoch data
@@ -128,12 +132,6 @@ if __name__ == "__main__":
     action_space_shape = (mapsize, len(envs.action_plane_space.nvec))
     invalid_action_shape = (mapsize, envs.action_plane_space.nvec.sum())
 
-    obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
-    actions = torch.zeros((args.num_steps, args.num_envs) + action_space_shape).to(device)
-    logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     invalid_action_masks = torch.zeros((args.num_steps, args.num_envs) + invalid_action_shape).to(device)
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -142,12 +140,14 @@ if __name__ == "__main__":
     # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
-    num_updates = 10000
 
     ## CRASH AND RESUME LOGIC:
     starting_update = 1
-    agent.load_state_dict(torch.load(args.agent_model_path))
+    agent.load_state_dict(torch.load(args.agent_model_path, map_location=device))
     agent.eval()
+    if not args.ai:
+        agent2.load_state_dict(torch.load(args.agent2_model_path, map_location=device))
+        agent2.eval()
 
     print("Model's state_dict:")
     for param_tensor in agent.state_dict():
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     total_params = sum([param.nelement() for param in agent.parameters()])
     print("Model's total parameters:", total_params)
 
-    for update in range(starting_update, num_updates + 1):
+    for update in range(starting_update, args.num_updates + 1):
         # TRY NOT TO MODIFY: prepare the execution of the game.
         for step in range(0, args.num_steps):
             envs.render()
@@ -163,9 +163,26 @@ if __name__ == "__main__":
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
                 invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
-                action, logproba, _, _, vs = agent.get_action_and_value(
-                    next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
-                )
+                
+                if args.ai:
+                    action, logproba, _, _, vs = agent.get_action_and_value(
+                        next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
+                    )
+                else:
+                    p1_obs = next_obs[::2]
+                    p2_obs = next_obs[1::2]
+                    p1_mask = invalid_action_masks[step][::2]
+                    p2_mask = invalid_action_masks[step][1::2]
+                    
+                    p1_action, _, _, _, _ = agent.get_action_and_value(
+                        p1_obs, envs=envs, invalid_action_masks=p1_mask, device=device
+                    )
+                    p2_action, _, _, _, _ = agent2.get_action_and_value(
+                        p2_obs, envs=envs, invalid_action_masks=p2_mask, device=device
+                    )
+                    action = torch.zeros((args.num_envs, p2_action.shape[1], p2_action.shape[2]))
+                    action[::2] = p1_action
+                    action[1::2] = p2_action
 
             try:
                 next_obs, rs, ds, infos = envs.step(action.cpu().numpy().reshape(envs.num_envs, -1))
@@ -174,9 +191,13 @@ if __name__ == "__main__":
                 e.printStackTrace()
                 raise
 
-            for info in infos:
+            for idx, info in enumerate(infos):
                 if "episode" in info.keys():
-                    print("against", args.ai, info["microrts_stats"]["WinLossRewardFunction"])
+                    if args.ai:
+                        print("against", args.ai, info["microrts_stats"]["WinLossRewardFunction"])
+                    else:
+                        if idx % 2 == 0:
+                            print(f"player{idx % 2}", info["microrts_stats"]["WinLossRewardFunction"])
 
     envs.close()
     writer.close()

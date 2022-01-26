@@ -30,16 +30,20 @@ python hello_world.py
 To train an agent, run the following
 
 ```bash
-python experiments/ppo_gridnet.py \
+cd experiments
+python ppo_gridnet.py \
     --total-timesteps 100000000 \
-    --wandb-project-name gym-microrts \
     --capture-video \
     --seed 1
 ```
 
 For running a partial observable example, tune the `partial_obs` argument.
-```python
-envs = MicroRTSGridModeVecEnv(..., partial_obs=True)
+```bash
+cd experiments
+python ppo_gridnet.py \
+    --partial-obs \
+    --capture-video \
+    --seed 1
 ```
 
 ## Technical Paper
@@ -82,8 +86,27 @@ Here is a description of Gym-μRTS's observation and action space:
 ![image](https://user-images.githubusercontent.com/5555347/120344517-a5bf7300-c2c7-11eb-81b6-172813ba8a0b.png)
 
 
-## Evaluate the Trueskill of the agents
+## Evaluation
 
+You can evaluate trained agents against a built-in bot:
+
+```bash
+cd experiments
+python ppo_gridnet_eval.py \
+    --agent-model-path gym-microrts-static-files/agent_sota.pt \
+    --ai coacAI
+```
+
+Alternatively, you can evaluate the trained RL bots against themselves
+
+```bash
+cd experiments
+python ppo_gridnet_eval.py \
+    --agent-model-path gym-microrts-static-files/agent_sota.pt \
+    --agent2-model-path gym-microrts-static-files/agent_sota.pt
+```
+
+### Evaluate Trueskill of the agents
 This repository already contains a preset Trueskill database in `experiments/league.db`. To evaluate a new AI, try running the following command, which will iteratively find good matches for `agent.pt` until the engine is confident `agent.pt`'s Trueskill (by having the agent's Trueskill sigma below `--highest-sigma 1.4`).
 
 ```bash
@@ -110,3 +133,29 @@ python league.py --evals randomBiasedAI workerRushAI lightRushAI coacAI
 * AIIDE 2019 Strategy Games Workshop: [Comparing Observation and Action Representations for Deep Reinforcement Learning in MicroRTS](https://arxiv.org/abs/1910.12134), 
 
 
+## Cite this project
+
+To cite the Gym-µRTS simulator:
+
+```bibtex
+@inproceedings{huang2021gym,
+  author={Huang, Shengyi and Ontañón, Santiago and Bamford, Chris and Grela, Lukasz},
+  booktitle={2021 IEEE Conference on Games (CoG)}, 
+  title={Gym-µRTS: Toward Affordable Full Game Real-time Strategy Games Research with Deep Reinforcement Learning}, 
+  year={2021},
+  volume={},
+  number={},
+  pages={1-8},
+  doi={10.1109/CoG52621.2021.9619076}}
+```
+
+To cite the invalid action masking technique used in our training script:
+
+```bibtex
+@article{huang2020closer,
+  title={A closer look at invalid action masking in policy gradient algorithms},
+  author={Huang, Shengyi and Onta{\~n}{\'o}n, Santiago},
+  journal={arXiv preprint arXiv:2006.14171},
+  year={2020}
+}
+```
