@@ -57,5 +57,6 @@ jobs:
 
       - name: Run headless test
         uses: GabrielBB/xvfb-action@v1
-        run: |
-          xvfb-run -a poetry run pytest tests -v
+        with:
+          run: |
+            xvfb-run -a poetry run pytest tests -v
