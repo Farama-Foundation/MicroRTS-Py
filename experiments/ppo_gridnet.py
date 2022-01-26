@@ -328,8 +328,8 @@ if __name__ == "__main__":
 
     ## EVALUATION LOGIC:
     eval_queue = []
-    trueskill_df = pd.read_csv("league.csv")
-    trueskill_step_df = pd.read_csv("league.csv")
+    trueskill_df = pd.read_csv("gym-microrts-static-files/league.csv")
+    trueskill_step_df = pd.read_csv("gym-microrts-static-files/league.csv")
     trueskill_step_df["type"] = trueskill_step_df["name"]
     trueskill_step_df["step"] = 0
     preset_trueskill_step_df = trueskill_step_df.copy()
