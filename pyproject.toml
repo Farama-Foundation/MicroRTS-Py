@@ -27,6 +27,7 @@ trueskill = "^0.4.5"
 stable-baselines3 = "^1.1.0"
 torch = "1.7.1"
 pytest = "^6.2.5"
+pre-commit = "^2.17.0"
 
 [tool.poetry-dynamic-versioning]
 enable = true
