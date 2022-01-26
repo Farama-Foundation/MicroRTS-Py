@@ -25,3 +25,4 @@ def test_ppo_gridnet_duel_eval():
     except subprocess.CalledProcessError as grepexc:                                                                                                   
         print("error code", grepexc.returncode, grepexc.output)
         assert grepexc.returncode in [0, 134]
+
