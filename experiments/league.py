@@ -68,7 +68,9 @@ args = parse_args()
 dbname = "league"
 if(args.partial_obs):
     dbname = 'po_league'
-db = SqliteDatabase(f"{dbname}.db")
+dbpath = f"gym-microrts-static-files/{dbname}.db"
+csvpath = f"gym-microrts-static-files/{dbname}.csv"
+db = SqliteDatabase(dbpath)
 class BaseModel(Model):
     class Meta:
         database = db
@@ -322,7 +324,7 @@ if __name__ == "__main__":
     existing_ai_names = [item.name for item in AI.select()]
     all_ai_names = set(existing_ai_names + args.evals)
     if not args.update_db:
-        shutil.copyfile(f"{dbname}.db", f"{dbname}.db.backup")
+        shutil.copyfile(dbpath, f"{dbpath}.backup")
 
     for ai_name in all_ai_names:  
         ai = AI.get_or_none(name=ai_name)
@@ -378,7 +380,7 @@ if __name__ == "__main__":
                         draw=int(item == 0),
                         loss=int(item == -1),
                     ).save()
-        get_leaderboard().to_csv(f"{dbname}.csv", index=False)
+        get_leaderboard().to_csv(csvpath, index=False)
 
     # case 2: new AIs
     else:
@@ -452,5 +454,5 @@ if __name__ == "__main__":
     print("=======================")
     print(get_leaderboard())
     if not args.update_db:
-        os.remove(f"{dbname}.db")
-        shutil.move(f"{dbname}.db.backup", f"{dbname}.db")
+        os.remove(dbpath)
+        shutil.move(f"{dbpath}.backup", dbpath)

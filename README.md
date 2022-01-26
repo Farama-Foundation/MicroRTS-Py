@@ -88,7 +88,7 @@ This repository already contains a preset Trueskill database in `experiments/lea
 
 ```bash
 cd experiments
-python league.py --evals agent.pt --highest-sigma 1.4
+python league.py --evals gym-microrts-static-files/agent_sota.pt --highest-sigma 1.4 --update-db False
 ```
 
 To recreate the preset Trueskill database, start a round-robin Trueskill evaluation among built-in AIs by removing the database in `experiments/league.db`.
