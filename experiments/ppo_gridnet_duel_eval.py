@@ -30,7 +30,7 @@ def parse_args():
         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=100000000,
+    parser.add_argument('--total-timesteps', type=int, default=1000000,
         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -46,24 +46,27 @@ def parse_args():
         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--partial-obs', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
         help='if toggled, the game will have partial observability')
     parser.add_argument('--n-minibatch', type=int, default=4,
         help='the number of mini batch')
     parser.add_argument('--num-bot-envs', type=int, default=0,
         help='the number of bot game environment; 16 bot envs measn 16 games')
-    parser.add_argument('--num-selfplay-envs', type=int, default=4,
+    parser.add_argument('--num-selfplay-envs', type=int, default=2,
         help='the number of self play envs; 16 self play envs means 8 games')
     parser.add_argument('--num-steps', type=int, default=256,
         help='the number of steps per game environment')
-    parser.add_argument("--agent-model-path", type=str, default="POagent.pt",
+    parser.add_argument("--agent-model-path", type=str, default="gym-microrts-static-files/agent_sota.pt",
         help="the path to the agent's model")
-    parser.add_argument("--agent2-model-path", type=str, default="POagent.pt",
+    parser.add_argument("--agent2-model-path", type=str, default="gym-microrts-static-files/agent_sota.pt",
         help="the path to the agent's model")
 
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
+    args.num_envs = args.num_selfplay_envs + args.num_bot_envs
+    args.batch_size = int(args.num_envs * args.num_steps)
+    args.num_updates = args.total_timesteps // args.batch_size
     # fmt: on
     return args
 
@@ -110,7 +113,6 @@ if __name__ == "__main__":
     )
     envs = MicroRTSStatsRecorder(envs)
     envs = VecMonitor(envs)
-    args.num_envs = 0 + args.num_selfplay_envs
     if args.capture_video:
         envs = VecVideoRecorder(
             envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 100000 == 0, video_length=2000
@@ -134,7 +136,6 @@ if __name__ == "__main__":
     # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
-    num_updates = 10000
 
     ## CRASH AND RESUME LOGIC:
     starting_update = 1
@@ -149,7 +150,7 @@ if __name__ == "__main__":
     total_params = sum([param.nelement() for param in agent.parameters()])
     print("Model's total parameters:", total_params)
 
-    for update in range(starting_update, num_updates + 1):
+    for update in range(starting_update, args.num_updates + 1):
         # TRY NOT TO MODIFY: prepare the execution of the game.
         for step in range(0, args.num_steps):
             envs.render()
