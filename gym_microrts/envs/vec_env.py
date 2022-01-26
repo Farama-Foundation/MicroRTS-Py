@@ -82,13 +82,15 @@ class MicroRTSGridModeVecEnv:
         from rts.units import UnitTypeTable
 
         self.real_utt = UnitTypeTable()
-        from ai.rewardfunction import (AttackRewardFunction,
-                                       ProduceBuildingRewardFunction,
-                                       ProduceCombatUnitRewardFunction,
-                                       ProduceWorkerRewardFunction,
-                                       ResourceGatherRewardFunction,
-                                       RewardFunctionInterface,
-                                       WinLossRewardFunction)
+        from ai.rewardfunction import (
+            AttackRewardFunction,
+            ProduceBuildingRewardFunction,
+            ProduceCombatUnitRewardFunction,
+            ProduceWorkerRewardFunction,
+            ResourceGatherRewardFunction,
+            RewardFunctionInterface,
+            WinLossRewardFunction,
+        )
 
         self.rfs = JArray(RewardFunctionInterface)(
             [
@@ -272,13 +274,15 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         from rts.units import UnitTypeTable
 
         self.real_utt = UnitTypeTable()
-        from ai.rewardfunction import (AttackRewardFunction,
-                                       ProduceBuildingRewardFunction,
-                                       ProduceCombatUnitRewardFunction,
-                                       ProduceWorkerRewardFunction,
-                                       ResourceGatherRewardFunction,
-                                       RewardFunctionInterface,
-                                       WinLossRewardFunction)
+        from ai.rewardfunction import (
+            AttackRewardFunction,
+            ProduceBuildingRewardFunction,
+            ProduceCombatUnitRewardFunction,
+            ProduceWorkerRewardFunction,
+            ResourceGatherRewardFunction,
+            RewardFunctionInterface,
+            WinLossRewardFunction,
+        )
 
         self.rfs = JArray(RewardFunctionInterface)(
             [

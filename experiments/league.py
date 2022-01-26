@@ -12,9 +12,17 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 import torch
-from peewee import (JOIN, CharField, DateTimeField, FloatField,
-                    ForeignKeyField, Model, SmallIntegerField, SqliteDatabase,
-                    fn)
+from peewee import (
+    JOIN,
+    CharField,
+    DateTimeField,
+    FloatField,
+    ForeignKeyField,
+    Model,
+    SmallIntegerField,
+    SqliteDatabase,
+    fn,
+)
 from ppo_gridnet import Agent, MicroRTSStatsRecorder
 from stable_baselines3.common.vec_env import VecMonitor
 from trueskill import Rating, quality_1vs1, rate_1vs1

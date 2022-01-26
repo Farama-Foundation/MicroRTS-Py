@@ -4,7 +4,8 @@ repos:
     hooks:
       - id: isort
         args:
-          - --skip wandb
+          - --profile=black
+          - --skip=wandb
   - repo: https://github.com/myint/autoflake
     rev: v1.4
     hooks:
