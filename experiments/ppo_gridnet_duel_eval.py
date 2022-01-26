@@ -139,9 +139,9 @@ if __name__ == "__main__":
 
     ## CRASH AND RESUME LOGIC:
     starting_update = 1
-    agent.load_state_dict(torch.load(args.agent_model_path))
+    agent.load_state_dict(torch.load(args.agent_model_path, map_location=device))
     agent.eval()
-    agent2.load_state_dict(torch.load(args.agent2_model_path))
+    agent2.load_state_dict(torch.load(args.agent2_model_path, map_location=device))
     agent2.eval()
 
     print("Model's state_dict:")
