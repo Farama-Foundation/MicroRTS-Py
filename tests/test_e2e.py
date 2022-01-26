@@ -15,10 +15,10 @@ def test_ppo_gridnet():
 
 
 
-def test_ppo_gridnet_duel_eval():
+def test_ppo_gridnet_eval_selfplay():
     try:
         subprocess.run(
-            "cd experiments; python ppo_gridnet_duel_eval.py --num-bot-envs 0 --num-selfplay-envs 2 --num-steps 16 --total-timesteps 32 --cuda False",
+            "cd experiments; python ppo_gridnet_duel_eval.py --num-steps 16 --total-timesteps 32 --cuda False",
             shell=True,
             check=True,
         )
@@ -26,3 +26,14 @@ def test_ppo_gridnet_duel_eval():
         print("error code", grepexc.returncode, grepexc.output)
         assert grepexc.returncode in [0, 134]
 
+
+def test_ppo_gridnet_eval_bot():
+    try:
+        subprocess.run(
+            "cd experiments; python ppo_gridnet_duel_eval.py --ai coacAI --num-steps 16 --total-timesteps 32 --cuda False",
+            shell=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as grepexc:                                                                                                   
+        print("error code", grepexc.returncode, grepexc.output)
+        assert grepexc.returncode in [0, 134]
