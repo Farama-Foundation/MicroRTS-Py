@@ -1,4 +1,4 @@
-name: build
+name: build and distribute
 
 on:
   push:

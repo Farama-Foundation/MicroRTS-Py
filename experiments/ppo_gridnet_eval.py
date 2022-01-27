@@ -8,15 +8,14 @@ from distutils.util import strtobool
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.optim as optim
 from gym.spaces import MultiDiscrete
-from gym_microrts import microrts_ai
-from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
-from stable_baselines3.common.vec_env import VecEnvWrapper, VecMonitor, VecVideoRecorder
-from torch.distributions.categorical import Categorical
-from torch.utils.tensorboard import SummaryWriter
 from ppo_gridnet import Agent, MicroRTSStatsRecorder
+from stable_baselines3.common.vec_env import VecMonitor, VecVideoRecorder
+from torch.utils.tensorboard import SummaryWriter
+
+from gym_microrts import microrts_ai  # noqa
+from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 
 def parse_args():
@@ -101,7 +100,6 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-
     ais = []
     if args.ai:
         ais = [eval(f"microrts_ai.{args.ai}")]
@@ -163,7 +161,7 @@ if __name__ == "__main__":
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
                 invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
-                
+
                 if args.ai:
                     action, logproba, _, _, vs = agent.get_action_and_value(
                         next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
@@ -173,7 +171,7 @@ if __name__ == "__main__":
                     p2_obs = next_obs[1::2]
                     p1_mask = invalid_action_masks[step][::2]
                     p2_mask = invalid_action_masks[step][1::2]
-                    
+
                     p1_action, _, _, _, _ = agent.get_action_and_value(
                         p1_obs, envs=envs, invalid_action_masks=p1_mask, device=device
                     )

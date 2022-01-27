@@ -1,10 +1,9 @@
 import numpy as np
 
-
-from gym_microrts import microrts_ai
 from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 render = False
+
 
 def test_observation():
     envs = MicroRTSGridModeVecEnv(
@@ -18,6 +17,7 @@ def test_observation():
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
     )
 
+    # fmt: off
     next_obs = envs.reset()
     resource = np.array([
         0., 1., 0., 0., 0., # 1 hp
@@ -51,6 +51,7 @@ def test_observation():
         1., 0., 0., 0., 0., 0., 0., 0., # unit type empty cell
         1., 0., 0., 0., 0., 0. # currently not executing actions
     ]).astype(np.int32)
+    # fmt: on
 
     # player 1's perspective
     np.testing.assert_array_equal(next_obs[0][0][0], resource)
@@ -72,11 +73,9 @@ def test_observation():
     # np.testing.assert_array_equal(next_obs[1][14][15], resource) # BUG: in `MicroRTSGridModeVecEnv` the onwer is correctly set to [0, 1, 0]
     np.testing.assert_array_equal(next_obs[1][14][14], p1_worker)
     np.testing.assert_array_equal(next_obs[1][13][13], p1_base)
-    
 
     feature_sum = 0
     for item in [resource, resource, p1_worker, p1_base, resource, resource, p2_worker, p2_base]:
         feature_sum += item.sum()
     feature_sum += empty_cell.sum() * (256 - 8)
     assert next_obs.sum() == feature_sum * 2 == 2560.0
-

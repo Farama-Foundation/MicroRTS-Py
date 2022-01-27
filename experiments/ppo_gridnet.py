@@ -3,8 +3,8 @@
 import argparse
 import os
 import random
-import time
 import subprocess
+import time
 from distutils.util import strtobool
 
 import numpy as np
@@ -13,11 +13,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from gym.spaces import MultiDiscrete
-from gym_microrts import microrts_ai
-from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 from stable_baselines3.common.vec_env import VecEnvWrapper, VecMonitor, VecVideoRecorder
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
+
+from gym_microrts import microrts_ai
+from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 
 def parse_args():
@@ -84,7 +85,7 @@ def parse_args():
     parser.add_argument('--anneal-lr', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--clip-vloss', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
-        help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
+        help='Toggles whether or not to use a clipped loss for the value function, as per the paper.')
     parser.add_argument('--num-models', type=int, default=200,
         help='the number of models saved')
 
@@ -153,7 +154,6 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 
-
 class Agent(nn.Module):
     def __init__(self, envs, mapsize=16 * 16):
         super(Agent, self).__init__()
@@ -190,7 +190,7 @@ class Agent(nn.Module):
             nn.ReLU(),
             layer_init(nn.Linear(128, 1), std=1),
         )
-        self.register_buffer('mask_value', torch.tensor(-1e8))
+        self.register_buffer("mask_value", torch.tensor(-1e8))
 
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
         hidden = self.encoder(x)
@@ -225,7 +225,6 @@ class Agent(nn.Module):
 
     def get_value(self, x):
         return self.critic(self.encoder(x))
-
 
 
 if __name__ == "__main__":
@@ -307,7 +306,6 @@ if __name__ == "__main__":
 
     ## CRASH AND RESUME LOGIC:
     starting_update = 1
-    from jpype.types import JArray, JInt
 
     if args.prod_mode and wandb.run.resumed:
         starting_update = run.summary.get("charts/update") + 1
@@ -410,7 +408,7 @@ if __name__ == "__main__":
         b_values = values.reshape(-1)
         b_invalid_action_masks = invalid_action_masks.reshape((-1,) + invalid_action_shape)
 
-        # Optimizaing the policy and value network
+        # Optimizing the policy and value network
         inds = np.arange(
             args.batch_size,
         )
@@ -458,13 +456,24 @@ if __name__ == "__main__":
 
         ## CRASH AND RESUME LOGIC:
         if args.prod_mode:
-            if (update-1) % args.save_frequency == 0:
+            if (update - 1) % args.save_frequency == 0:
                 if not os.path.exists(f"models/{experiment_name}"):
                     os.makedirs(f"models/{experiment_name}")
                 torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
                 torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-                subprocess.Popen(["python", "league.py", "--evals", f"models/{experiment_name}/{global_step}.pt", "--update-db", "false", "--cuda", "false"])
+                subprocess.Popen(
+                    [
+                        "python",
+                        "league.py",
+                        "--evals",
+                        f"models/{experiment_name}/{global_step}.pt",
+                        "--update-db",
+                        "false",
+                        "--cuda",
+                        "false",
+                    ]
+                )
                 eval_queue += [f"models/{experiment_name}/{global_step}.pt"]
                 print(f"Evaluating models/{experiment_name}/{global_step}.pt")
 
@@ -484,8 +493,8 @@ if __name__ == "__main__":
                         trueskill_data = {
                             "name": league.loc[model_path].name,
                             "mu": league.loc[model_path]["mu"],
-                            "sigma":league.loc[model_path]["sigma"],
-                            "trueskill": league.loc[model_path]["trueskill"]
+                            "sigma": league.loc[model_path]["sigma"],
+                            "trueskill": league.loc[model_path]["trueskill"],
                         }
                         trueskill_df = trueskill_df.append(trueskill_data, ignore_index=True)
                         wandb.log({"trueskill": wandb.Table(dataframe=trueskill_df)})
@@ -494,7 +503,7 @@ if __name__ == "__main__":
                         trueskill_step_df = trueskill_step_df.append(trueskill_data, ignore_index=True)
                         preset_trueskill_step_df_clone = preset_trueskill_step_df.copy()
                         preset_trueskill_step_df_clone["step"] = model_global_step
-                        trueskill_step_df = trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True) 
+                        trueskill_step_df = trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True)
                         wandb.log({"trueskill_step": wandb.Table(dataframe=trueskill_step_df)})
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes

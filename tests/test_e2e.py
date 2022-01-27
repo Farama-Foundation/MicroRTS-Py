@@ -9,10 +9,9 @@ def test_ppo_gridnet():
             shell=True,
             check=True,
         )
-    except subprocess.CalledProcessError as grepexc:                                                                                                   
+    except subprocess.CalledProcessError as grepexc:
         print("error code", grepexc.returncode, grepexc.output)
         assert grepexc.returncode in [0, 134]
-
 
 
 def test_ppo_gridnet_eval_selfplay():
@@ -22,7 +21,7 @@ def test_ppo_gridnet_eval_selfplay():
             shell=True,
             check=True,
         )
-    except subprocess.CalledProcessError as grepexc:                                                                                                   
+    except subprocess.CalledProcessError as grepexc:
         print("error code", grepexc.returncode, grepexc.output)
         assert grepexc.returncode in [0, 134]
 
