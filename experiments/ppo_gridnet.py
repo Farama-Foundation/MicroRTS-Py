@@ -118,7 +118,10 @@ class MicroRTSStatsRecorder(VecEnvWrapper):
         newinfos = list(infos[:])
         for i in range(len(dones)):
             self.raw_rewards[i] += [infos[i]["raw_rewards"]]
-            self.raw_discount_rewards[i] += [(self.gamma ** self.ts[i]) * np.concatenate((infos[i]["raw_rewards"], infos[i]["raw_rewards"].sum()), axis=None)]
+            self.raw_discount_rewards[i] += [
+                (self.gamma ** self.ts[i])
+                * np.concatenate((infos[i]["raw_rewards"], infos[i]["raw_rewards"].sum()), axis=None)
+            ]
             self.ts[i] += 1
             if dones[i]:
                 info = infos[i].copy()
