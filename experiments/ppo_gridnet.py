@@ -102,23 +102,35 @@ def parse_args():
 
 
 class MicroRTSStatsRecorder(VecEnvWrapper):
+    def __init__(self, env, gamma=0.99) -> None:
+        super().__init__(env)
+        self.gamma = gamma
+
     def reset(self):
         obs = self.venv.reset()
         self.raw_rewards = [[] for _ in range(self.num_envs)]
+        self.ts = np.zeros(self.num_envs, dtype=np.float32)
+        self.raw_discount_rewards = [[] for _ in range(self.num_envs)]
         return obs
 
     def step_wait(self):
         obs, rews, dones, infos = self.venv.step_wait()
-        for i in range(len(dones)):
-            self.raw_rewards[i] += [infos[i]["raw_rewards"]]
         newinfos = list(infos[:])
         for i in range(len(dones)):
+            self.raw_rewards[i] += [infos[i]["raw_rewards"]]
+            self.raw_discount_rewards[i] += [(self.gamma ** self.ts[i]) * np.concatenate((infos[i]["raw_rewards"], infos[i]["raw_rewards"].sum()), axis=None)]
+            self.ts[i] += 1
             if dones[i]:
                 info = infos[i].copy()
-                raw_rewards = np.array(self.raw_rewards[i]).sum(0)
+                raw_returns = np.array(self.raw_rewards[i]).sum(0)
                 raw_names = [str(rf) for rf in self.rfs]
-                info["microrts_stats"] = dict(zip(raw_names, raw_rewards))
+                raw_discount_returns = np.array(self.raw_discount_rewards[i]).sum(0)
+                raw_discount_names = ["discounted_" + str(rf) for rf in self.rfs] + ["discounted"]
+                info["microrts_stats"] = dict(zip(raw_names, raw_returns))
+                info["microrts_stats"].update(dict(zip(raw_discount_names, raw_discount_returns)))
                 self.raw_rewards[i] = []
+                self.raw_discount_rewards[i] = []
+                self.ts[i] = 0
                 newinfos[i] = info
         return obs, rews, dones, newinfos
 
@@ -128,15 +140,6 @@ class CategoricalMasked(Categorical):
     def __init__(self, probs=None, logits=None, validate_args=None, masks=[], mask_value=None):
         logits = torch.where(masks.bool(), logits, mask_value)
         super(CategoricalMasked, self).__init__(probs, logits, validate_args)
-
-
-class Scale(nn.Module):
-    def __init__(self, scale):
-        super().__init__()
-        self.scale = scale
-
-    def forward(self, x):
-        return x * self.scale
 
 
 class Transpose(nn.Module):
@@ -270,7 +273,7 @@ if __name__ == "__main__":
         map_paths=["maps/16x16/basesWorkers16x16.xml"],
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
     )
-    envs = MicroRTSStatsRecorder(envs)
+    envs = MicroRTSStatsRecorder(envs, args.gamma)
     envs = VecMonitor(envs)
     if args.capture_video:
         envs = VecVideoRecorder(
@@ -365,10 +368,11 @@ if __name__ == "__main__":
 
             for info in infos:
                 if "episode" in info.keys():
-                    print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                    writer.add_scalar("charts/episode_reward", info["episode"]["r"], global_step)
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                     for key in info["microrts_stats"]:
-                        writer.add_scalar(f"charts/episode_reward/{key}", info["microrts_stats"][key], global_step)
+                        writer.add_scalar(f"charts/episodic_return/{key}", info["microrts_stats"][key], global_step)
                     break
 
         # bootstrap reward if not done. reached the batch limit
