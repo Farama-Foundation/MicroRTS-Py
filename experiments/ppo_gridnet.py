@@ -493,7 +493,7 @@ if __name__ == "__main__":
 
         while len(eval_queue) > 0:
             # always start the max-eval-workers processes
-            for idx in range(len(eval_queue[:args.max_eval_workers])):
+            for idx in range(len(eval_queue[: args.max_eval_workers])):
                 if type(eval_queue[idx][0]) == list:
                     eval_queue[idx][0] = subprocess.Popen(eval_queue[idx][0])
                     print(f"Evaluating {eval_queue[idx][1]}")
