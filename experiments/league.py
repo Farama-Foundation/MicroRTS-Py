@@ -6,6 +6,7 @@ import itertools
 import os
 import random
 import shutil
+import time
 from distutils.util import strtobool
 from enum import Enum
 
@@ -55,6 +56,8 @@ def parse_args():
         help='if toggled, cuda will not be enabled by default')
     parser.add_argument('--highest-sigma', type=float, default=1.4,
         help='the highest sigma of the trueskill evaluation')
+    parser.add_argument('--output-path', type=str, default=f"league.temp.csv",
+        help='the output path of the leaderboard csv')
     # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
@@ -68,6 +71,12 @@ if args.partial_obs:
     dbname = "po_league"
 dbpath = f"gym-microrts-static-files/{dbname}.db"
 csvpath = f"gym-microrts-static-files/{dbname}.csv"
+if not args.update_db:
+    if not os.path.exists(f"gym-microrts-static-files/tmp"):
+        os.makedirs(f"gym-microrts-static-files/tmp")
+    tmp_dbpath = f"gym-microrts-static-files/tmp/{int(time.time())}.db"
+    shutil.copyfile(dbpath, tmp_dbpath)
+    dbpath = tmp_dbpath
 db = SqliteDatabase(dbpath)
 
 
@@ -336,8 +345,6 @@ def get_leaderboard_existing_ais(existing_ai_names):
 if __name__ == "__main__":
     existing_ai_names = [item.name for item in AI.select()]
     all_ai_names = set(existing_ai_names + args.evals)
-    if not args.update_db:
-        shutil.copyfile(dbpath, f"{dbpath}.backup")
 
     for ai_name in all_ai_names:
         ai = AI.get_or_none(name=ai_name)
@@ -456,10 +463,9 @@ if __name__ == "__main__":
                             loss=int(item == -1),
                         ).save()
 
-        get_leaderboard().to_csv(f"{dbname}.temp.csv", index=False)
+        get_leaderboard().to_csv(args.output_path, index=False)
 
     print("=======================")
     print(get_leaderboard())
     if not args.update_db:
         os.remove(dbpath)
-        shutil.move(f"{dbpath}.backup", dbpath)
