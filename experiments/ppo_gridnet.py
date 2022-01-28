@@ -96,7 +96,8 @@ def parse_args():
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.n_minibatch)
     args.num_updates = args.total_timesteps // args.batch_size
-    args.save_frequency = int(args.num_updates // 100)
+    args.save_frequency = max(1, int(args.num_updates // args.num_models))
+    print(args.save_frequency)
     # fmt: on
     return args
 
@@ -468,50 +469,58 @@ if __name__ == "__main__":
             torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
             if args.prod_mode:
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-            subprocess.Popen(
+            eval_queue += [
                 [
-                    "python",
-                    "league.py",
-                    "--evals",
+                    subprocess.Popen(
+                        [
+                            "python",
+                            "league.py",
+                            "--evals",
+                            f"models/{experiment_name}/{global_step}.pt",
+                            "--update-db",
+                            "false",
+                            "--cuda",
+                            "false",
+                        ]
+                    ),
                     f"models/{experiment_name}/{global_step}.pt",
-                    "--update-db",
-                    "false",
-                    "--cuda",
-                    "false",
                 ]
-            )
-            eval_queue += [f"models/{experiment_name}/{global_step}.pt"]
+            ]
             print(f"Evaluating models/{experiment_name}/{global_step}.pt")
 
-        ## EVALUATION LOGIC:
-        if os.path.exists("league.temp.csv"):
-            league = pd.read_csv("league.temp.csv", index_col="name")
-            if len(eval_queue) > 0:
-                model_path = eval_queue[0]
-                if model_path in league.index:
-                    model_global_step = int(model_path.split("/")[-1][:-3])
-                    print(f"Model global step: {model_global_step}")
-                    eval_queue = eval_queue[1:]
-                    print("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
-                    writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
+        while len(eval_queue) > 0:
+            if eval_queue[0][0].poll() is not None:
+                # read and clean up
+                league = pd.read_csv("league.temp.csv", index_col="name")
+                os.remove("league.temp.csv")
+                model_path = eval_queue[0][1]
+                eval_queue = eval_queue[1:]
+                assert model_path in league.index
+                model_global_step = int(model_path.split("/")[-1][:-3])
+                writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
+                print(f"global_step={model_global_step}, trueskill={league.loc[model_path]['trueskill']}")
 
-                    if args.prod_mode:
-                        # Table visualization logic
-                        trueskill_data = {
-                            "name": league.loc[model_path].name,
-                            "mu": league.loc[model_path]["mu"],
-                            "sigma": league.loc[model_path]["sigma"],
-                            "trueskill": league.loc[model_path]["trueskill"],
-                        }
-                        trueskill_df = trueskill_df.append(trueskill_data, ignore_index=True)
-                        wandb.log({"trueskill": wandb.Table(dataframe=trueskill_df)})
-                        trueskill_data["type"] = "training"
-                        trueskill_data["step"] = model_global_step
-                        trueskill_step_df = trueskill_step_df.append(trueskill_data, ignore_index=True)
-                        preset_trueskill_step_df_clone = preset_trueskill_step_df.copy()
-                        preset_trueskill_step_df_clone["step"] = model_global_step
-                        trueskill_step_df = trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True)
-                        wandb.log({"trueskill_step": wandb.Table(dataframe=trueskill_step_df)})
+                # table visualization logic
+                if args.prod_mode:
+                    trueskill_data = {
+                        "name": league.loc[model_path].name,
+                        "mu": league.loc[model_path]["mu"],
+                        "sigma": league.loc[model_path]["sigma"],
+                        "trueskill": league.loc[model_path]["trueskill"],
+                    }
+                    trueskill_df = trueskill_df.append(trueskill_data, ignore_index=True)
+                    wandb.log({"trueskill": wandb.Table(dataframe=trueskill_df)})
+                    trueskill_data["type"] = "training"
+                    trueskill_data["step"] = model_global_step
+                    trueskill_step_df = trueskill_step_df.append(trueskill_data, ignore_index=True)
+                    preset_trueskill_step_df_clone = preset_trueskill_step_df.copy()
+                    preset_trueskill_step_df_clone["step"] = model_global_step
+                    trueskill_step_df = trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True)
+                    wandb.log({"trueskill_step": wandb.Table(dataframe=trueskill_step_df)})
+
+            # if the training is not done, don't wait all eval processes to finish
+            if not update == args.num_updates:
+                break
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
