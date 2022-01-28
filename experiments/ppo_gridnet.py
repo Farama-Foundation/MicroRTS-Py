@@ -461,41 +461,41 @@ if __name__ == "__main__":
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
 
-        ## CRASH AND RESUME LOGIC:
-        if args.prod_mode:
-            if (update - 1) % args.save_frequency == 0:
-                if not os.path.exists(f"models/{experiment_name}"):
-                    os.makedirs(f"models/{experiment_name}")
-                torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
-                torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
+        if (update - 1) % args.save_frequency == 0:
+            if not os.path.exists(f"models/{experiment_name}"):
+                os.makedirs(f"models/{experiment_name}")
+            torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
+            torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
+            if args.prod_mode:
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-                subprocess.Popen(
-                    [
-                        "python",
-                        "league.py",
-                        "--evals",
-                        f"models/{experiment_name}/{global_step}.pt",
-                        "--update-db",
-                        "false",
-                        "--cuda",
-                        "false",
-                    ]
-                )
-                eval_queue += [f"models/{experiment_name}/{global_step}.pt"]
-                print(f"Evaluating models/{experiment_name}/{global_step}.pt")
+            subprocess.Popen(
+                [
+                    "python",
+                    "league.py",
+                    "--evals",
+                    f"models/{experiment_name}/{global_step}.pt",
+                    "--update-db",
+                    "false",
+                    "--cuda",
+                    "false",
+                ]
+            )
+            eval_queue += [f"models/{experiment_name}/{global_step}.pt"]
+            print(f"Evaluating models/{experiment_name}/{global_step}.pt")
 
-            ## EVALUATION LOGIC:
-            if os.path.exists("league.temp.csv"):
-                league = pd.read_csv("league.temp.csv", index_col="name")
-                if len(eval_queue) > 0:
-                    model_path = eval_queue[0]
-                    if model_path in league.index:
-                        model_global_step = int(model_path.split("/")[-1][:-3])
-                        print(f"Model global step: {model_global_step}")
-                        eval_queue = eval_queue[1:]
-                        print("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
-                        writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
+        ## EVALUATION LOGIC:
+        if os.path.exists("league.temp.csv"):
+            league = pd.read_csv("league.temp.csv", index_col="name")
+            if len(eval_queue) > 0:
+                model_path = eval_queue[0]
+                if model_path in league.index:
+                    model_global_step = int(model_path.split("/")[-1][:-3])
+                    print(f"Model global step: {model_global_step}")
+                    eval_queue = eval_queue[1:]
+                    print("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
+                    writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
 
+                    if args.prod_mode:
                         # Table visualization logic
                         trueskill_data = {
                             "name": league.loc[model_path].name,
