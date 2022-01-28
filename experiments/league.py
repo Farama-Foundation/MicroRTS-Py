@@ -56,6 +56,8 @@ def parse_args():
         help='if toggled, cuda will not be enabled by default')
     parser.add_argument('--highest-sigma', type=float, default=1.4,
         help='the highest sigma of the trueskill evaluation')
+    parser.add_argument('--output-path', type=str, default=f"league.temp.csv",
+        help='the output path of the leaderboard csv')
     # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
@@ -461,7 +463,7 @@ if __name__ == "__main__":
                             loss=int(item == -1),
                         ).save()
 
-        get_leaderboard().to_csv(f"{dbname}.temp.csv", index=False)
+        get_leaderboard().to_csv(args.output_path, index=False)
 
     print("=======================")
     print(get_leaderboard())
