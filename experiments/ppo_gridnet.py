@@ -88,6 +88,8 @@ def parse_args():
         help='Toggles whether or not to use a clipped loss for the value function, as per the paper.')
     parser.add_argument('--num-models', type=int, default=200,
         help='the number of models saved')
+    parser.add_argument('--max-eval-workers', type=int, default=2,
+        help='the maximum number of eval workers')
 
     args = parser.parse_args()
     if not args.seed:
@@ -471,28 +473,34 @@ if __name__ == "__main__":
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
             eval_queue += [
                 [
-                    subprocess.Popen(
-                        [
-                            "python",
-                            "league.py",
-                            "--evals",
-                            f"models/{experiment_name}/{global_step}.pt",
-                            "--update-db",
-                            "false",
-                            "--cuda",
-                            "false",
-                        ]
-                    ),
+                    [
+                        "python",
+                        "league.py",
+                        "--evals",
+                        f"models/{experiment_name}/{global_step}.pt",
+                        "--update-db",
+                        "false",
+                        "--cuda",
+                        "false",
+                        "--output-path",
+                        f"runs/{experiment_name}/{global_step}.csv",
+                    ],
                     f"models/{experiment_name}/{global_step}.pt",
+                    f"runs/{experiment_name}/{global_step}.csv",
                 ]
             ]
-            print(f"Evaluating models/{experiment_name}/{global_step}.pt")
+            print(f"Queued models/{experiment_name}/{global_step}.pt")
 
         while len(eval_queue) > 0:
+            # always start the max-eval-workers processes
+            for idx in range(len(eval_queue[:args.max_eval_workers])):
+                if type(eval_queue[idx][0]) == list:
+                    eval_queue[idx][0] = subprocess.Popen(eval_queue[idx][0])
+                    print(f"Evaluating {eval_queue[idx][1]}")
+
             if eval_queue[0][0].poll() is not None:
                 # read and clean up
-                league = pd.read_csv("league.temp.csv", index_col="name")
-                os.remove("league.temp.csv")
+                league = pd.read_csv(eval_queue[0][2], index_col="name")
                 model_path = eval_queue[0][1]
                 eval_queue = eval_queue[1:]
                 assert model_path in league.index
