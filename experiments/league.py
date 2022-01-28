@@ -6,6 +6,7 @@ import itertools
 import os
 import random
 import shutil
+import time
 from distutils.util import strtobool
 from enum import Enum
 
@@ -68,6 +69,12 @@ if args.partial_obs:
     dbname = "po_league"
 dbpath = f"gym-microrts-static-files/{dbname}.db"
 csvpath = f"gym-microrts-static-files/{dbname}.csv"
+if not args.update_db:
+    if not os.path.exists(f"gym-microrts-static-files/tmp"):
+        os.makedirs(f"gym-microrts-static-files/tmp")
+    tmp_dbpath = f"gym-microrts-static-files/tmp/{int(time.time())}.db"
+    shutil.copyfile(dbpath, tmp_dbpath)
+    dbpath = tmp_dbpath
 db = SqliteDatabase(dbpath)
 
 
@@ -336,8 +343,6 @@ def get_leaderboard_existing_ais(existing_ai_names):
 if __name__ == "__main__":
     existing_ai_names = [item.name for item in AI.select()]
     all_ai_names = set(existing_ai_names + args.evals)
-    if not args.update_db:
-        shutil.copyfile(dbpath, f"{dbpath}.backup")
 
     for ai_name in all_ai_names:
         ai = AI.get_or_none(name=ai_name)
@@ -462,4 +467,3 @@ if __name__ == "__main__":
     print(get_leaderboard())
     if not args.update_db:
         os.remove(dbpath)
-        shutil.move(f"{dbpath}.backup", dbpath)
