@@ -270,7 +270,7 @@ class TrueskillWriter:
         self.preset_trueskill_step_df = self.trueskill_step_df.copy()
 
     def on_evaluation_done(self, future):
-        if not future.done(): return
+        if future.cancelled(): return
         output_path, model_path = future.result()
         league = pd.read_csv(output_path, index_col="name")
         assert model_path in league.index
