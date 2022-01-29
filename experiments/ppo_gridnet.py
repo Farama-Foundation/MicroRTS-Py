@@ -260,14 +260,14 @@ def run_evaluation(model_path: str, output_path: str):
 class TrueskillWriter:
 
     def __init__(self, prod_mode, writer, league_path: str, league_step_path: str):
-        self._prod_mode = prod_mode
-        self._writer = writer
-        self._trueskill_df = pd.read_csv(league_path)
-        self._trueskill_step_df = pd.read_csv(league_step_path)
-        self._trueskill_step_df["type"] = self._trueskill_step_df["name"]
-        self._trueskill_step_df["step"] = 0
+        self.prod_mode = prod_mode
+        self.writer = writer
+        self.trueskill_df = pd.read_csv(league_path)
+        self.trueskill_step_df = pd.read_csv(league_step_path)
+        self.trueskill_step_df["type"] = self.trueskill_step_df["name"]
+        self.trueskill_step_df["step"] = 0
         # xxx(okachaiev): not sure we need this copy
-        self._preset_trueskill_step_df = self._trueskill_step_df.copy()
+        self.preset_trueskill_step_df = self.trueskill_step_df.copy()
 
     def on_evaluation_done(self, future):
         if not future.done(): return
@@ -286,15 +286,15 @@ class TrueskillWriter:
                 "sigma": league.loc[model_path]["sigma"],
                 "trueskill": league.loc[model_path]["trueskill"],
             }
-            self._trueskill_df = self._trueskill_df.append(trueskill_data, ignore_index=True)
-            wandb.log({"trueskill": wandb.Table(dataframe=self._trueskill_df)})
+            self.trueskill_df = self.trueskill_df.append(trueskill_data, ignore_index=True)
+            wandb.log({"trueskill": wandb.Table(dataframe=self.trueskill_df)})
             trueskill_data["type"] = "training"
             trueskill_data["step"] = model_global_step
-            trueskill_step_df = trueskill_step_df.append(trueskill_data, ignore_index=True)
-            preset_trueskill_step_df_clone = self._preset_trueskill_step_df.copy()
+            self.trueskill_step_df = self.trueskill_step_df.append(trueskill_data, ignore_index=True)
+            preset_trueskill_step_df_clone = self.preset_trueskill_step_df.copy()
             preset_trueskill_step_df_clone["step"] = model_global_step
-            trueskill_step_df = trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True)
-            wandb.log({"trueskill_step": wandb.Table(dataframe=trueskill_step_df)})
+            self.trueskill_step_df = self.trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True)
+            wandb.log({"trueskill_step": wandb.Table(dataframe=self.trueskill_step_df)})
 
 
 if __name__ == "__main__":
