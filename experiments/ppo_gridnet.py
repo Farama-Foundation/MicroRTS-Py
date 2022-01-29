@@ -6,6 +6,7 @@ import random
 import subprocess
 import time
 from distutils.util import strtobool
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pandas as pd
@@ -236,6 +237,66 @@ class Agent(nn.Module):
         return self.critic(self.encoder(x))
 
 
+def run_evaluation(model_path: str, output_path: str):
+    args = [
+        "python",
+        "league.py",
+        "--evals",
+        model_path,
+        "--update-db",
+        "false",
+        "--cuda",
+        "false",
+        "--output-path",
+        output_path
+    ]
+    fd = subprocess.Popen(args)
+    print(f"Evaluating {model_path}")
+    return_code = fd.wait()
+    assert return_code == 0
+    return (output_path, model_path)
+
+
+class TrueskillWriter:
+
+    def __init__(self, prod_mode, writer, league_path: str, league_step_path: str):
+        self._prod_mode = prod_mode
+        self._writer = writer
+        self._trueskill_df = pd.read_csv(league_path)
+        self._trueskill_step_df = pd.read_csv(league_step_path)
+        self._trueskill_step_df["type"] = self._trueskill_step_df["name"]
+        self._trueskill_step_df["step"] = 0
+        # xxx(okachaiev): not sure we need this copy
+        self._preset_trueskill_step_df = self._trueskill_step_df.copy()
+
+    def on_evaluation_done(self, future):
+        if not future.done(): return
+        output_path, model_path = future.result()
+        league = pd.read_csv(output_path, index_col="name")
+        assert model_path in league.index
+        model_global_step = int(model_path.split("/")[-1][:-3])
+        self._writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
+        print(f"global_step={model_global_step}, trueskill={league.loc[model_path]['trueskill']}")
+
+        # table visualization logic
+        if prod_mode:
+            trueskill_data = {
+                "name": league.loc[model_path].name,
+                "mu": league.loc[model_path]["mu"],
+                "sigma": league.loc[model_path]["sigma"],
+                "trueskill": league.loc[model_path]["trueskill"],
+            }
+            self._trueskill_df = self._trueskill_df.append(trueskill_data, ignore_index=True)
+            wandb.log({"trueskill": wandb.Table(dataframe=self._trueskill_df)})
+            trueskill_data["type"] = "training"
+            trueskill_data["step"] = model_global_step
+            trueskill_step_df = trueskill_step_df.append(trueskill_data, ignore_index=True)
+            preset_trueskill_step_df_clone = self._preset_trueskill_step_df.copy()
+            preset_trueskill_step_df_clone["step"] = model_global_step
+            trueskill_step_df = trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True)
+            wandb.log({"trueskill_step": wandb.Table(dataframe=trueskill_step_df)})
+
+
 if __name__ == "__main__":
     args = parse_args()
 
@@ -287,6 +348,8 @@ if __name__ == "__main__":
         )
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
+    eval_executor = ThreadPoolExecutor(max_workers=args.max_eval_workers, thread_name_prefix="league-eval-")
+
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     if args.anneal_lr:
@@ -334,12 +397,10 @@ if __name__ == "__main__":
     print("Model's total parameters:", total_params)
 
     ## EVALUATION LOGIC:
-    eval_queue = []
-    trueskill_df = pd.read_csv("gym-microrts-static-files/league.csv")
-    trueskill_step_df = pd.read_csv("gym-microrts-static-files/league.csv")
-    trueskill_step_df["type"] = trueskill_step_df["name"]
-    trueskill_step_df["step"] = 0
-    preset_trueskill_step_df = trueskill_step_df.copy()
+    trueskill_writer = TrueskillWriter(
+        args.prod_mode, writer,
+        "gym-microrts-static-files/league.csv", "gym-microrts-static-files/league.csv"
+    )
 
     for update in range(starting_update, args.num_updates + 1):
         # Annealing the rate if instructed to do so.
@@ -471,64 +532,12 @@ if __name__ == "__main__":
             torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
             if args.prod_mode:
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-            eval_queue += [
-                [
-                    [
-                        "python",
-                        "league.py",
-                        "--evals",
-                        f"models/{experiment_name}/{global_step}.pt",
-                        "--update-db",
-                        "false",
-                        "--cuda",
-                        "false",
-                        "--output-path",
-                        f"runs/{experiment_name}/{global_step}.csv",
-                    ],
-                    f"models/{experiment_name}/{global_step}.pt",
-                    f"runs/{experiment_name}/{global_step}.csv",
-                ]
-            ]
+            future = eval_executor.submit(
+                run_evaluation,
+                f"models/{experiment_name}/{global_step}.pt", f"runs/{experiment_name}/{global_step}.csv"
+            )
             print(f"Queued models/{experiment_name}/{global_step}.pt")
-
-        while len(eval_queue) > 0:
-            # always start the max-eval-workers processes
-            for idx in range(len(eval_queue[: args.max_eval_workers])):
-                if type(eval_queue[idx][0]) == list:
-                    eval_queue[idx][0] = subprocess.Popen(eval_queue[idx][0])
-                    print(f"Evaluating {eval_queue[idx][1]}")
-
-            if eval_queue[0][0].poll() is not None:
-                # read and clean up
-                league = pd.read_csv(eval_queue[0][2], index_col="name")
-                model_path = eval_queue[0][1]
-                eval_queue = eval_queue[1:]
-                assert model_path in league.index
-                model_global_step = int(model_path.split("/")[-1][:-3])
-                writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
-                print(f"global_step={model_global_step}, trueskill={league.loc[model_path]['trueskill']}")
-
-                # table visualization logic
-                if args.prod_mode:
-                    trueskill_data = {
-                        "name": league.loc[model_path].name,
-                        "mu": league.loc[model_path]["mu"],
-                        "sigma": league.loc[model_path]["sigma"],
-                        "trueskill": league.loc[model_path]["trueskill"],
-                    }
-                    trueskill_df = trueskill_df.append(trueskill_data, ignore_index=True)
-                    wandb.log({"trueskill": wandb.Table(dataframe=trueskill_df)})
-                    trueskill_data["type"] = "training"
-                    trueskill_data["step"] = model_global_step
-                    trueskill_step_df = trueskill_step_df.append(trueskill_data, ignore_index=True)
-                    preset_trueskill_step_df_clone = preset_trueskill_step_df.copy()
-                    preset_trueskill_step_df_clone["step"] = model_global_step
-                    trueskill_step_df = trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True)
-                    wandb.log({"trueskill_step": wandb.Table(dataframe=trueskill_step_df)})
-
-            # if the training is not done, don't wait all eval processes to finish
-            if not update == args.num_updates:
-                break
+            future.add_done_callback(trueskill_writer.on_evaluation_done)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
@@ -542,5 +551,8 @@ if __name__ == "__main__":
         writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
 
+    # shutdown pool of threads but make sure we finished scheduled
+    # evaluations
+    eval_executor.shutdown(wait=True, cancel_futures=False)
     envs.close()
     writer.close()
