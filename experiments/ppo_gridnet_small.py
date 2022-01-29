@@ -12,14 +12,15 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from collections import deque
 from gym.spaces import MultiDiscrete
 from stable_baselines3.common.vec_env import VecEnvWrapper, VecMonitor, VecVideoRecorder
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
 from gym_microrts import microrts_ai
-from gym_microrts.envs.vec_env import MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv
+from gym_microrts.envs.vec_env import (
+    MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv,
+)
 
 
 def parse_args():
@@ -187,7 +188,7 @@ class Agent(nn.Module):
         )
         self.critic = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(64*4*4, 128)),
+            layer_init(nn.Linear(64 * 4 * 4, 128)),
             nn.ReLU(),
             layer_init(nn.Linear(128, 1), std=1),
         )
@@ -326,7 +327,7 @@ if __name__ == "__main__":
     print("Model's total parameters:", total_params)
 
     ## EVALUATION LOGIC:
-    eval_queue = deque([])
+    eval_queue = []
     trueskill_df = pd.read_csv("gym-microrts-static-files/league.csv")
     trueskill_step_df = pd.read_csv("gym-microrts-static-files/league.csv")
     trueskill_step_df["type"] = trueskill_step_df["name"]
@@ -463,7 +464,8 @@ if __name__ == "__main__":
             torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
             if args.prod_mode:
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-            eval_queue.append([
+            eval_queue += [
+                [
                     [
                         "python",
                         "league.py",
@@ -478,7 +480,8 @@ if __name__ == "__main__":
                     ],
                     f"models/{experiment_name}/{global_step}.pt",
                     f"runs/{experiment_name}/{global_step}.csv",
-                ])
+                ]
+            ]
             print(f"Queued models/{experiment_name}/{global_step}.pt")
 
         while len(eval_queue) > 0:
