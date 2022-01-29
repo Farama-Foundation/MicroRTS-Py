@@ -275,7 +275,7 @@ class TrueskillWriter:
         league = pd.read_csv(output_path, index_col="name")
         assert model_path in league.index
         model_global_step = int(model_path.split("/")[-1][:-3])
-        self._writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
+        self.writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
         print(f"global_step={model_global_step}, trueskill={league.loc[model_path]['trueskill']}")
 
         # table visualization logic
