@@ -5,8 +5,8 @@ import os
 import random
 import subprocess
 import time
-from distutils.util import strtobool
 from concurrent.futures import ThreadPoolExecutor
+from distutils.util import strtobool
 
 import numpy as np
 import pandas as pd
@@ -248,17 +248,16 @@ def run_evaluation(model_path: str, output_path: str):
         "--cuda",
         "false",
         "--output-path",
-        output_path
+        output_path,
     ]
     fd = subprocess.Popen(args)
     print(f"Evaluating {model_path}")
     return_code = fd.wait()
     assert return_code == 0
-    return (output_path, model_path)
+    return (model_path, output_path)
 
 
 class TrueskillWriter:
-
     def __init__(self, prod_mode, writer, league_path: str, league_step_path: str):
         self.prod_mode = prod_mode
         self.writer = writer
@@ -270,8 +269,9 @@ class TrueskillWriter:
         self.preset_trueskill_step_df = self.trueskill_step_df.copy()
 
     def on_evaluation_done(self, future):
-        if future.cancelled(): return
-        output_path, model_path = future.result()
+        if future.cancelled():
+            return
+        model_path, output_path = future.result()
         league = pd.read_csv(output_path, index_col="name")
         assert model_path in league.index
         model_global_step = int(model_path.split("/")[-1][:-3])
@@ -398,8 +398,7 @@ if __name__ == "__main__":
 
     ## EVALUATION LOGIC:
     trueskill_writer = TrueskillWriter(
-        args.prod_mode, writer,
-        "gym-microrts-static-files/league.csv", "gym-microrts-static-files/league.csv"
+        args.prod_mode, writer, "gym-microrts-static-files/league.csv", "gym-microrts-static-files/league.csv"
     )
 
     for update in range(starting_update, args.num_updates + 1):
@@ -533,8 +532,7 @@ if __name__ == "__main__":
             if args.prod_mode:
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
             future = eval_executor.submit(
-                run_evaluation,
-                f"models/{experiment_name}/{global_step}.pt", f"runs/{experiment_name}/{global_step}.csv"
+                run_evaluation, f"models/{experiment_name}/{global_step}.pt", f"runs/{experiment_name}/{global_step}.csv"
             )
             print(f"Queued models/{experiment_name}/{global_step}.pt")
             future.add_done_callback(trueskill_writer.on_evaluation_done)
