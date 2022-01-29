@@ -6,10 +6,10 @@ import itertools
 import os
 import random
 import shutil
-import time
+import uuid
 from distutils.util import strtobool
 from enum import Enum
-import uuid
+
 import numpy as np
 import pandas as pd
 import torch
