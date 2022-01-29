@@ -5,7 +5,7 @@ def test_ppo_gridnet():
 
     try:
         subprocess.run(
-            "cd experiments; python ppo_gridnet.py --num-bot-envs 0 --num-selfplay-envs 2 --num-steps 16 --total-timesteps 32 --cuda False",
+            "cd experiments; python ppo_gridnet.py --num-bot-envs 0 --num-selfplay-envs 2 --num-steps 16 --total-timesteps 32 --cuda False --max-eval-workers 0",
             shell=True,
             check=True,
         )

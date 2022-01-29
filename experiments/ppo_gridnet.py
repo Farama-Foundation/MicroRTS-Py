@@ -348,7 +348,9 @@ if __name__ == "__main__":
         )
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
-    eval_executor = ThreadPoolExecutor(max_workers=args.max_eval_workers, thread_name_prefix="league-eval-")
+    eval_executor = None
+    if args.max_eval_workers > 0:
+        eval_executor = ThreadPoolExecutor(max_workers=args.max_eval_workers, thread_name_prefix="league-eval-")
 
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -531,11 +533,12 @@ if __name__ == "__main__":
             torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
             if args.prod_mode:
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-            future = eval_executor.submit(
-                run_evaluation, f"models/{experiment_name}/{global_step}.pt", f"runs/{experiment_name}/{global_step}.csv"
-            )
-            print(f"Queued models/{experiment_name}/{global_step}.pt")
-            future.add_done_callback(trueskill_writer.on_evaluation_done)
+            if eval_executor is not None:
+                future = eval_executor.submit(
+                    run_evaluation, f"models/{experiment_name}/{global_step}.pt", f"runs/{experiment_name}/{global_step}.csv"
+                )
+                print(f"Queued models/{experiment_name}/{global_step}.pt")
+                future.add_done_callback(trueskill_writer.on_evaluation_done)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
@@ -549,8 +552,8 @@ if __name__ == "__main__":
         writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
 
-    # shutdown pool of threads but make sure we finished scheduled
-    # evaluations
-    eval_executor.shutdown(wait=True, cancel_futures=False)
+    if eval_executor is not None:
+        # shutdown pool of threads but make sure we finished scheduled evaluations
+        eval_executor.shutdown(wait=True, cancel_futures=False)
     envs.close()
     writer.close()
