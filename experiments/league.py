@@ -24,12 +24,12 @@ from peewee import (
     SqliteDatabase,
     fn,
 )
-from ppo_gridnet import Agent, MicroRTSStatsRecorder
+from ppo_gridnet_small import Agent, MicroRTSStatsRecorder
 from stable_baselines3.common.vec_env import VecMonitor
 from trueskill import Rating, quality_1vs1, rate_1vs1
 
 from gym_microrts import microrts_ai  # fmt: off
-from gym_microrts.envs.vec_env import MicroRTSBotVecEnv, MicroRTSGridModeVecEnv
+from gym_microrts.envs.vec_env import MicroRTSBotVecEnv, MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv
 
 
 def parse_args():
