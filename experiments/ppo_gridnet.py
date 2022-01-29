@@ -279,7 +279,7 @@ class TrueskillWriter:
         print(f"global_step={model_global_step}, trueskill={league.loc[model_path]['trueskill']}")
 
         # table visualization logic
-        if prod_mode:
+        if self.prod_mode:
             trueskill_data = {
                 "name": league.loc[model_path].name,
                 "mu": league.loc[model_path]["mu"],
