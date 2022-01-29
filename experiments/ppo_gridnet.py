@@ -90,7 +90,7 @@ def parse_args():
     parser.add_argument('--num-models', type=int, default=200,
         help='the number of models saved')
     parser.add_argument('--max-eval-workers', type=int, default=2,
-        help='the maximum number of eval workers')
+        help='the maximum number of eval workers (skips evaluation when set to 0)')
 
     args = parser.parse_args()
     if not args.seed:
