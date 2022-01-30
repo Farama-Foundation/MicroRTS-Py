@@ -6,7 +6,7 @@ import itertools
 import os
 import random
 import shutil
-import time
+import uuid
 from distutils.util import strtobool
 from enum import Enum
 
@@ -74,7 +74,7 @@ csvpath = f"gym-microrts-static-files/{dbname}.csv"
 if not args.update_db:
     if not os.path.exists(f"gym-microrts-static-files/tmp"):
         os.makedirs(f"gym-microrts-static-files/tmp")
-    tmp_dbpath = f"gym-microrts-static-files/tmp/{int(time.time())}.db"
+    tmp_dbpath = f"gym-microrts-static-files/tmp/{str(uuid.uuid4())}.db"
     shutil.copyfile(dbpath, tmp_dbpath)
     dbpath = tmp_dbpath
 db = SqliteDatabase(dbpath)

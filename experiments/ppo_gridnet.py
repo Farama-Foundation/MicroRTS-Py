@@ -5,6 +5,7 @@ import os
 import random
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor
 from distutils.util import strtobool
 
 import numpy as np
@@ -88,6 +89,8 @@ def parse_args():
         help='Toggles whether or not to use a clipped loss for the value function, as per the paper.')
     parser.add_argument('--num-models', type=int, default=200,
         help='the number of models saved')
+    parser.add_argument('--max-eval-workers', type=int, default=2,
+        help='the maximum number of eval workers (skips evaluation when set to 0)')
 
     args = parser.parse_args()
     if not args.seed:
@@ -96,7 +99,8 @@ def parse_args():
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.n_minibatch)
     args.num_updates = args.total_timesteps // args.batch_size
-    args.save_frequency = int(args.num_updates // 100)
+    args.save_frequency = max(1, int(args.num_updates // args.num_models))
+    print(args.save_frequency)
     # fmt: on
     return args
 
@@ -233,6 +237,66 @@ class Agent(nn.Module):
         return self.critic(self.encoder(x))
 
 
+def run_evaluation(model_path: str, output_path: str):
+    args = [
+        "python",
+        "league.py",
+        "--evals",
+        model_path,
+        "--update-db",
+        "false",
+        "--cuda",
+        "false",
+        "--output-path",
+        output_path,
+    ]
+    fd = subprocess.Popen(args)
+    print(f"Evaluating {model_path}")
+    return_code = fd.wait()
+    assert return_code == 0
+    return (model_path, output_path)
+
+
+class TrueskillWriter:
+    def __init__(self, prod_mode, writer, league_path: str, league_step_path: str):
+        self.prod_mode = prod_mode
+        self.writer = writer
+        self.trueskill_df = pd.read_csv(league_path)
+        self.trueskill_step_df = pd.read_csv(league_step_path)
+        self.trueskill_step_df["type"] = self.trueskill_step_df["name"]
+        self.trueskill_step_df["step"] = 0
+        # xxx(okachaiev): not sure we need this copy
+        self.preset_trueskill_step_df = self.trueskill_step_df.copy()
+
+    def on_evaluation_done(self, future):
+        if future.cancelled():
+            return
+        model_path, output_path = future.result()
+        league = pd.read_csv(output_path, index_col="name")
+        assert model_path in league.index
+        model_global_step = int(model_path.split("/")[-1][:-3])
+        self.writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
+        print(f"global_step={model_global_step}, trueskill={league.loc[model_path]['trueskill']}")
+
+        # table visualization logic
+        if self.prod_mode:
+            trueskill_data = {
+                "name": league.loc[model_path].name,
+                "mu": league.loc[model_path]["mu"],
+                "sigma": league.loc[model_path]["sigma"],
+                "trueskill": league.loc[model_path]["trueskill"],
+            }
+            self.trueskill_df = self.trueskill_df.append(trueskill_data, ignore_index=True)
+            wandb.log({"trueskill": wandb.Table(dataframe=self.trueskill_df)})
+            trueskill_data["type"] = "training"
+            trueskill_data["step"] = model_global_step
+            self.trueskill_step_df = self.trueskill_step_df.append(trueskill_data, ignore_index=True)
+            preset_trueskill_step_df_clone = self.preset_trueskill_step_df.copy()
+            preset_trueskill_step_df_clone["step"] = model_global_step
+            self.trueskill_step_df = self.trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True)
+            wandb.log({"trueskill_step": wandb.Table(dataframe=self.trueskill_step_df)})
+
+
 if __name__ == "__main__":
     args = parse_args()
 
@@ -284,6 +348,10 @@ if __name__ == "__main__":
         )
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
+    eval_executor = None
+    if args.max_eval_workers > 0:
+        eval_executor = ThreadPoolExecutor(max_workers=args.max_eval_workers, thread_name_prefix="league-eval-")
+
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     if args.anneal_lr:
@@ -331,12 +399,9 @@ if __name__ == "__main__":
     print("Model's total parameters:", total_params)
 
     ## EVALUATION LOGIC:
-    eval_queue = []
-    trueskill_df = pd.read_csv("gym-microrts-static-files/league.csv")
-    trueskill_step_df = pd.read_csv("gym-microrts-static-files/league.csv")
-    trueskill_step_df["type"] = trueskill_step_df["name"]
-    trueskill_step_df["step"] = 0
-    preset_trueskill_step_df = trueskill_step_df.copy()
+    trueskill_writer = TrueskillWriter(
+        args.prod_mode, writer, "gym-microrts-static-files/league.csv", "gym-microrts-static-files/league.csv"
+    )
 
     for update in range(starting_update, args.num_updates + 1):
         # Annealing the rate if instructed to do so.
@@ -461,57 +526,19 @@ if __name__ == "__main__":
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
 
-        ## CRASH AND RESUME LOGIC:
-        if args.prod_mode:
-            if (update - 1) % args.save_frequency == 0:
-                if not os.path.exists(f"models/{experiment_name}"):
-                    os.makedirs(f"models/{experiment_name}")
-                torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
-                torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
+        if (update - 1) % args.save_frequency == 0:
+            if not os.path.exists(f"models/{experiment_name}"):
+                os.makedirs(f"models/{experiment_name}")
+            torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
+            torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
+            if args.prod_mode:
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
-                subprocess.Popen(
-                    [
-                        "python",
-                        "league.py",
-                        "--evals",
-                        f"models/{experiment_name}/{global_step}.pt",
-                        "--update-db",
-                        "false",
-                        "--cuda",
-                        "false",
-                    ]
+            if eval_executor is not None:
+                future = eval_executor.submit(
+                    run_evaluation, f"models/{experiment_name}/{global_step}.pt", f"runs/{experiment_name}/{global_step}.csv"
                 )
-                eval_queue += [f"models/{experiment_name}/{global_step}.pt"]
-                print(f"Evaluating models/{experiment_name}/{global_step}.pt")
-
-            ## EVALUATION LOGIC:
-            if os.path.exists("league.temp.csv"):
-                league = pd.read_csv("league.temp.csv", index_col="name")
-                if len(eval_queue) > 0:
-                    model_path = eval_queue[0]
-                    if model_path in league.index:
-                        model_global_step = int(model_path.split("/")[-1][:-3])
-                        print(f"Model global step: {model_global_step}")
-                        eval_queue = eval_queue[1:]
-                        print("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
-                        writer.add_scalar("charts/trueskill", league.loc[model_path]["trueskill"], model_global_step)
-
-                        # Table visualization logic
-                        trueskill_data = {
-                            "name": league.loc[model_path].name,
-                            "mu": league.loc[model_path]["mu"],
-                            "sigma": league.loc[model_path]["sigma"],
-                            "trueskill": league.loc[model_path]["trueskill"],
-                        }
-                        trueskill_df = trueskill_df.append(trueskill_data, ignore_index=True)
-                        wandb.log({"trueskill": wandb.Table(dataframe=trueskill_df)})
-                        trueskill_data["type"] = "training"
-                        trueskill_data["step"] = model_global_step
-                        trueskill_step_df = trueskill_step_df.append(trueskill_data, ignore_index=True)
-                        preset_trueskill_step_df_clone = preset_trueskill_step_df.copy()
-                        preset_trueskill_step_df_clone["step"] = model_global_step
-                        trueskill_step_df = trueskill_step_df.append(preset_trueskill_step_df_clone, ignore_index=True)
-                        wandb.log({"trueskill_step": wandb.Table(dataframe=trueskill_step_df)})
+                print(f"Queued models/{experiment_name}/{global_step}.pt")
+                future.add_done_callback(trueskill_writer.on_evaluation_done)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
@@ -525,5 +552,8 @@ if __name__ == "__main__":
         writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
 
+    if eval_executor is not None:
+        # shutdown pool of threads but make sure we finished scheduled evaluations
+        eval_executor.shutdown(wait=True, cancel_futures=False)
     envs.close()
     writer.close()
