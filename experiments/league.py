@@ -29,6 +29,8 @@ from trueskill import Rating, quality_1vs1, rate_1vs1
 
 from gym_microrts import microrts_ai  # fmt: off
 
+torch.set_num_threads(1)
+
 
 def parse_args():
     # fmt: off
