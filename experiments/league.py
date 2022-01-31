@@ -24,12 +24,10 @@ from peewee import (
     SqliteDatabase,
     fn,
 )
-from ppo_gridnet import Agent, MicroRTSStatsRecorder
 from stable_baselines3.common.vec_env import VecMonitor
 from trueskill import Rating, quality_1vs1, rate_1vs1
 
 from gym_microrts import microrts_ai  # fmt: off
-from gym_microrts.envs.vec_env import MicroRTSBotVecEnv, MicroRTSGridModeVecEnv
 
 
 def parse_args():
@@ -58,6 +56,8 @@ def parse_args():
         help='the highest sigma of the trueskill evaluation')
     parser.add_argument('--output-path', type=str, default=f"league.temp.csv",
         help='the output path of the leaderboard csv')
+    parser.add_argument('--model-type', type=str, default=f"ppo_gridnet_large", choices=["ppo_gridnet_large", "ppo_gridnet"],
+        help='the output path of the leaderboard csv')
     # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
@@ -78,6 +78,18 @@ if not args.update_db:
     shutil.copyfile(dbpath, tmp_dbpath)
     dbpath = tmp_dbpath
 db = SqliteDatabase(dbpath)
+
+if args.model_type == "ppo_gridnet_large":
+    from ppo_gridnet_large import Agent, MicroRTSStatsRecorder
+
+    from gym_microrts.envs.vec_env import MicroRTSBotVecEnv, MicroRTSGridModeVecEnv
+else:
+    from ppo_gridnet import Agent, MicroRTSStatsRecorder
+
+    from gym_microrts.envs.vec_env import MicroRTSBotVecEnv
+    from gym_microrts.envs.vec_env import (
+        MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv,
+    )
 
 
 class BaseModel(Model):
