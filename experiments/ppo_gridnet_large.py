@@ -19,9 +19,7 @@ from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
 from gym_microrts import microrts_ai
-from gym_microrts.envs.vec_env import (
-    MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv,
-)
+from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 
 def parse_args():
@@ -35,7 +33,7 @@ def parse_args():
         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=50000000,
+    parser.add_argument('--total-timesteps', type=int, default=300000000,
         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -89,9 +87,9 @@ def parse_args():
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--clip-vloss', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='Toggles whether or not to use a clipped loss for the value function, as per the paper.')
-    parser.add_argument('--num-models', type=int, default=100,
+    parser.add_argument('--num-models', type=int, default=200,
         help='the number of models saved')
-    parser.add_argument('--max-eval-workers', type=int, default=4,
+    parser.add_argument('--max-eval-workers', type=int, default=2,
         help='the maximum number of eval workers (skips evaluation when set to 0)')
 
     args = parser.parse_args()
@@ -179,9 +177,18 @@ class Agent(nn.Module):
             layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
             nn.MaxPool2d(3, stride=2, padding=1),
             nn.ReLU(),
+            layer_init(nn.Conv2d(64, 128, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
+            nn.MaxPool2d(3, stride=2, padding=1),
         )
 
         self.actor = nn.Sequential(
+            layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
+            layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
             layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
             nn.ReLU(),
             layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1)),
@@ -189,7 +196,7 @@ class Agent(nn.Module):
         )
         self.critic = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(64 * 4 * 4, 128)),
+            layer_init(nn.Linear(256, 128)),
             nn.ReLU(),
             layer_init(nn.Linear(128, 1), std=1),
         )
@@ -242,8 +249,6 @@ def run_evaluation(model_path: str, output_path: str):
         "false",
         "--output-path",
         output_path,
-        "--model-type",
-        "ppo_gridnet",
     ]
     fd = subprocess.Popen(args)
     print(f"Evaluating {model_path}")
