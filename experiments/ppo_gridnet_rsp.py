@@ -406,7 +406,12 @@ if __name__ == "__main__":
 
     ## SELFPLAY LOGIC:
     p1_idxs = torch.arange(0, args.num_selfplay_envs, 2).to(device)
+    p1_idxs_backup = torch.arange(0, args.num_selfplay_envs, 2).to(device)
     p2_idxs = torch.arange(1, args.num_selfplay_envs, 2).to(device)
+    p1_idxs[:len(p1_idxs) // 2] = p2_idxs[:len(p1_idxs) // 2]
+    p2_idxs[:len(p1_idxs) // 2] = p1_idxs_backup[:len(p1_idxs) // 2]
+    print(f"p1_idxs = {p1_idxs.tolist()}")
+    print(f"p2_idxs = {p2_idxs.tolist()}")
 
     for update in range(starting_update, args.num_updates + 1):
         # Annealing the rate if instructed to do so.
