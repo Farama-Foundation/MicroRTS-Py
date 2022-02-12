@@ -91,7 +91,7 @@ def parse_args():
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--clip-vloss', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='Toggles whether or not to use a clipped loss for the value function, as per the paper.')
-    parser.add_argument('--num-models', type=int, default=400,
+    parser.add_argument('--num-models', type=int, default=200,
         help='the number of models saved')
     parser.add_argument('--max-eval-workers', type=int, default=4,
         help='the maximum number of eval workers (skips evaluation when set to 0)')
