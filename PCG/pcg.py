@@ -3,27 +3,35 @@ import random
 
 key = 15
 sections = []
+unit_location_records = []
 
 
 def initiateTerrain(root, tag, wallRings):
     terrain = ET.SubElement(root, tag)
     eText = ''
+    global unit_location_records
 
-    def getObstacles():
+    def getObstacle():
         chance = 0.2 * random.random()
         if random.random() < chance:
             return '1'
         else:
             return '0'
 
-    for i in range(height):
-        for y in range(width):
-            if i in range(0, wallRings) or i in range(height - wallRings, height):
+    for y in range(height):
+        for x in range(width):
+            if y in range(0, wallRings) or y in range(height - wallRings, height):
                 eText += '1'
-            elif y in range(0, wallRings) or y in range(height - wallRings, height):
+                unit_location_records.append((x, y))
+            elif x in range(0, wallRings) or x in range(height - wallRings, height):
                 eText += '1'
+                unit_location_records.append((x, y))
             else:
-                eText += getObstacles()
+                obstacle = getObstacle()
+                eText += obstacle
+                if obstacle == 1:
+                    unit_location_records.append((x, y))
+
     terrain.text = eText
 
 
@@ -77,7 +85,15 @@ def get_unique_key():
 
 
 def get_xy(index):
-    return random.randint(sections[index][0][0], sections[index][0][1]), random.randint(sections[index][1][0], sections[index][1][1])
+    global unit_location_records
+
+    x, y = random.randint(sections[index][0][0], sections[index][0][1]), random.randint(
+        sections[index][1][0], sections[index][1][1])
+    while((x, y) in unit_location_records):
+        x, y = random.randint(sections[index][0][0], sections[index][0][1]), random.randint(
+            sections[index][1][0], sections[index][1][1])
+    unit_location_records.append((x, y))
+    return x, y
 
 
 if __name__ == "__main__":
