@@ -347,6 +347,7 @@ if __name__ == "__main__":
     eval_executor = None
     if args.max_eval_workers > 0:
         from concurrent.futures import ThreadPoolExecutor
+
         eval_executor = ThreadPoolExecutor(max_workers=args.max_eval_workers, thread_name_prefix="league-eval-")
 
     agent = Agent(envs).to(device)
