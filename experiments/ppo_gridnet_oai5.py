@@ -407,18 +407,20 @@ if __name__ == "__main__":
     )
 
     ## SELFPLAY LOGIC:
-    p1_idxs = torch.cat((
-        torch.arange(args.num_selfplay_envs),
-        torch.arange(args.num_selfplay_envs, args.num_selfplay_envs + args.num_past_selfplay_envs, 2)),
+    p1_idxs = torch.cat(
+        (
+            torch.arange(args.num_selfplay_envs),
+            torch.arange(args.num_selfplay_envs, args.num_selfplay_envs + args.num_past_selfplay_envs, 2),
+        ),
     ).to(device)
     p2_idxs = torch.arange(
-        args.num_selfplay_envs+1,
+        args.num_selfplay_envs + 1,
         args.num_selfplay_envs + args.num_past_selfplay_envs,
         2,
     ).to(device)
     p2_idxs_backup = p2_idxs.clone()
-    p2_idxs[-len(p2_idxs_backup) // 2:] = p1_idxs[-len(p2_idxs_backup) // 2:]
-    p1_idxs[-len(p2_idxs_backup) // 2:] = p2_idxs_backup[-len(p2_idxs_backup) // 2:]
+    p2_idxs[-len(p2_idxs_backup) // 2 :] = p1_idxs[-len(p2_idxs_backup) // 2 :]
+    p1_idxs[-len(p2_idxs_backup) // 2 :] = p2_idxs_backup[-len(p2_idxs_backup) // 2 :]
     print(f"p1_idxs = {p1_idxs.tolist()}")
     print(f"p2_idxs = {p2_idxs.tolist()}")
 
@@ -570,14 +572,12 @@ if __name__ == "__main__":
                 )
                 print(f"Queued models/{experiment_name}/{global_step}.pt")
                 future.add_done_callback(trueskill_writer.on_evaluation_done)
-            
+
             # SELFPLAY LOGIC: randomly load an opponent
             list_of_agents = trueskill_writer.trueskill_df[trueskill_writer.trueskill_df.name.str.endswith(".pt")]
-            if len(list_of_agents) > 0: 
+            if len(list_of_agents) > 0:
                 their_trueskills = torch.tensor(list_of_agents["trueskill"].to_numpy())
-                chosen_agent2pt = list_of_agents["name"].to_numpy()[
-                    Categorical(their_trueskills).sample().item()
-                ]
+                chosen_agent2pt = list_of_agents["name"].to_numpy()[Categorical(their_trueskills).sample().item()]
                 agent2.load_state_dict(torch.load(f"{chosen_agent2pt}"))
                 print(f"agent2 has loaded {chosen_agent2pt}")
 
