@@ -580,7 +580,6 @@ if __name__ == "__main__":
                 ]
                 agent2.load_state_dict(torch.load(f"{chosen_agent2pt}"))
                 print(f"agent2 has loaded {chosen_agent2pt}")
-                raise
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
