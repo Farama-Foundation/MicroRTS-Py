@@ -5,7 +5,6 @@ import os
 import random
 import subprocess
 import time
-from concurrent.futures import ThreadPoolExecutor
 from distutils.util import strtobool
 
 import numpy as np
@@ -102,7 +101,6 @@ def parse_args():
     args.minibatch_size = int(args.batch_size // args.n_minibatch)
     args.num_updates = args.total_timesteps // args.batch_size
     args.save_frequency = max(1, int(args.num_updates // args.num_models))
-    print(args.save_frequency)
     # fmt: on
     return args
 
@@ -202,7 +200,6 @@ class Agent(nn.Module):
         split_logits = torch.split(grid_logits, envs.action_plane_space.nvec.tolist(), dim=1)
 
         if action is None:
-            # invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
             invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_plane_space.nvec.tolist(), dim=1)
             multi_categoricals = [
@@ -295,6 +292,8 @@ class TrueskillWriter:
 if __name__ == "__main__":
     args = parse_args()
 
+    print(f"Save frequency: {args.save_frequency}")
+
     # TRY NOT TO MODIFY: setup the environment
     experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.prod_mode:
@@ -310,7 +309,6 @@ if __name__ == "__main__":
             save_code=True,
         )
         wandb.tensorboard.patch(save=False)
-        CHECKPOINT_FREQUENCY = 50
     writer = SummaryWriter(f"runs/{experiment_name}")
     writer.add_text(
         "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))
@@ -318,6 +316,9 @@ if __name__ == "__main__":
 
     # TRY NOT TO MODIFY: seeding
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+
+    print(f"Device: {device}")
+
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -345,6 +346,8 @@ if __name__ == "__main__":
 
     eval_executor = None
     if args.max_eval_workers > 0:
+        from concurrent.futures import ThreadPoolExecutor
+
         eval_executor = ThreadPoolExecutor(max_workers=args.max_eval_workers, thread_name_prefix="league-eval-")
 
     agent = Agent(envs).to(device)
@@ -413,7 +416,7 @@ if __name__ == "__main__":
             dones[step] = next_done
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
-                invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
+                invalid_action_masks[step] = torch.tensor(envs.get_action_mask()).to(device)
                 action, logproba, _, _, vs = agent.get_action_and_value(
                     next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
                 )
@@ -440,7 +443,7 @@ if __name__ == "__main__":
 
         # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
-            last_value = agent.get_value(next_obs.to(device)).reshape(1, -1)
+            last_value = agent.get_value(next_obs).reshape(1, -1)
             if args.gae:
                 advantages = torch.zeros_like(rewards).to(device)
                 lastgaelam = 0
@@ -538,10 +541,10 @@ if __name__ == "__main__":
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
         writer.add_scalar("charts/update", update, global_step)
-        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
-        writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
-        writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
+        writer.add_scalar("losses/value_loss", v_loss.detach().item(), global_step)
+        writer.add_scalar("losses/policy_loss", pg_loss.detach().item(), global_step)
+        writer.add_scalar("losses/entropy", entropy.detach().mean().item(), global_step)
+        writer.add_scalar("losses/approx_kl", approx_kl.detach().item(), global_step)
         if args.kle_stop or args.kle_rollback:
             writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
         writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
