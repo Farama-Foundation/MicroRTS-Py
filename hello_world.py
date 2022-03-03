@@ -11,7 +11,7 @@ from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 
 envs = MicroRTSGridModeVecEnv(
-    num_selfplay_envs=0,
+    num_selfplay_envs=2,
     num_bot_envs=1,
     max_steps=2000,
     render_theme=2,
