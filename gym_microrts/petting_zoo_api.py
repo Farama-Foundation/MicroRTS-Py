@@ -1,8 +1,12 @@
+import functools
+import random
+from copy import deepcopy
 from pdb import set_trace
 
 import gym
 import numpy as np
 from pettingzoo import AECEnv
+from pettingzoo.test import api_test
 from pettingzoo.utils import agent_selector
 
 from gym_microrts import microrts_ai
@@ -43,6 +47,11 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
         )
         print("Initialization completed ...")
 
+        self.agent_action_space = deepcopy(self.action_space)
+        self.agent_observation_space = deepcopy(self.observation_space)
+        del self.action_space
+        del self.observation_space
+
         _players = ["player_" + str(r) for r in range(num_selfplay_envs)]
         _bots = ["bot_" + str(r) for r in range(num_bot_envs)]
         self.possible_agents = _players + _bots
@@ -51,9 +60,17 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
             zip(self.possible_agents, list(range(len(self.possible_agents)))))
 
         self._action_spaces = {
-            agent: self.action_space for agent in self.possible_agents}
+            agent: self.agent_action_space for agent in self.possible_agents}
         self._observation_spaces = {
-            agent: self.observation_space for agent in self.possible_agents}
+            agent: self.agent_observation_space for agent in self.possible_agents}
+
+    @functools.lru_cache(maxsize=None)
+    def observation_space(self, agent):
+        return self.agent_observation_space
+
+    @functools.lru_cache(maxsize=None)
+    def action_space(self, agent):
+        return self.agent_action_space
 
     def reset(self):
         _ = MicroRTSGridModeSharedMemVecEnv.reset(self)
@@ -93,7 +110,7 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
 
             for i, agent in enumerate(self.agents):
                 self.rewards[agent] = reward[i]
-                self.dones[agent] = done[i]
+                self.dones[agent] = bool(done[i].astype)
                 self.observations[agent] = obs[i, :]
 
             self.num_moves += 1
@@ -119,17 +136,26 @@ def main():
     opponents = [microrts_ai.coacAI for _ in range(1)]
 
     env = PettingZooMicroRTSGridModeSharedMemVecEnv(2, 1, ai2s=opponents)
-    env.reset()
+    # set_trace()
+    from pettingzoo.test import api_test
+    api_test(env, num_cycles=10, verbose_progress=True)
 
-    actions = np.array([env.action_space.sample(),
-                        env.action_space.sample(), env.action_space.sample()])
-    actions = actions.reshape(3, env.width * env.height, env.action_dim)
+    # actions = np.array([env.agent_action_space.sample(),
+    #                     env.agent_action_space.sample(), env.agent_action_space.sample()])
+    # actions = actions.reshape(3, env.width * env.height, env.action_dim)
 
-    for agent in env.agent_iter():
-        observation, reward, done, info = env.last()
-        agent_id = env.agent_name_mapping[agent]
-        action = actions[agent_id, :]
-        env.step(action)
+    # for agent in env.agent_iter():
+    #     observation, reward, done, info = env.last()
+    #     print(done)
+    #     if done:
+    #         break
+
+    #     agent_id = env.agent_name_mapping[agent]
+    #     action = actions[agent_id, :]
+    #     env.step(action)
+
+    #     if env.num_moves > 10:
+    #         break
 
 
 if __name__ == "__main__":
