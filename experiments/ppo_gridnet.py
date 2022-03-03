@@ -376,7 +376,7 @@ if __name__ == "__main__":
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
 
-    ## CRASH AND RESUME LOGIC:
+    # CRASH AND RESUME LOGIC:
     starting_update = 1
 
     if args.prod_mode and wandb.run.resumed:
@@ -388,6 +388,18 @@ if __name__ == "__main__":
         model.download(f"models/{experiment_name}/")
         agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt", map_location=device))
         agent.eval()
+        subprocess.Popen(
+            [
+                "python",
+                "new_league.py",
+                "--evals",
+                f"models/{experiment_name}/{global_step}.pt",
+                "--update-db",
+                "false",
+                "--partial-obs",
+                str(args.partial_obs),
+            ]
+        )
         print(f"resumed at update {starting_update}")
 
     print("Model's state_dict:")
@@ -396,7 +408,7 @@ if __name__ == "__main__":
     total_params = sum([param.nelement() for param in agent.parameters()])
     print("Model's total parameters:", total_params)
 
-    ## EVALUATION LOGIC:
+    # EVALUATION LOGIC:
     trueskill_writer = TrueskillWriter(
         args.prod_mode, writer, "gym-microrts-static-files/league.csv", "gym-microrts-static-files/league.csv"
     )
