@@ -1,3 +1,5 @@
+from pdb import set_trace
+
 import numpy as np
 from numpy.random import choice
 
@@ -60,10 +62,14 @@ for i in range(10000):
             sample(action_mask[:, 14:18]),  # return parameter
             sample(action_mask[:, 18:22]),  # produce_direction parameter
             sample(action_mask[:, 22:29]),  # produce_unit_type parameter
-            sample(action_mask[:, 29 : sum(envs.action_space.nvec[1:])]),  # attack_target parameter
+            # attack_target parameter
+            sample(action_mask[:, 29: sum(envs.action_space.nvec[1:])]),
         ),
         axis=1,
     )
+
+    set_trace()
+
     action = np.array([envs.action_space.sample()])
     next_obs, reward, done, info = envs.step(action)
 envs.close()
