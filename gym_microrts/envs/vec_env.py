@@ -1,16 +1,16 @@
 import json
 import os
 import xml.etree.ElementTree as ET
+from pdb import set_trace
 
 import gym
+import gym_microrts
 import jpype
 import jpype.imports
 import numpy as np
 from jpype.imports import registerDomain
 from jpype.types import JArray, JInt
 from PIL import Image
-
-import gym_microrts
 
 
 class MicroRTSGridModeVecEnv:
@@ -86,15 +86,13 @@ class MicroRTSGridModeVecEnv:
         from rts.units import UnitTypeTable
 
         self.real_utt = UnitTypeTable()
-        from ai.rewardfunction import (
-            AttackRewardFunction,
-            ProduceBuildingRewardFunction,
-            ProduceCombatUnitRewardFunction,
-            ProduceWorkerRewardFunction,
-            ResourceGatherRewardFunction,
-            RewardFunctionInterface,
-            WinLossRewardFunction,
-        )
+        from ai.rewardfunction import (AttackRewardFunction,
+                                       ProduceBuildingRewardFunction,
+                                       ProduceCombatUnitRewardFunction,
+                                       ProduceWorkerRewardFunction,
+                                       ResourceGatherRewardFunction,
+                                       RewardFunctionInterface,
+                                       WinLossRewardFunction)
 
         self.rfs = JArray(RewardFunctionInterface)(
             [
@@ -162,6 +160,8 @@ class MicroRTSGridModeVecEnv:
 
     def reset(self):
         responses = self.vec_client.reset([0] * self.num_envs)
+
+        set_trace()
         obs = [self._encode_obs(np.array(ro)) for ro in responses.observation]
         return np.array(obs)
 
@@ -298,15 +298,13 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         from rts.units import UnitTypeTable
 
         self.real_utt = UnitTypeTable()
-        from ai.rewardfunction import (
-            AttackRewardFunction,
-            ProduceBuildingRewardFunction,
-            ProduceCombatUnitRewardFunction,
-            ProduceWorkerRewardFunction,
-            ResourceGatherRewardFunction,
-            RewardFunctionInterface,
-            WinLossRewardFunction,
-        )
+        from ai.rewardfunction import (AttackRewardFunction,
+                                       ProduceBuildingRewardFunction,
+                                       ProduceCombatUnitRewardFunction,
+                                       ProduceWorkerRewardFunction,
+                                       ResourceGatherRewardFunction,
+                                       RewardFunctionInterface,
+                                       WinLossRewardFunction)
 
         self.rfs = JArray(RewardFunctionInterface)(
             [
