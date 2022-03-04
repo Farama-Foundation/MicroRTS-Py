@@ -122,3 +122,10 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
         obs = self.obs[agent_id, :, :, :]
 
         return obs
+
+    def get_action_mask(self):
+        action_mask = np.array(self.vec_client.getMasks(0))
+        self.source_unit_mask = action_mask[:, :, :, 0].reshape(self.num_envs, -1)
+        action_type_and_parameter_mask = action_mask[:, :, :, 1:].reshape(self.num_envs, self.height * self.width, -1)
+
+        return action_type_and_parameter_mask

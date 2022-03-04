@@ -2,8 +2,7 @@ import numpy as np
 from pettingzoo.test import api_test
 
 from gym_microrts import microrts_ai
-from gym_microrts.petting_zoo_api import \
-    PettingZooMicroRTSGridModeSharedMemVecEnv
+from gym_microrts.petting_zoo_api import PettingZooMicroRTSGridModeSharedMemVecEnv
 
 TEST_API = False
 
@@ -17,11 +16,8 @@ def main():
         api_test(env, num_cycles=10, verbose_progress=True)
 
     env.reset()
-    actions = np.array([
-        env.agent_action_space.sample(),
-        env.agent_action_space.sample(),
-        env.agent_action_space.sample()
-    ])
+
+    actions = np.array([env.agent_action_space.sample(), env.agent_action_space.sample(), env.agent_action_space.sample()])
     actions = actions.reshape(3, env.width * env.height, env.action_dim)
 
     for agent in env.agent_iter():
@@ -33,6 +29,8 @@ def main():
         agent_id = env.agent_name_mapping[agent]
         action = actions[agent_id, :]
         env.step(action)
+
+        env.get_action_mask()
 
 
 if __name__ == "__main__":
