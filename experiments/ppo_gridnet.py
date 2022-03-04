@@ -388,18 +388,6 @@ if __name__ == "__main__":
         model.download(f"models/{experiment_name}/")
         agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt", map_location=device))
         agent.eval()
-        subprocess.Popen(
-            [
-                "python",
-                "new_league.py",
-                "--evals",
-                f"models/{experiment_name}/{global_step}.pt",
-                "--update-db",
-                "false",
-                "--partial-obs",
-                str(args.partial_obs),
-            ]
-        )
         print(f"resumed at update {starting_update}")
 
     print("Model's state_dict:")

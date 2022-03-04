@@ -377,12 +377,12 @@ if __name__ == "__main__":
                 if idx == 0:
                     match_up = list(reversed(match_up))
 
-                for match in range(args.num_matches // 2):
-                    m = Match(args.partial_obs, match_up, args.maps[match])
+                for index in range(args.maps):
+                    m = Match(args.partial_obs, match_up, args.maps[index])
                     challenger = AI.get_or_none(name=m.p0)
                     defender = AI.get_or_none(name=m.p1)
 
-                    r = m.run(1)
+                    r = m.run(args.num_matches // 2)
                     for item in r:
                         drawn = False
                         if item == Outcome.WIN.value:
