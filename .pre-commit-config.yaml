@@ -28,4 +28,4 @@ repos:
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=nd,reacher,thist,ths
+          - --ignore-words-list=nd,reacher,thist,ths,magent
