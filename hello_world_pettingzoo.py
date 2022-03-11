@@ -20,6 +20,7 @@ def main():
         api_test(env, num_cycles=10, verbose_progress=True)
     else:
         env.reset()
+        env.render()
 
         actions = np.array([env.agent_action_space.sample(),
                            env.agent_action_space.sample()])
@@ -34,6 +35,9 @@ def main():
             agent_id = env.agent_name_mapping[agent]
             action = actions[agent_id, :]
             env.step(action)
+    
+    env.close()
+    print("haha")
 
     # env.reset()
 

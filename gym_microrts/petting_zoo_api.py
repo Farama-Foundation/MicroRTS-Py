@@ -65,6 +65,12 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
             for agent in self.possible_agents
         }
 
+    def render(self, mode="human"):
+        super(MicroRTSGridModeSharedMemVecEnv, self).render(mode)
+
+    def close(self):
+        super(MicroRTSGridModeSharedMemVecEnv, self).close()
+
     def observation_space(self, agent):
         return self.observation_spaces[agent]
 
