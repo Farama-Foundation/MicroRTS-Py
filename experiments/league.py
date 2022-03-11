@@ -377,7 +377,7 @@ if __name__ == "__main__":
                 if idx == 0:
                     match_up = list(reversed(match_up))
 
-                for index in range(args.maps):
+                for index in range(len(args.maps)):
                     m = Match(args.partial_obs, match_up, args.maps[index])
                     challenger = AI.get_or_none(name=m.p0)
                     defender = AI.get_or_none(name=m.p1)
@@ -444,41 +444,45 @@ if __name__ == "__main__":
                 for idx in range(2):  # switch player 1 and 2's starting locations
                     if idx == 0:
                         match_up = list(reversed(match_up))
-                    m = Match(args.partial_obs, match_up)
-                    challenger = AI.get(name=m.p0)
-                    defender = AI.get(name=m.p1)
-                    r = m.run(1)
-                    for item in r:
-                        drawn = False
-                        if item == Outcome.WIN.value:
-                            winner = challenger
-                            loser = defender
-                        elif item == Outcome.DRAW.value:
-                            drawn = True
-                            winner = defender
-                            loser = challenger
-                        else:
-                            winner = defender
-                            loser = challenger
-                        print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
-                        winner_rating, loser_rating = rate_1vs1(
-                            Rating(winner.mu, winner.sigma), Rating(loser.mu, loser.sigma), drawn=drawn
-                        )
 
-                        # freeze existing AIs ratings
-                        if winner.name == ai.name:
-                            ai.mu, ai.sigma = winner_rating.mu, winner_rating.sigma
-                            ai.save()
-                        else:
-                            ai.mu, ai.sigma = loser_rating.mu, loser_rating.sigma
-                            ai.save()
-                        MatchHistory(
-                            challenger=challenger,
-                            defender=defender,
-                            win=int(item == 1),
-                            draw=int(item == 0),
-                            loss=int(item == -1),
-                        ).save()
+                    
+                    for index in range(len(args.maps)):
+                        m = Match(args.partial_obs, match_up, args.maps[index])
+                        challenger = AI.get_or_none(name=m.p0)
+                        defender = AI.get_or_none(name=m.p1)
+
+                        r = m.run(1)
+                        for item in r:
+                            drawn = False
+                            if item == Outcome.WIN.value:
+                                winner = challenger
+                                loser = defender
+                            elif item == Outcome.DRAW.value:
+                                drawn = True
+                                winner = defender
+                                loser = challenger
+                            else:
+                                winner = defender
+                                loser = challenger
+                            print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
+                            winner_rating, loser_rating = rate_1vs1(
+                                Rating(winner.mu, winner.sigma), Rating(loser.mu, loser.sigma), drawn=drawn
+                            )
+
+                            # freeze existing AIs ratings
+                            if winner.name == ai.name:
+                                ai.mu, ai.sigma = winner_rating.mu, winner_rating.sigma
+                                ai.save()
+                            else:
+                                ai.mu, ai.sigma = loser_rating.mu, loser_rating.sigma
+                                ai.save()
+                            MatchHistory(
+                                challenger=challenger,
+                                defender=defender,
+                                win=int(item == 1),
+                                draw=int(item == 0),
+                                loss=int(item == -1),
+                            ).save()
 
         get_leaderboard().to_csv(args.output_path, index=False)
 
