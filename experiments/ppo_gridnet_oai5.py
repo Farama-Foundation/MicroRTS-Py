@@ -356,6 +356,9 @@ if __name__ == "__main__":
     agent = Agent(envs).to(device)
     agent2 = Agent(envs).to(device)
     agent2.load_state_dict(agent.state_dict())
+    if not os.path.exists(f"models/{experiment_name}"):
+        os.makedirs(f"models/{experiment_name}")
+    torch.save(agent.state_dict(), f"models/{experiment_name}/0.pt")
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     if args.anneal_lr:
         # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
@@ -407,6 +410,15 @@ if __name__ == "__main__":
     )
 
     ## SELFPLAY LOGIC:
+    initial_agent_quality = 1
+    past_agent_pools = [[f"models/{experiment_name}/0.pt", initial_agent_quality]]
+    eta = 0.02
+    quality_scores = torch.tensor(np.array(past_agent_pools)[:,1].astype(np.float32))
+    quality_probs = Categorical(quality_scores)
+    sampled_agent_idx = quality_probs.sample().item()
+    num_quality_score_updated = 0
+    
+    ## SELFPLAY INDEX LOGIC:
     p1_idxs = torch.cat(
         (
             torch.arange(args.num_selfplay_envs),
@@ -475,6 +487,14 @@ if __name__ == "__main__":
                     for key in info["microrts_stats"]:
                         writer.add_scalar(f"charts/episodic_return/{key}", info["microrts_stats"][key], global_step)
                     break
+
+            for idx, info in enumerate(infos):
+                if idx in p2_idxs and "episode" in info.keys():
+                    # do nothing if current agent losses
+                    # if the current agent wins, update the quality score
+                    if info["microrts_stats"]["WinLossRewardFunction"] == -1:
+                        past_agent_pools[sampled_agent_idx][1] = max(1e-3, quality_scores[sampled_agent_idx].item() - eta / (len(past_agent_pools)* quality_probs.probs[sampled_agent_idx].item()))
+                        num_quality_score_updated += 1
 
         # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
@@ -558,10 +578,19 @@ if __name__ == "__main__":
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
-
+        
+        # SELFPLAY LOGIC: load an opponent according to the quality score
+        if num_quality_score_updated >= 4:
+            num_quality_score_updated = 0
+            quality_scores = torch.tensor(np.array(past_agent_pools)[:,1].astype(np.float32))
+            quality_probs = Categorical(quality_scores)
+            sampled_agent_idx = quality_probs.sample().item()
+            chosen_agent2pt = past_agent_pools[sampled_agent_idx][0]
+            agent2.load_state_dict(torch.load(chosen_agent2pt))
+            print(f"agent2 has loaded {chosen_agent2pt}")
+            print(past_agent_pools)
+            
         if (update - 1) % args.save_frequency == 0:
-            if not os.path.exists(f"models/{experiment_name}"):
-                os.makedirs(f"models/{experiment_name}")
             torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
             torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
             if args.prod_mode:
@@ -572,14 +601,6 @@ if __name__ == "__main__":
                 )
                 print(f"Queued models/{experiment_name}/{global_step}.pt")
                 future.add_done_callback(trueskill_writer.on_evaluation_done)
-
-            # SELFPLAY LOGIC: randomly load an opponent
-            list_of_agents = trueskill_writer.trueskill_df[trueskill_writer.trueskill_df.name.str.endswith(".pt")]
-            if len(list_of_agents) > 0:
-                their_trueskills = torch.tensor(list_of_agents["trueskill"].to_numpy())
-                chosen_agent2pt = list_of_agents["name"].to_numpy()[Categorical(their_trueskills).sample().item()]
-                agent2.load_state_dict(torch.load(f"{chosen_agent2pt}"))
-                print(f"agent2 has loaded {chosen_agent2pt}")
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
