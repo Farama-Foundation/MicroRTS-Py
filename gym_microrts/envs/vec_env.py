@@ -34,6 +34,7 @@ class MicroRTSGridModeVecEnv:
         ai2s=[],
         map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
+        evaluation_mode = False
     ):
 
         self.num_selfplay_envs = num_selfplay_envs
@@ -53,6 +54,7 @@ class MicroRTSGridModeVecEnv:
                 len(map_paths) == self.num_envs
             ), "if multiple maps are provided, they should be provided for each environment"
         self.reward_weight = reward_weight
+        self.evaluation_mode = evaluation_mode
 
         # read map
         self.microrts_path = os.path.join(gym_microrts.__path__[0], "microrts")
@@ -184,6 +186,26 @@ class MicroRTSGridModeVecEnv:
         reward, done = np.array(responses.reward), np.array(responses.done)
         obs = [self._encode_obs(np.array(ro)) for ro in responses.observation]
         infos = [{"raw_rewards": item} for item in reward]
+        # check if it is in evaluation, if not, then change maps
+        if not self.evaluation_mode:
+            # check if an environment is done, if done, reset the client, and replace the observation
+            for done_idx, d in enumerate(done[:, 0]):
+                # bot envs settings
+                if done_idx < self.num_bot_envs:
+                    if d:
+                        # # TODO: figure out how many clients and selfplay clients
+                        self.vec_client.clients[done_idx].mapPath = "/home/costa/Documents/go/src/github.com/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16D.xml"
+                        response = self.vec_client.clients[done_idx].reset(0)
+                        obs[done_idx] = self._encode_obs(np.array(response.observation))
+                # selfplay envs settings
+                else: 
+                    if d and done_idx % 2 == 0:
+                        done_idx -= self.num_bot_envs # recalibrate the index
+                        self.vec_client.selfPlayClients[done_idx // 2].mapPath = "/home/costa/Documents/go/src/github.com/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16D.xml"
+                        p0_response = self.vec_client.selfPlayClients[done_idx // 2].reset(0)
+                        p1_response = self.vec_client.selfPlayClients[done_idx // 2].reset(1)
+                        obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
+                        obs[done_idx+1] = self._encode_obs(np.array(p1_response.observation))
         return np.array(obs), reward @ self.reward_weight, done[:, 0], infos
 
     def step(self, ac):
