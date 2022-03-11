@@ -445,7 +445,6 @@ if __name__ == "__main__":
                     if idx == 0:
                         match_up = list(reversed(match_up))
 
-                    
                     for index in range(len(args.maps)):
                         m = Match(args.partial_obs, match_up, args.maps[index])
                         challenger = AI.get_or_none(name=m.p0)
