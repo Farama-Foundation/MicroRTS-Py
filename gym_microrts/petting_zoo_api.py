@@ -1,6 +1,4 @@
-import functools
 from copy import deepcopy
-from pdb import set_trace
 
 import numpy as np
 from gym import spaces
@@ -53,15 +51,17 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
         _bots = ["bot_" + str(r) for r in range(num_bot_envs)]
         self.possible_agents = _players + _bots
 
-        self.agent_name_mapping = dict(
-            zip(self.possible_agents, list(range(len(self.possible_agents)))))
+        self.agent_name_mapping = dict(zip(self.possible_agents, list(range(len(self.possible_agents)))))
 
-        self.action_spaces = {
-            agent: self.agent_action_space for agent in self.possible_agents}
+        self.action_spaces = {agent: self.agent_action_space for agent in self.possible_agents}
 
         self.observation_spaces = {
-            agent: spaces.Dict({'observation': self.agent_observation_space,
-                               'mask': spaces.Box(low=0, high=1, shape=(100, 78), dtype=np.int32)})
+            agent: spaces.Dict(
+                {
+                    "observation": self.agent_observation_space,
+                    "mask": spaces.Box(low=0, high=1, shape=(100, 78), dtype=np.int32),
+                }
+            )
             for agent in self.possible_agents
         }
 
@@ -118,8 +118,7 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
             for i, agent in enumerate(self.agents):
                 self.rewards[agent] = reward[i]
                 self.dones[agent] = done[i]
-                self.observations[agent] = {
-                    "observation": obs[i, :], "mask": mask[i, :]}
+                self.observations[agent] = {"observation": obs[i, :], "mask": mask[i, :]}
 
             self.num_moves += 1
         else:

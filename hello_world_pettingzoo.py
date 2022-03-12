@@ -1,11 +1,7 @@
-from pdb import set_trace
-
 import numpy as np
 from pettingzoo.test import api_test
 
-from gym_microrts import microrts_ai
-from gym_microrts.petting_zoo_api import \
-    PettingZooMicroRTSGridModeSharedMemVecEnv
+from gym_microrts.petting_zoo_api import PettingZooMicroRTSGridModeSharedMemVecEnv
 
 TEST_API = False
 
@@ -23,8 +19,7 @@ if __name__ == "__main__":
         env.render()
 
         for episode in range(100):
-            actions = np.array([env.agent_action_space.sample(),
-                               env.agent_action_space.sample()])
+            actions = np.array([env.agent_action_space.sample(), env.agent_action_space.sample()])
             for agent in env.agent_iter():
                 env.render()
                 observation, reward, done, info = env.last()
@@ -35,6 +30,6 @@ if __name__ == "__main__":
                 agent_id = env.agent_name_mapping[agent]
                 action = actions[agent_id, :]
                 env.step(action)
-    
+
     env.close()
     print("haha")
