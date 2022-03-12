@@ -118,7 +118,7 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
 
             for i, agent in enumerate(self.agents):
                 self.rewards[agent] = reward[i]
-                self.dones[agent] = bool(done[i].astype)
+                self.dones[agent] = done[i]
                 self.observations[agent] = {
                     "observation": obs[i, :], "mask": mask[i, :]}
 
