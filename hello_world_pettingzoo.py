@@ -10,7 +10,7 @@ from gym_microrts.petting_zoo_api import \
 TEST_API = False
 
 
-def main():
+if __name__ == "__main__":
     # opponents = [microrts_ai.coacAI for _ in range(1)]
     opponents = []
 
@@ -22,39 +22,19 @@ def main():
         env.reset()
         env.render()
 
-        actions = np.array([env.agent_action_space.sample(),
-                           env.agent_action_space.sample()])
-        actions = actions.reshape(2, env.width * env.height, env.action_dim)
-
-        for agent in env.agent_iter():
-            observation, reward, done, info = env.last()
-
-            if done:
-                break
-
-            agent_id = env.agent_name_mapping[agent]
-            action = actions[agent_id, :]
-            env.step(action)
+        for episode in range(100):
+            actions = np.array([env.agent_action_space.sample(),
+                               env.agent_action_space.sample()])
+            for agent in env.agent_iter():
+                env.render()
+                observation, reward, done, info = env.last()
+                # print(agent, done)
+                if done:
+                    env.reset()
+                    break
+                agent_id = env.agent_name_mapping[agent]
+                action = actions[agent_id, :]
+                env.step(action)
     
     env.close()
     print("haha")
-
-    # env.reset()
-
-    # done = {agent: False for agent in env.agents}
-    # live_agents = set(env.agents[:])
-    # has_finished = set()
-    # generated_agents = set()
-    # accumulated_rewards = defaultdict(int)
-    # for agent in env.agent_iter(env.num_agents * num_cycles):
-    #     prev_observe, reward, done, info = env.last()
-    #     env.step(action)
-
-    #     if isinstance(env.observation_space(agent), gym.spaces.Box):
-    #         assert env.observation_space(agent).dtype == prev_observe.dtype
-    #     assert env.observation_space(agent).contains(prev_observe), \
-    #         ("Out of bounds observation: " + str(prev_observe))
-
-
-if __name__ == "__main__":
-    main()

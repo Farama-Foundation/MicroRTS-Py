@@ -110,7 +110,6 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
             # Step environment
             actions_list = list(self.state.values())
             actions = np.stack(actions_list, axis=0)
-            set_trace()
 
             self.step_async(actions)
             obs, reward, done, info = self.step_wait()
