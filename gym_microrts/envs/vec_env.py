@@ -14,13 +14,12 @@ from PIL import Image
 import gym_microrts
 
 MULTIPLE_MAP_PATHS = [
-    "maps/16x16/basesWorkers16x16A.xml",
-    "maps/16x16/basesWorkers16x16B.xml",
-    "maps/16x16/basesWorkers16x16C.xml",
-    "maps/16x16/basesWorkers16x16D.xml",
-    "maps/16x16/basesWorkers16x16E.xml",
+    "/home/yifuli/Documents/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16A.xml",
+    "/home/yifuli/Documents/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16B.xml",
+    "/home/yifuli/Documents/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16C.xml",
+    "/home/yifuli/Documents/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16D.xml",
+    "/home/yifuli/Documents/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16E.xml",
 ]
-next_map = cycle(MULTIPLE_MAP_PATHS)
 
 
 class MicroRTSGridModeVecEnv:
@@ -45,6 +44,7 @@ class MicroRTSGridModeVecEnv:
         map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
         evaluation_mode=False,
+        training_map_paths=MULTIPLE_MAP_PATHS,
     ):
 
         self.num_selfplay_envs = num_selfplay_envs
@@ -65,6 +65,9 @@ class MicroRTSGridModeVecEnv:
             ), "if multiple maps are provided, they should be provided for each environment"
         self.reward_weight = reward_weight
         self.evaluation_mode = evaluation_mode
+
+        # prepare next map
+        self.next_map = cycle(MULTIPLE_MAP_PATHS)
 
         # read map
         self.microrts_path = os.path.join(gym_microrts.__path__[0], "microrts")
@@ -421,6 +424,7 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
         evaluation_mode=False,
+        training_map_paths=MULTIPLE_MAP_PATHS,
     ):
         if len(map_paths) > 1 and len(set(map_paths)) > 1:
             raise ValueError("Mem shared environment requires all games to be played on the same map.")
@@ -436,6 +440,7 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
             map_paths,
             reward_weight,
             evaluation_mode,
+            training_map_paths,
         )
 
     def _allocate_shared_buffer(self, nbytes):
@@ -513,18 +518,14 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
                 if done_idx < self.num_bot_envs:
                     if d:
                         # # TODO: figure out how many clients and selfplay clients
-                        self.vec_client.clients[
-                            done_idx
-                        ].mapPath = "/home/costa/Documents/go/src/github.com/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16D.xml"
+                        self.vec_client.clients[done_idx].mapPath = next(next_map)
                         response = self.vec_client.clients[done_idx].reset(0)
                         obs[done_idx] = self._encode_obs(np.array(response.observation))
                 # selfplay envs settings
                 else:
                     if d and done_idx % 2 == 0:
                         done_idx -= self.num_bot_envs  # recalibrate the index
-                        self.vec_client.selfPlayClients[
-                            done_idx // 2
-                        ].mapPath = "/home/costa/Documents/go/src/github.com/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16D.xml"
+                        self.vec_client.selfPlayClients[done_idx // 2].mapPath = next(next_map)
                         p0_response = self.vec_client.selfPlayClients[done_idx // 2].reset(0)
                         p1_response = self.vec_client.selfPlayClients[done_idx // 2].reset(1)
                         obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
