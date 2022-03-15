@@ -207,16 +207,17 @@ class MicroRTSGridModeVecEnv:
                 if done_idx < self.num_bot_envs:
                     if d:
                         # # TODO: figure out how many clients and selfplay clients
-                        self.vec_client.clients[done_idx].mapPath = next(next_map)
+                        self.vec_client.clients[done_idx].mapPath = next(self.next_map)
                         response = self.vec_client.clients[done_idx].reset(0)
                         obs[done_idx] = self._encode_obs(np.array(response.observation))
                 # selfplay envs settings
                 else:
                     if d and done_idx % 2 == 0:
                         done_idx -= self.num_bot_envs  # recalibrate the index
-                        self.vec_client.selfPlayClients[done_idx // 2].mapPath = next(next_map)
-                        p0_response = self.vec_client.selfPlayClients[done_idx // 2].reset(0)
-                        p1_response = self.vec_client.selfPlayClients[done_idx // 2].reset(1)
+                        self.vec_client.selfPlayClients[done_idx // 2].mapPath = next(self.next_map)
+                        self.vec_client.selfPlayClients[done_idx // 2].reset(0)
+                        p0_response = self.vec_client.selfPlayClients[done_idx // 2].getResponse(0)
+                        p1_response = self.vec_client.selfPlayClients[done_idx // 2].getResponse(1)
                         obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
                         obs[done_idx + 1] = self._encode_obs(np.array(p1_response.observation))
         return np.array(obs), reward @ self.reward_weight, done[:, 0], infos
@@ -518,18 +519,18 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
                 if done_idx < self.num_bot_envs:
                     if d:
                         # # TODO: figure out how many clients and selfplay clients
-                        self.vec_client.clients[done_idx].mapPath = next(next_map)
-                        response = self.vec_client.clients[done_idx].reset(0)
-                        obs[done_idx] = self._encode_obs(np.array(response.observation))
+                        self.vec_client.clients[done_idx].mapPath = next(self.next_map)
+                        self.vec_client.clients[done_idx].reset(0)
+                        # self.obs[done_idx] = self._encode_obs(np.array(response.observation))
                 # selfplay envs settings
                 else:
                     if d and done_idx % 2 == 0:
                         done_idx -= self.num_bot_envs  # recalibrate the index
-                        self.vec_client.selfPlayClients[done_idx // 2].mapPath = next(next_map)
-                        p0_response = self.vec_client.selfPlayClients[done_idx // 2].reset(0)
-                        p1_response = self.vec_client.selfPlayClients[done_idx // 2].reset(1)
-                        obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
-                        obs[done_idx + 1] = self._encode_obs(np.array(p1_response.observation))
+                        self.vec_client.selfPlayClients[done_idx // 2].mapPath = next(self.next_map)
+                        self.vec_client.selfPlayClients[done_idx // 2].reset()
+                        # self.vec_client.selfPlayClients[done_idx // 2].reset()
+                        # self.obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
+                        # self.obs[done_idx + 1] = self._encode_obs(np.array(p1_response.observation))
         return self.obs, reward @ self.reward_weight, done[:, 0], infos
 
     def get_action_mask(self):
