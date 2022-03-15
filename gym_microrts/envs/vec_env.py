@@ -1,6 +1,7 @@
 import json
 import os
 import xml.etree.ElementTree as ET
+from itertools import cycle
 
 import gym
 import jpype
@@ -11,12 +12,15 @@ from jpype.types import JArray, JInt
 from PIL import Image
 
 import gym_microrts
-from itertools import cycle
 
-
-MULTIPLE_MAP_PATHS = ["maps/16x16/basesWorkers16x16A.xml", "maps/16x16/basesWorkers16x16B.xml", "maps/16x16/basesWorkers16x16C.xml", "maps/16x16/basesWorkers16x16D.xml", "maps/16x16/basesWorkers16x16E.xml"]
+MULTIPLE_MAP_PATHS = [
+    "maps/16x16/basesWorkers16x16A.xml",
+    "maps/16x16/basesWorkers16x16B.xml",
+    "maps/16x16/basesWorkers16x16C.xml",
+    "maps/16x16/basesWorkers16x16D.xml",
+    "maps/16x16/basesWorkers16x16E.xml",
+]
 next_map = cycle(MULTIPLE_MAP_PATHS)
-
 
 
 class MicroRTSGridModeVecEnv:
@@ -40,7 +44,7 @@ class MicroRTSGridModeVecEnv:
         ai2s=[],
         map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
-        evaluation_mode = False
+        evaluation_mode=False,
     ):
 
         self.num_selfplay_envs = num_selfplay_envs
@@ -204,14 +208,14 @@ class MicroRTSGridModeVecEnv:
                         response = self.vec_client.clients[done_idx].reset(0)
                         obs[done_idx] = self._encode_obs(np.array(response.observation))
                 # selfplay envs settings
-                else: 
+                else:
                     if d and done_idx % 2 == 0:
-                        done_idx -= self.num_bot_envs # recalibrate the index
+                        done_idx -= self.num_bot_envs  # recalibrate the index
                         self.vec_client.selfPlayClients[done_idx // 2].mapPath = next(next_map)
                         p0_response = self.vec_client.selfPlayClients[done_idx // 2].reset(0)
                         p1_response = self.vec_client.selfPlayClients[done_idx // 2].reset(1)
                         obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
-                        obs[done_idx+1] = self._encode_obs(np.array(p1_response.observation))
+                        obs[done_idx + 1] = self._encode_obs(np.array(p1_response.observation))
         return np.array(obs), reward @ self.reward_weight, done[:, 0], infos
 
     def step(self, ac):
@@ -416,7 +420,7 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         ai2s=[],
         map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
-        evaluation_mode = False,
+        evaluation_mode=False,
     ):
         if len(map_paths) > 1 and len(set(map_paths)) > 1:
             raise ValueError("Mem shared environment requires all games to be played on the same map.")
@@ -509,18 +513,22 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
                 if done_idx < self.num_bot_envs:
                     if d:
                         # # TODO: figure out how many clients and selfplay clients
-                        self.vec_client.clients[done_idx].mapPath = "/home/costa/Documents/go/src/github.com/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16D.xml"
+                        self.vec_client.clients[
+                            done_idx
+                        ].mapPath = "/home/costa/Documents/go/src/github.com/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16D.xml"
                         response = self.vec_client.clients[done_idx].reset(0)
                         obs[done_idx] = self._encode_obs(np.array(response.observation))
                 # selfplay envs settings
-                else: 
+                else:
                     if d and done_idx % 2 == 0:
-                        done_idx -= self.num_bot_envs # recalibrate the index
-                        self.vec_client.selfPlayClients[done_idx // 2].mapPath = "/home/costa/Documents/go/src/github.com/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16D.xml"
+                        done_idx -= self.num_bot_envs  # recalibrate the index
+                        self.vec_client.selfPlayClients[
+                            done_idx // 2
+                        ].mapPath = "/home/costa/Documents/go/src/github.com/gym-microrts/gym_microrts/microrts/maps/16x16/basesWorkers16x16D.xml"
                         p0_response = self.vec_client.selfPlayClients[done_idx // 2].reset(0)
                         p1_response = self.vec_client.selfPlayClients[done_idx // 2].reset(1)
                         obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
-                        obs[done_idx+1] = self._encode_obs(np.array(p1_response.observation))
+                        obs[done_idx + 1] = self._encode_obs(np.array(p1_response.observation))
         return self.obs, reward @ self.reward_weight, done[:, 0], infos
 
     def get_action_mask(self):
