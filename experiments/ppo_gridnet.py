@@ -335,6 +335,13 @@ if __name__ == "__main__":
         + [microrts_ai.workerRushAI for _ in range(min(args.num_bot_envs, 2))],
         map_paths=["maps/16x16/basesWorkers16x16.xml"],
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
+        cycle_maps=[
+            "maps/16x16/basesWorkers16x16A.xml",
+            "maps/16x16/basesWorkers16x16B.xml",
+            "maps/16x16/basesWorkers16x16C.xml",
+            "maps/16x16/basesWorkers16x16D.xml",
+            "maps/16x16/basesWorkers16x16E.xml",
+        ],
     )
     envs = MicroRTSStatsRecorder(envs, args.gamma)
     envs = VecMonitor(envs)

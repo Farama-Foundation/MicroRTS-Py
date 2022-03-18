@@ -1,6 +1,7 @@
 import json
 import os
 import xml.etree.ElementTree as ET
+from itertools import cycle
 
 import gym
 import jpype
@@ -34,6 +35,7 @@ class MicroRTSGridModeVecEnv:
         ai2s=[],
         map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
+        cycle_maps=[],
     ):
 
         self.num_selfplay_envs = num_selfplay_envs
@@ -54,8 +56,13 @@ class MicroRTSGridModeVecEnv:
             ), "if multiple maps are provided, they should be provided for each environment"
         self.reward_weight = reward_weight
 
-        # read map
         self.microrts_path = os.path.join(gym_microrts.__path__[0], "microrts")
+
+        # prepare training maps
+        self.cycle_maps = list(map(lambda i: os.path.join(self.microrts_path, i), cycle_maps))
+        self.next_map = cycle(self.cycle_maps)
+
+        # read map
         root = ET.parse(os.path.join(self.microrts_path, self.map_paths[0])).getroot()
         self.height, self.width = int(root.get("height")), int(root.get("width"))
 
@@ -184,6 +191,26 @@ class MicroRTSGridModeVecEnv:
         reward, done = np.array(responses.reward), np.array(responses.done)
         obs = [self._encode_obs(np.array(ro)) for ro in responses.observation]
         infos = [{"raw_rewards": item} for item in reward]
+        # check if it is in evaluation, if not, then change maps
+        if len(self.cycle_maps) > 0:
+            # check if an environment is done, if done, reset the client, and replace the observation
+            for done_idx, d in enumerate(done[:, 0]):
+                # bot envs settings
+                if done_idx < self.num_bot_envs:
+                    if d:
+                        self.vec_client.clients[done_idx].mapPath = next(self.next_map)
+                        response = self.vec_client.clients[done_idx].reset(0)
+                        obs[done_idx] = self._encode_obs(np.array(response.observation))
+                # selfplay envs settings
+                else:
+                    if d and done_idx % 2 == 0:
+                        done_idx -= self.num_bot_envs  # recalibrate the index
+                        self.vec_client.selfPlayClients[done_idx // 2].mapPath = next(self.next_map)
+                        self.vec_client.selfPlayClients[done_idx // 2].reset(0)
+                        p0_response = self.vec_client.selfPlayClients[done_idx // 2].getResponse(0)
+                        p1_response = self.vec_client.selfPlayClients[done_idx // 2].getResponse(1)
+                        obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
+                        obs[done_idx + 1] = self._encode_obs(np.array(p1_response.observation))
         return np.array(obs), reward @ self.reward_weight, done[:, 0], infos
 
     def step(self, ac):
@@ -388,6 +415,7 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         ai2s=[],
         map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
+        cycle_maps=[],
     ):
         if len(map_paths) > 1 and len(set(map_paths)) > 1:
             raise ValueError("Mem shared environment requires all games to be played on the same map.")
@@ -402,6 +430,7 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
             ai2s,
             map_paths,
             reward_weight,
+            cycle_maps,
         )
 
     def _allocate_shared_buffer(self, nbytes):
@@ -471,6 +500,25 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         responses = self.vec_client.gameStep([0] * self.num_envs)
         reward, done = np.array(responses.reward), np.array(responses.done)
         infos = [{"raw_rewards": item} for item in reward]
+        # check if it is in evaluation, if not, then change maps
+        if len(self.cycle_maps) > 0:
+            # check if an environment is done, if done, reset the client, and replace the observation
+            for done_idx, d in enumerate(done[:, 0]):
+                # bot envs settings
+                if done_idx < self.num_bot_envs:
+                    if d:
+                        self.vec_client.clients[done_idx].mapPath = next(self.next_map)
+                        self.vec_client.clients[done_idx].reset(0)
+                        # self.obs[done_idx] = self._encode_obs(np.array(response.observation))
+                # selfplay envs settings
+                else:
+                    if d and done_idx % 2 == 0:
+                        done_idx -= self.num_bot_envs  # recalibrate the index
+                        self.vec_client.selfPlayClients[done_idx // 2].mapPath = next(self.next_map)
+                        self.vec_client.selfPlayClients[done_idx // 2].reset()
+                        # self.vec_client.selfPlayClients[done_idx // 2].reset()
+                        # self.obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
+                        # self.obs[done_idx + 1] = self._encode_obs(np.array(p1_response.observation))
         return self.obs, reward @ self.reward_weight, done[:, 0], infos
 
     def get_action_mask(self):
