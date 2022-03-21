@@ -1,35 +1,70 @@
 import numpy as np
-from pettingzoo.test import api_test
 
 from gym_microrts.petting_zoo_api import PettingZooMicroRTSGridModeSharedMemVecEnv
 
-TEST_API = False
+
+def softmax(x, axis=None):
+    x = x - x.max(axis=axis, keepdims=True)
+    y = np.exp(x)
+    return y / y.sum(axis=axis, keepdims=True)
 
 
-if __name__ == "__main__":
-    # opponents = [microrts_ai.coacAI for _ in range(1)]
+def sample(logits):
+    # https://stackoverflow.com/a/40475357/6611317
+    p = softmax(logits, axis=1)
+    c = p.cumsum(axis=1)
+    u = np.random.rand(len(c), 1)
+    choices = (u < c).argmax(axis=1)
+    return choices.reshape(-1, 1)
+
+
+def main():
     opponents = []
+    render = False
 
     env = PettingZooMicroRTSGridModeSharedMemVecEnv(2, 0, ai2s=opponents)
 
-    if TEST_API:
-        api_test(env, num_cycles=10, verbose_progress=True)
-    else:
-        env.reset()
+    env.reset()
+    if render:
         env.render()
 
-        for episode in range(100):
-            actions = np.array([env.agent_action_space.sample(), env.agent_action_space.sample()])
-            for agent in env.agent_iter():
+    for episode in range(100):
+        # Iterate over all of the agents
+        for agent in env.agent_iter():
+            if render:
                 env.render()
-                observation, reward, done, info = env.last()
-                # print(agent, done)
-                if done:
-                    env.reset()
-                    break
-                agent_id = env.agent_name_mapping[agent]
-                action = actions[agent_id, :]
-                env.step(action)
+            observation, reward, done, info = env.last()
+
+            # Get action mask
+            action_mask = observation["action_mask"]
+            action_mask = action_mask.reshape(-1, action_mask.shape[-1])
+            action_mask[action_mask == 0] = -9e8
+
+            # Sample action from action mask
+            action = np.concatenate(
+                (
+                    sample(action_mask[:, 0:6]),  # action type
+                    sample(action_mask[:, 6:10]),  # move parameter
+                    sample(action_mask[:, 10:14]),  # harvest parameter
+                    sample(action_mask[:, 14:18]),  # return parameter
+                    # produce_direction parameter
+                    sample(action_mask[:, 18:22]),
+                    # produce_unit_type parameter
+                    sample(action_mask[:, 22:29]),
+                    # attack_target parameter
+                    sample(action_mask[:, 29:]),
+                ),
+                axis=1,
+            )
+
+            if done:
+                env.reset()
+                break
+
+            env.step(action)
 
     env.close()
-    print("haha")
+
+
+if __name__ == "__main__":
+    main()
