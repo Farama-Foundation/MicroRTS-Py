@@ -55,11 +55,13 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
 
         self.action_spaces = {agent: self.agent_action_space for agent in self.possible_agents}
 
+        map_size = self.agent_action_space.shape[0] / 7
+
         self.observation_spaces = {
             agent: spaces.Dict(
                 {
                     "obs": self.agent_observation_space,
-                    "action_mask": spaces.Box(low=0, high=1, shape=(100, 78), dtype=np.int32),
+                    "action_mask": spaces.Box(low=0, high=1, shape=(map_size, 78), dtype=np.int32),
                 }
             )
             for agent in self.possible_agents
@@ -94,6 +96,9 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
 
     def step(self, action):
         if self.dones[self.agent_selection]:
+            # handles stepping an agent which is already done
+            # accepts a None action for the one agent, and moves the agent_selection to
+            # the next done agent,  or if there are no more done agents, to the next live agent
             return self._was_done_step(action)
 
         agent = self.agent_selection
