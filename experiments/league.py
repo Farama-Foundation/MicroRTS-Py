@@ -60,6 +60,7 @@ def parse_args():
         help='the output path of the leaderboard csv')
     parser.add_argument('--model-type', type=str, default=f"ppo_gridnet_large", choices=["ppo_gridnet_large", "ppo_gridnet"],
         help='the output path of the leaderboard csv')
+    parser.add_argument('--maps', nargs='+', default=["maps/16x16/basesWorkers16x16B.xml","maps/16x16/basesWorkers16x16C.xml","maps/16x16/basesWorkers16x16D.xml", "maps/16x16/basesWorkers16x16E.xml", "maps/16x16/basesWorkers16x16F.xml"], help='the maps')
     # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
@@ -129,7 +130,7 @@ class Outcome(Enum):
 
 
 class Match:
-    def __init__(self, partial_obs: bool, match_up=None):
+    def __init__(self, partial_obs: bool, match_up=None, map_path="maps/16x16/basesWorkers16x16A.xml"):
         # mode 0: rl-ai vs built-in-ai
         # mode 1: rl-ai vs rl-ai
         # mode 2: built-in-ai vs built-in-ai
@@ -138,6 +139,7 @@ class Match:
         built_in_ais2 = None
         rl_ai = None
         rl_ai2 = None
+        self.map_path = map_path
 
         # determine mode
         rl_ais = []
@@ -184,7 +186,7 @@ class Match:
                 max_steps=max_steps,
                 render_theme=2,
                 ai2s=built_in_ais,
-                map_paths=["maps/16x16/basesWorkers16x16A.xml"],
+                map_paths=[map_path],
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
             )
             self.agent = Agent(self.envs).to(self.device)
@@ -197,7 +199,7 @@ class Match:
                 partial_obs=partial_obs,
                 max_steps=max_steps,
                 render_theme=2,
-                map_paths=["maps/16x16/basesWorkers16x16A.xml"],
+                map_paths=[map_path],
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
             )
             self.agent = Agent(self.envs).to(self.device)
@@ -212,7 +214,7 @@ class Match:
                 ai2s=built_in_ais2,
                 max_steps=max_steps,
                 render_theme=2,
-                map_paths=["maps/16x16/basesWorkers16x16.xml"],
+                map_paths=[map_path],
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
             )
         self.envs = MicroRTSStatsRecorder(self.envs)
@@ -375,40 +377,41 @@ if __name__ == "__main__":
                 if idx == 0:
                     match_up = list(reversed(match_up))
 
-                m = Match(args.partial_obs, match_up)
-                challenger = AI.get_or_none(name=m.p0)
-                defender = AI.get_or_none(name=m.p1)
+                for index in range(len(args.maps)):
+                    m = Match(args.partial_obs, match_up, args.maps[index])
+                    challenger = AI.get_or_none(name=m.p0)
+                    defender = AI.get_or_none(name=m.p1)
 
-                r = m.run(args.num_matches // 2)
-                for item in r:
-                    drawn = False
-                    if item == Outcome.WIN.value:
-                        winner = challenger
-                        loser = defender
-                    elif item == Outcome.DRAW.value:
-                        drawn = True
-                    else:
-                        winner = defender
-                        loser = challenger
+                    r = m.run(args.num_matches // 2)
+                    for item in r:
+                        drawn = False
+                        if item == Outcome.WIN.value:
+                            winner = challenger
+                            loser = defender
+                        elif item == Outcome.DRAW.value:
+                            drawn = True
+                        else:
+                            winner = defender
+                            loser = challenger
 
-                    print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
+                        print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
 
-                    winner_rating, loser_rating = rate_1vs1(
-                        Rating(winner.mu, winner.sigma), Rating(loser.mu, loser.sigma), drawn=drawn
-                    )
+                        winner_rating, loser_rating = rate_1vs1(
+                            Rating(winner.mu, winner.sigma), Rating(loser.mu, loser.sigma), drawn=drawn
+                        )
 
-                    winner.mu, winner.sigma = winner_rating.mu, winner_rating.sigma
-                    loser.mu, loser.sigma = loser_rating.mu, loser_rating.sigma
-                    winner.save()
-                    loser.save()
+                        winner.mu, winner.sigma = winner_rating.mu, winner_rating.sigma
+                        loser.mu, loser.sigma = loser_rating.mu, loser_rating.sigma
+                        winner.save()
+                        loser.save()
 
-                    MatchHistory(
-                        challenger=challenger,
-                        defender=defender,
-                        win=int(item == 1),
-                        draw=int(item == 0),
-                        loss=int(item == -1),
-                    ).save()
+                        MatchHistory(
+                            challenger=challenger,
+                            defender=defender,
+                            win=int(item == 1),
+                            draw=int(item == 0),
+                            loss=int(item == -1),
+                        ).save()
         get_leaderboard().to_csv(csvpath, index=False)
 
     # case 2: new AIs
@@ -441,41 +444,44 @@ if __name__ == "__main__":
                 for idx in range(2):  # switch player 1 and 2's starting locations
                     if idx == 0:
                         match_up = list(reversed(match_up))
-                    m = Match(args.partial_obs, match_up)
-                    challenger = AI.get(name=m.p0)
-                    defender = AI.get(name=m.p1)
-                    r = m.run(1)
-                    for item in r:
-                        drawn = False
-                        if item == Outcome.WIN.value:
-                            winner = challenger
-                            loser = defender
-                        elif item == Outcome.DRAW.value:
-                            drawn = True
-                            winner = defender
-                            loser = challenger
-                        else:
-                            winner = defender
-                            loser = challenger
-                        print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
-                        winner_rating, loser_rating = rate_1vs1(
-                            Rating(winner.mu, winner.sigma), Rating(loser.mu, loser.sigma), drawn=drawn
-                        )
 
-                        # freeze existing AIs ratings
-                        if winner.name == ai.name:
-                            ai.mu, ai.sigma = winner_rating.mu, winner_rating.sigma
-                            ai.save()
-                        else:
-                            ai.mu, ai.sigma = loser_rating.mu, loser_rating.sigma
-                            ai.save()
-                        MatchHistory(
-                            challenger=challenger,
-                            defender=defender,
-                            win=int(item == 1),
-                            draw=int(item == 0),
-                            loss=int(item == -1),
-                        ).save()
+                    for index in range(len(args.maps)):
+                        m = Match(args.partial_obs, match_up, args.maps[index])
+                        challenger = AI.get_or_none(name=m.p0)
+                        defender = AI.get_or_none(name=m.p1)
+
+                        r = m.run(1)
+                        for item in r:
+                            drawn = False
+                            if item == Outcome.WIN.value:
+                                winner = challenger
+                                loser = defender
+                            elif item == Outcome.DRAW.value:
+                                drawn = True
+                                winner = defender
+                                loser = challenger
+                            else:
+                                winner = defender
+                                loser = challenger
+                            print(f"{winner.name} {'draws' if drawn else 'wins'} {loser.name}")
+                            winner_rating, loser_rating = rate_1vs1(
+                                Rating(winner.mu, winner.sigma), Rating(loser.mu, loser.sigma), drawn=drawn
+                            )
+
+                            # freeze existing AIs ratings
+                            if winner.name == ai.name:
+                                ai.mu, ai.sigma = winner_rating.mu, winner_rating.sigma
+                                ai.save()
+                            else:
+                                ai.mu, ai.sigma = loser_rating.mu, loser_rating.sigma
+                                ai.save()
+                            MatchHistory(
+                                challenger=challenger,
+                                defender=defender,
+                                win=int(item == 1),
+                                draw=int(item == 0),
+                                loss=int(item == -1),
+                            ).save()
 
         get_leaderboard().to_csv(args.output_path, index=False)
 
