@@ -20,7 +20,7 @@ def sample(logits):
 
 def policy(observation):
     # Get action mask
-    action_mask = observation["action_mask"]
+    action_mask = observation["action_masks"]
     action_mask = action_mask.reshape(-1, action_mask.shape[-1])
     action_mask[action_mask == 0] = -9e8
 

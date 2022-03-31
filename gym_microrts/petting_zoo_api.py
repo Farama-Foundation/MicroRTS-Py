@@ -61,7 +61,7 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
             agent: spaces.Dict(
                 {
                     "obs": self.agent_observation_space,
-                    "action_mask": spaces.Box(low=0, high=1, shape=(map_size, 78), dtype=np.int32),
+                    "action_masks": spaces.Box(low=0, high=1, shape=(map_size, 78), dtype=np.int32),
                 }
             )
             for agent in self.possible_agents
@@ -123,7 +123,7 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
             for i, agent in enumerate(self.agents):
                 self.rewards[agent] = reward[i]
                 self.dones[agent] = done[i]
-                self.observations[agent] = {"obs": obs[i, :], "action_mask": mask[i, :]}
+                self.observations[agent] = {"obs": obs[i, :], "action_masks": mask[i, :]}
 
             self.num_moves += 1
         else:
@@ -143,7 +143,7 @@ class PettingZooMicroRTSGridModeSharedMemVecEnv(AECEnv, MicroRTSGridModeSharedMe
         obs = self.obs[agent_id, :, :, :]
         mask = self.get_action_mask()[agent_id, :, :]
 
-        return {"obs": obs, "action_mask": mask}
+        return {"obs": obs, "action_masks": mask}
 
     def get_action_mask(self):
         self.vec_client.getMasks(0)
