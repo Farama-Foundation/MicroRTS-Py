@@ -2,6 +2,7 @@ import argparse
 import random
 import xml.etree.cElementTree as ET
 
+
 def parse_args():
     # fmt: off
     parser = argparse.ArgumentParser()
@@ -11,6 +12,7 @@ def parse_args():
     args = parser.parse_args()
     # fmt: on
     return args
+
 
 class PCG:
     def __init__(
