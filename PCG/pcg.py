@@ -1,6 +1,16 @@
+import argparse
 import random
 import xml.etree.cElementTree as ET
 
+def parse_args():
+    # fmt: off
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--width', type=int, default=16,help='the width of the map')
+    parser.add_argument('--height', type=int, default=16,help='the height of the map')
+
+    args = parser.parse_args()
+    # fmt: on
+    return args
 
 class PCG:
     def __init__(
@@ -133,15 +143,16 @@ class PCG:
         return x, y
 
     def get_map(self):
-        root = ET.Element("rts.PhysicalGameState", width="16", height="16")
+        root = ET.Element("rts.PhysicalGameState", width=str(self.width), height=str(self.height))
         self.initiate_terrain(root, "terrain", self.wallRings)
         self.initiate_players(root, "players")
         self.initiate_units(root, "units")
         tree = ET.ElementTree(root)
-        tree.write("PCG/maps/filename.xml")
+        tree.write("./maps/filename.xml")
         return tree
 
 
 if __name__ == "__main__":
-    pcg = PCG()
+    args = parse_args()
+    pcg = PCG(width=args.width, height=args.height)
     pcg.get_map()
