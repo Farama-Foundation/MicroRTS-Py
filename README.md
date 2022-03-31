@@ -85,7 +85,6 @@ Here is a description of Gym-μRTS's observation and action space:
 
 ![image](https://user-images.githubusercontent.com/5555347/120344517-a5bf7300-c2c7-11eb-81b6-172813ba8a0b.png)
 
-
 ## Evaluation
 
 You can evaluate trained agents against a built-in bot:
@@ -107,6 +106,7 @@ python ppo_gridnet_eval.py \
 ```
 
 ### Evaluate Trueskill of the agents
+
 This repository already contains a preset Trueskill database in `experiments/league.db`. To evaluate a new AI, try running the following command, which will iteratively find good matches for `agent.pt` until the engine is confident `agent.pt`'s Trueskill (by having the agent's Trueskill sigma below `--highest-sigma 1.4`).
 
 ```bash
@@ -125,12 +125,16 @@ python league.py --evals randomBiasedAI workerRushAI lightRushAI coacAI
 
 [ ] Rendering does not exactly work in macos. See https://github.com/jpype-project/jpype/issues/906
 
-
 ## Papers written using Gym-μRTS
+
 * CoG 2021: [Gym-μRTS: Toward Affordable Deep Reinforcement Learning Research in Real-time Strategy Games](https://arxiv.org/abs/2105.13807)
-* AAAI RLG 2021: [Generalization in Deep Reinforcement Learning with Real-time Strategy Games](http://aaai-rlg.mlanctot.info/papers/AAAI21-RLG_paper_33.pdf), 
-* AIIDE 2020 Strategy Games Workshop: [Action Guidance: Getting the Best of Training Agents with Sparse Rewards and Shaped Rewards](https://arxiv.org/abs/2010.03956), 
-* AIIDE 2019 Strategy Games Workshop: [Comparing Observation and Action Representations for Deep Reinforcement Learning in MicroRTS](https://arxiv.org/abs/1910.12134), 
+* AAAI RLG 2021: [Generalization in Deep Reinforcement Learning with Real-time Strategy Games](http://aaai-rlg.mlanctot.info/papers/AAAI21-RLG_paper_33.pdf),
+* AIIDE 2020 Strategy Games Workshop: [Action Guidance: Getting the Best of Training Agents with Sparse Rewards and Shaped Rewards](https://arxiv.org/abs/2010.03956),
+* AIIDE 2019 Strategy Games Workshop: [Comparing Observation and Action Representations for Deep Reinforcement Learning in MicroRTS](https://arxiv.org/abs/1910.12134),
+
+## PettingZoo API
+
+We wrapped our Gym-µRTS simulator into a PettingZoo environment, which is defined in `gym_microrts/pettingzoo_api.py`. An example usage of the Gym-µRTS PettingZoo environment can be found in `hello_world_pettingzoo.py`.
 
 
 ## Cite this project
