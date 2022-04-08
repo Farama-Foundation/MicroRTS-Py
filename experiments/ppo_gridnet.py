@@ -6,6 +6,7 @@ import random
 import subprocess
 import time
 from distutils.util import strtobool
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -92,6 +93,10 @@ def parse_args():
         help='the number of models saved')
     parser.add_argument('--max-eval-workers', type=int, default=4,
         help='the maximum number of eval workers (skips evaluation when set to 0)')
+    parser.add_argument('--train-maps', nargs='+', default=["maps/16x16/basesWorkers16x16A.xml"],
+        help='the list of maps used during training')
+    parser.add_argument('--eval-maps', nargs='+', default=["maps/16x16/basesWorkers16x16A.xml"],
+        help='the list of maps used during evaluation')
 
     args = parser.parse_args()
     if not args.seed:
@@ -227,7 +232,7 @@ class Agent(nn.Module):
         return self.critic(self.encoder(x))
 
 
-def run_evaluation(model_path: str, output_path: str):
+def run_evaluation(model_path: str, output_path: str, eval_maps: List[str]):
     args = [
         "python",
         "league.py",
@@ -241,6 +246,8 @@ def run_evaluation(model_path: str, output_path: str):
         output_path,
         "--model-type",
         "ppo_gridnet",
+        "--maps",
+        *eval_maps,
     ]
     fd = subprocess.Popen(args)
     print(f"Evaluating {model_path}")
@@ -333,15 +340,9 @@ if __name__ == "__main__":
         + [microrts_ai.randomBiasedAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.lightRushAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.workerRushAI for _ in range(min(args.num_bot_envs, 2))],
-        map_paths=["maps/16x16/basesWorkers16x16.xml"],
+        map_paths=[args.train_maps[0]],
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
-        cycle_maps=[
-            "maps/16x16/basesWorkers16x16A.xml",
-            "maps/16x16/basesWorkers16x16B.xml",
-            "maps/16x16/basesWorkers16x16C.xml",
-            "maps/16x16/basesWorkers16x16D.xml",
-            "maps/16x16/basesWorkers16x16E.xml",
-        ],
+        cycle_maps=args.train_maps,
     )
     envs = MicroRTSStatsRecorder(envs, args.gamma)
     envs = VecMonitor(envs)
@@ -540,7 +541,7 @@ if __name__ == "__main__":
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
             if eval_executor is not None:
                 future = eval_executor.submit(
-                    run_evaluation, f"models/{experiment_name}/{global_step}.pt", f"runs/{experiment_name}/{global_step}.csv"
+                    run_evaluation, f"models/{experiment_name}/{global_step}.pt", f"runs/{experiment_name}/{global_step}.csv", args.eval_maps
                 )
                 print(f"Queued models/{experiment_name}/{global_step}.pt")
                 future.add_done_callback(trueskill_writer.on_evaluation_done)
