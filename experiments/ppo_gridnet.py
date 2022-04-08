@@ -541,7 +541,10 @@ if __name__ == "__main__":
                 wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
             if eval_executor is not None:
                 future = eval_executor.submit(
-                    run_evaluation, f"models/{experiment_name}/{global_step}.pt", f"runs/{experiment_name}/{global_step}.csv", args.eval_maps
+                    run_evaluation,
+                    f"models/{experiment_name}/{global_step}.pt",
+                    f"runs/{experiment_name}/{global_step}.csv",
+                    args.eval_maps,
                 )
                 print(f"Queued models/{experiment_name}/{global_step}.pt")
                 future.add_done_callback(trueskill_writer.on_evaluation_done)
