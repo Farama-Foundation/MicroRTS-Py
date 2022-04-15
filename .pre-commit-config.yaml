@@ -5,7 +5,8 @@ repos:
       - id: isort
         args:
           - --profile=black
-          - --skip=wandb
+          - --skip-glob=wandb/**/*
+          - --thirdparty=wandb
   - repo: https://github.com/myint/autoflake
     rev: v1.4
     hooks:
@@ -17,7 +18,7 @@ repos:
           - --remove-unused-variables
           - --remove-all-unused-imports
   - repo: https://github.com/python/black
-    rev: 21.7b0
+    rev: 22.3.0
     hooks:
       - id: black
         args:
@@ -28,4 +29,4 @@ repos:
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=nd,reacher,thist,ths
+          - --ignore-words-list=nd,reacher,thist,ths,magent

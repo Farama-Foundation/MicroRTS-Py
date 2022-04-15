@@ -159,6 +159,7 @@ class MicroRTSGridModeVecEnv:
     def reset(self):
         responses = self.vec_client.reset([0] * self.num_envs)
         obs = [self._encode_obs(np.array(ro)) for ro in responses.observation]
+
         return np.array(obs)
 
     def _encode_obs(self, obs):
@@ -174,7 +175,8 @@ class MicroRTSGridModeVecEnv:
     def step_async(self, actions):
         actions = actions.reshape((self.num_envs, self.width * self.height, -1))
         actions = np.concatenate((self.source_unit_idxs, actions), 2)  # specify source unit
-        actions = actions[np.where(self.source_unit_mask == 1)]  # valid actions
+        # valid actions
+        actions = actions[np.where(self.source_unit_mask == 1)]
         action_counts_per_env = self.source_unit_mask.sum(1)
         java_actions = [None] * len(action_counts_per_env)
         action_idx = 0
@@ -218,7 +220,8 @@ class MicroRTSGridModeVecEnv:
         return self.step_wait()
 
     def getattr_depth_check(self, name, already_found):
-        """Check if an attribute reference is being hidden in a recursive call to __getattr__
+        """
+        Check if an attribute reference is being hidden in a recursive call to __getattr__
         :param name: (str) name of attribute to check for
         :param already_found: (bool) whether this attribute has already been found in a wrapper
         :return: (str or None) name of module whose attribute is being shadowed, if any.
