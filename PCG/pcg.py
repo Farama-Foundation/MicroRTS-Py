@@ -1,5 +1,6 @@
 import argparse
 import random
+import os
 import xml.etree.cElementTree as ET
 
 
@@ -8,6 +9,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--width', type=int, default=16,help='the width of the map')
     parser.add_argument('--height', type=int, default=16,help='the height of the map')
+    parser.add_argument('--num-maps', type=int, default=200, help='the number of the maps to generate')
 
     args = parser.parse_args()
     # fmt: on
@@ -16,7 +18,7 @@ def parse_args():
 
 class PCG:
     def __init__(
-        self, width=16, height=16, key=15, unit_location_records=[], sections_choices=[0, 1, 2, 3], base_location_records=[]
+        self, width=16, height=16, key=15, unit_location_records=[], sections_choices=[0, 1, 2, 3], base_location_records=[], num_maps=200
     ):
         self.height = height
         self.width = width
@@ -34,6 +36,7 @@ class PCG:
         self.unit_location_records = unit_location_records
         self.sections_choices = sections_choices
         self.base_location_records = base_location_records
+        self.num_maps = num_maps
 
     def initiate_terrain(self, root, tag, wallRings):
         terrain = ET.SubElement(root, tag)
@@ -144,17 +147,28 @@ class PCG:
         self.unit_location_records.append((x, y))
         return x, y
 
-    def get_map(self):
+    def get_map(self, mapKey):
         root = ET.Element("rts.PhysicalGameState", width=str(self.width), height=str(self.height))
         self.initiate_terrain(root, "terrain", self.wallRings)
         self.initiate_players(root, "players")
         self.initiate_units(root, "units")
         tree = ET.ElementTree(root)
-        tree.write("./maps/filename.xml")
+        tree.write(os.path.join("PCG/maps/", "pcgMap" + "_" + str(mapKey) + ".xml"))
+        self.reset()
+        
         return tree
 
+    def reset(self):
+        self.unit_location_records = []
+        self.base_location_records = []
+
+    def get_maps(self):
+        for i in range(self.num_maps):
+            self.get_map(i)
 
 if __name__ == "__main__":
+    if not os.path.exists("PCG/maps"):
+        os.makedirs("PCG/maps")
     args = parse_args()
-    pcg = PCG(width=args.width, height=args.height)
-    pcg.get_map()
+    pcg = PCG(width=args.width, height=args.height, num_maps=args.num_maps)
+    pcg.get_maps()
