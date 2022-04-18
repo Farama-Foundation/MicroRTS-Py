@@ -121,6 +121,19 @@ rm league.csv league.db
 python league.py --evals randomBiasedAI workerRushAI lightRushAI coacAI
 ```
 
+## Multi-maps support
+
+The training script allows you to train the agents with more than one maps and evaluate with more than one maps. Try executing:
+
+```
+cd experiments
+python ppo_gridnet.py \
+    --train-maps maps/16x16/basesWorkers16x16B.xml maps/16x16/basesWorkers16x16C.xml maps/16x16/basesWorkers16x16D.xml maps/16x16/basesWorkers16x16E.xml maps/16x16/basesWorkers16x16F.xml \
+    --eval-maps maps/16x16/basesWorkers16x16B.xml maps/16x16/basesWorkers16x16C.xml maps/16x16/basesWorkers16x16D.xml maps/16x16/basesWorkers16x16E.xml maps/16x16/basesWorkers16x16F.xml
+```
+
+where `--train-maps` allows you to specify the training maps and `--eval-maps` the evaluation maps. `--train-maps` and `--eval-maps` do not have to match (so you can evaluate on maps the agent has never trained on before).
+
 ## Known issues
 
 [ ] Rendering does not exactly work in macos. See https://github.com/jpype-project/jpype/issues/906

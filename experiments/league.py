@@ -60,7 +60,8 @@ def parse_args():
         help='the output path of the leaderboard csv')
     parser.add_argument('--model-type', type=str, default=f"ppo_gridnet_large", choices=["ppo_gridnet_large", "ppo_gridnet"],
         help='the output path of the leaderboard csv')
-    parser.add_argument('--maps', nargs='+', default=["maps/16x16/basesWorkers16x16B.xml","maps/16x16/basesWorkers16x16C.xml","maps/16x16/basesWorkers16x16D.xml", "maps/16x16/basesWorkers16x16E.xml", "maps/16x16/basesWorkers16x16F.xml"], help='the maps')
+    parser.add_argument('--maps', nargs='+', default=["maps/16x16/basesWorkers16x16A.xml"],
+        help="the maps to do trueskill evaluations")
     # ["randomBiasedAI","workerRushAI","lightRushAI","coacAI"]
     # default=["randomBiasedAI","workerRushAI","lightRushAI","coacAI","randomAI","passiveAI","naiveMCTSAI","mixedBot","rojo","izanagi","tiamat","droplet","guidedRojoA3N"]
     args = parser.parse_args()
@@ -359,6 +360,7 @@ def get_leaderboard_existing_ais(existing_ai_names):
 
 
 if __name__ == "__main__":
+    print(f"evaluation maps is", args.maps)
     existing_ai_names = [item.name for item in AI.select()]
     all_ai_names = set(existing_ai_names + args.evals)
 
