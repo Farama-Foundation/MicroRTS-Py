@@ -12,6 +12,7 @@ from jpype.types import JArray, JInt
 from PIL import Image
 
 import gym_microrts
+import PCG
 
 
 class MicroRTSGridModeVecEnv:
@@ -59,7 +60,8 @@ class MicroRTSGridModeVecEnv:
         self.microrts_path = os.path.join(gym_microrts.__path__[0], "microrts")
 
         # prepare training maps
-        self.cycle_maps = list(map(lambda i: os.path.join(self.microrts_path, i), cycle_maps))
+        self.pcg_map_path = os.path.join(PCG.__path__[0], "maps")
+        self.cycle_maps = list(map(lambda i: os.path.join(self.pcg_map_path, i), cycle_maps))
         self.next_map = cycle(self.cycle_maps)
 
         # read map
