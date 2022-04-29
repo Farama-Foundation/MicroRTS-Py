@@ -1,6 +1,6 @@
 import argparse
-import random
 import os
+import random
 import xml.etree.cElementTree as ET
 
 
@@ -18,7 +18,14 @@ def parse_args():
 
 class PCG:
     def __init__(
-        self, width=16, height=16, key=15, unit_location_records=[], sections_choices=[0, 1, 2, 3], base_location_records=[], num_maps=200
+        self,
+        width=16,
+        height=16,
+        key=15,
+        unit_location_records=[],
+        sections_choices=[0, 1, 2, 3],
+        base_location_records=[],
+        num_maps=200,
     ):
         self.height = height
         self.width = width
@@ -155,7 +162,7 @@ class PCG:
         tree = ET.ElementTree(root)
         tree.write(os.path.join("PCG/maps/", "pcgMap" + "_" + str(mapKey) + ".xml"))
         self.reset()
-        
+
         return tree
 
     def reset(self):
@@ -165,6 +172,7 @@ class PCG:
     def get_maps(self):
         for i in range(self.num_maps):
             self.get_map(i)
+
 
 if __name__ == "__main__":
     if not os.path.exists("PCG/maps"):
