@@ -10,7 +10,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--width', type=int, default=16,help='the width of the map')
     parser.add_argument('--height', type=int, default=16,help='the height of the map')
-    parser.add_argument('--num-maps', type=int, default=199, help='the number of the maps to generate')
+    parser.add_argument('--num-maps', type=int, default=200, help='the number of the maps to generate')
     parser.add_argument('--seed', type=int, default=1,
         help='seed of the experiment')
     args = parser.parse_args()
