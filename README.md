@@ -169,10 +169,13 @@ To cite the Gym-µRTS simulator:
 To cite the invalid action masking technique used in our training script:
 
 ```bibtex
-@article{huang2020closer,
-  title={A closer look at invalid action masking in policy gradient algorithms},
-  author={Huang, Shengyi and Onta{\~n}{\'o}n, Santiago},
-  journal={arXiv preprint arXiv:2006.14171},
-  year={2020}
+@inproceedings{huang2020closer,
+    title={A Closer Look at Invalid Action Masking in Policy Gradient Algorithms},
+    volume={35},url={https://journals.flvc.org/FLAIRS/article/view/130584},
+    DOI={10.32473/flairs.v35i.130584},
+    journal={The International FLAIRS Conference Proceedings},
+    author={Huang, Shengyi and Ontañón, Santiago},
+    year={2022},
+    month={May}
 }
 ```
