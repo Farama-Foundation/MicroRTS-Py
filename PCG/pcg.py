@@ -13,6 +13,7 @@ def parse_args():
     parser.add_argument('--num-maps', type=int, default=200, help='the number of the maps to generate')
     parser.add_argument('--seed', type=int, default=1,
         help='seed of the experiment')
+    parser.add_argument('--wall-rings-vary', type=bool, default=False, help='the switch to turn on varying wall rings')
     args = parser.parse_args()
     # fmt: on
 
@@ -31,26 +32,31 @@ class PCG:
         sections_choices=[0, 1, 2, 3],
         base_location_records=[],
         num_maps=200,
+        wall_rings_vary = False
     ):
         self.height = height
         self.width = width
+        self.wall_rings_vary = wall_rings_vary
         self.wallRingsLimit = min(height, width) // 2 - 3
         if self.wallRingsLimit < 0:
             self.wallRingsLimit = 0
-        self.wallRings = random.randint(0, self.wallRingsLimit)
+        if self.wall_rings_vary:
+            self.wall_rings = random.randint(0, self.wallRingsLimit)
+        else:
+            self.wall_rings = 0
         self.key = key
         self.sections = [
-            ((self.wallRings, (width - 1) // 2), (self.wallRings, (height - 1) // 2)),
-            ((width // 2, (width - 1) - self.wallRings), (self.wallRings, (height - 1) // 2)),
-            ((self.wallRings, (width - 1) // 2), (height // 2, (height - 1) - self.wallRings)),
-            ((width // 2, (width - 1) - self.wallRings), (height // 2, (height - 1) - self.wallRings)),
+            ((self.wall_rings, (width - 1) // 2), (self.wall_rings, (height - 1) // 2)),
+            ((width // 2, (width - 1) - self.wall_rings), (self.wall_rings, (height - 1) // 2)),
+            ((self.wall_rings, (width - 1) // 2), (height // 2, (height - 1) - self.wall_rings)),
+            ((width // 2, (width - 1) - self.wall_rings), (height // 2, (height - 1) - self.wall_rings)),
         ]
         self.unit_location_records = unit_location_records
         self.sections_choices = sections_choices
         self.base_location_records = base_location_records
         self.num_maps = num_maps
 
-    def initiate_terrain(self, root, tag, wallRings):
+    def initiate_terrain(self, root, tag, wall_rings):
         terrain = ET.SubElement(root, tag)
         eText = ""
 
@@ -63,10 +69,10 @@ class PCG:
 
         for y in range(self.height):
             for x in range(self.width):
-                if y in range(0, wallRings) or y in range(self.height - wallRings, self.height):
+                if y in range(0, wall_rings) or y in range(self.height - wall_rings, self.height):
                     eText += "1"
                     self.unit_location_records.append((x, y))
-                elif x in range(0, wallRings) or x in range(self.height - wallRings, self.height):
+                elif x in range(0, wall_rings) or x in range(self.height - wall_rings, self.height):
                     eText += "1"
                     self.unit_location_records.append((x, y))
                 else:
@@ -161,7 +167,7 @@ class PCG:
 
     def get_map(self, mapKey):
         root = ET.Element("rts.PhysicalGameState", width=str(self.width), height=str(self.height))
-        self.initiate_terrain(root, "terrain", self.wallRings)
+        self.initiate_terrain(root, "terrain", self.wall_rings)
         self.initiate_players(root, "players")
         self.initiate_units(root, "units")
         tree = ET.ElementTree(root)
@@ -173,6 +179,17 @@ class PCG:
     def reset(self):
         self.unit_location_records = []
         self.base_location_records = []
+        self.reset_wall_rings()
+
+    def reset_wall_rings(self):
+        if not self.wall_rings_vary: return
+        self.wall_rings = random.randint(0, self.wallRingsLimit)
+        self.sections = [
+            ((self.wall_rings, (self.width - 1) // 2), (self.wall_rings, (self.height - 1) // 2)),
+            ((self.width // 2, (self.width - 1) - self.wall_rings), (self.wall_rings, (self.height - 1) // 2)),
+            ((self.wall_rings, (self.width - 1) // 2), (self.height // 2, (self.height - 1) - self.wall_rings)),
+            ((self.width // 2, (self.width - 1) - self.wall_rings), (self.height // 2, (self.height - 1) - self.wall_rings)),
+        ]
 
     def get_maps(self):
         for i in range(self.num_maps):
@@ -184,5 +201,5 @@ if __name__ == "__main__":
         os.makedirs("PCG/maps")
     args = parse_args()
     random.seed(args.seed)
-    pcg = PCG(width=args.width, height=args.height, num_maps=args.num_maps)
+    pcg = PCG(width=args.width, height=args.height, num_maps=args.num_maps, wall_rings_vary=args.wall_rings_vary)
     pcg.get_maps()
