@@ -32,7 +32,7 @@ class PCG:
         sections_choices=[0, 1, 2, 3],
         base_location_records=[],
         num_maps=200,
-        wall_rings_vary = False
+        wall_rings_vary=False,
     ):
         self.height = height
         self.width = width
@@ -182,7 +182,8 @@ class PCG:
         self.reset_wall_rings()
 
     def reset_wall_rings(self):
-        if not self.wall_rings_vary: return
+        if not self.wall_rings_vary:
+            return
         self.wall_rings = random.randint(0, self.wallRingsLimit)
         self.sections = [
             ((self.wall_rings, (self.width - 1) // 2), (self.wall_rings, (self.height - 1) // 2)),
