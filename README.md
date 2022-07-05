@@ -85,7 +85,6 @@ Here is a description of Gym-μRTS's observation and action space:
 
 ![image](https://user-images.githubusercontent.com/5555347/120344517-a5bf7300-c2c7-11eb-81b6-172813ba8a0b.png)
 
-
 ## Evaluation
 
 You can evaluate trained agents against a built-in bot:
@@ -107,6 +106,7 @@ python ppo_gridnet_eval.py \
 ```
 
 ### Evaluate Trueskill of the agents
+
 This repository already contains a preset Trueskill database in `experiments/league.db`. To evaluate a new AI, try running the following command, which will iteratively find good matches for `agent.pt` until the engine is confident `agent.pt`'s Trueskill (by having the agent's Trueskill sigma below `--highest-sigma 1.4`).
 
 ```bash
@@ -121,16 +121,33 @@ rm league.csv league.db
 python league.py --evals randomBiasedAI workerRushAI lightRushAI coacAI
 ```
 
+## Multi-maps support
+
+The training script allows you to train the agents with more than one maps and evaluate with more than one maps. Try executing:
+
+```
+cd experiments
+python ppo_gridnet.py \
+    --train-maps maps/16x16/basesWorkers16x16B.xml maps/16x16/basesWorkers16x16C.xml maps/16x16/basesWorkers16x16D.xml maps/16x16/basesWorkers16x16E.xml maps/16x16/basesWorkers16x16F.xml \
+    --eval-maps maps/16x16/basesWorkers16x16B.xml maps/16x16/basesWorkers16x16C.xml maps/16x16/basesWorkers16x16D.xml maps/16x16/basesWorkers16x16E.xml maps/16x16/basesWorkers16x16F.xml
+```
+
+where `--train-maps` allows you to specify the training maps and `--eval-maps` the evaluation maps. `--train-maps` and `--eval-maps` do not have to match (so you can evaluate on maps the agent has never trained on before).
+
 ## Known issues
 
 [ ] Rendering does not exactly work in macos. See https://github.com/jpype-project/jpype/issues/906
 
-
 ## Papers written using Gym-μRTS
+
 * CoG 2021: [Gym-μRTS: Toward Affordable Deep Reinforcement Learning Research in Real-time Strategy Games](https://arxiv.org/abs/2105.13807)
-* AAAI RLG 2021: [Generalization in Deep Reinforcement Learning with Real-time Strategy Games](http://aaai-rlg.mlanctot.info/papers/AAAI21-RLG_paper_33.pdf), 
-* AIIDE 2020 Strategy Games Workshop: [Action Guidance: Getting the Best of Training Agents with Sparse Rewards and Shaped Rewards](https://arxiv.org/abs/2010.03956), 
-* AIIDE 2019 Strategy Games Workshop: [Comparing Observation and Action Representations for Deep Reinforcement Learning in MicroRTS](https://arxiv.org/abs/1910.12134), 
+* AAAI RLG 2021: [Generalization in Deep Reinforcement Learning with Real-time Strategy Games](http://aaai-rlg.mlanctot.info/papers/AAAI21-RLG_paper_33.pdf),
+* AIIDE 2020 Strategy Games Workshop: [Action Guidance: Getting the Best of Training Agents with Sparse Rewards and Shaped Rewards](https://arxiv.org/abs/2010.03956),
+* AIIDE 2019 Strategy Games Workshop: [Comparing Observation and Action Representations for Deep Reinforcement Learning in MicroRTS](https://arxiv.org/abs/1910.12134),
+
+## PettingZoo API
+
+We wrapped our Gym-µRTS simulator into a PettingZoo environment, which is defined in `gym_microrts/pettingzoo_api.py`. An example usage of the Gym-µRTS PettingZoo environment can be found in `hello_world_pettingzoo.py`.
 
 
 ## Cite this project
@@ -152,10 +169,13 @@ To cite the Gym-µRTS simulator:
 To cite the invalid action masking technique used in our training script:
 
 ```bibtex
-@article{huang2020closer,
-  title={A closer look at invalid action masking in policy gradient algorithms},
-  author={Huang, Shengyi and Onta{\~n}{\'o}n, Santiago},
-  journal={arXiv preprint arXiv:2006.14171},
-  year={2020}
+@inproceedings{huang2020closer,
+    title={A Closer Look at Invalid Action Masking in Policy Gradient Algorithms},
+    volume={35},url={https://journals.flvc.org/FLAIRS/article/view/130584},
+    DOI={10.32473/flairs.v35i.130584},
+    journal={The International FLAIRS Conference Proceedings},
+    author={Huang, Shengyi and Ontañón, Santiago},
+    year={2022},
+    month={May}
 }
 ```

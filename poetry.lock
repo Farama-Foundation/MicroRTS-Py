@@ -1243,6 +1243,29 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "pettingzoo"
+version = "1.16.0"
+description = "Gym for multi-agent reinforcement learning"
+category = "main"
+optional = false
+python-versions = ">=3.7, <3.11"
+
+[package.dependencies]
+gym = ">=0.21.0"
+numpy = ">=1.18.0"
+
+[package.extras]
+all = ["multi_agent_ale_py (==0.1.11)", "pygame (==2.1.0)", "chess (==1.7.0)", "rlcard (==1.0.4)", "pygame (==2.1.0)", "hanabi_learning_environment (==0.0.1)", "pygame (==2.1.0)", "pymunk (==6.2.0)", "magent (==0.2.0)", "pyglet (>=1.4.0)", "pygame (==2.1.0)", "box2d-py (==2.3.5)", "scipy (>=1.4.1)", "pillow (>=8.0.1)"]
+atari = ["multi_agent_ale_py (==0.1.11)", "pygame (==2.1.0)"]
+butterfly = ["pygame (==2.1.0)", "pymunk (==6.2.0)"]
+classic = ["chess (==1.7.0)", "rlcard (==1.0.4)", "pygame (==2.1.0)", "hanabi_learning_environment (==0.0.1)"]
+magent = ["magent (==0.2.0)"]
+mpe = ["pyglet (>=1.4.0)"]
+other = ["pillow (>=8.0.1)"]
+sisl = ["pygame (==2.1.0)", "box2d-py (==2.3.5)", "scipy (>=1.4.1)"]
+tests = ["pynput"]
+
+[[package]]
 name = "pexpect"
 version = "4.8.0"
 description = "Pexpect allows easy control of interactive console applications."
@@ -4292,7 +4315,7 @@ spyder = ["spyder"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "d3e58d69b86b68980d6f1411987e6effbb4b051a5c94839997685794c1135dcb"
+content-hash = "5ca5d23e3deb68939d9ddba4fcdaac52e05cc4506cc1a5cd13d4bcf21f73fc17"
 
 [metadata.files]
 absl-py = [
@@ -5024,6 +5047,9 @@ pathtools = [
 ]
 peewee = [
     {file = "peewee-3.14.8.tar.gz", hash = "sha256:01bd7f734defb08d7a3346a0c0ca7011bc8d0d685934ec0e001b3371d522ec53"},
+]
+pettingzoo = [
+    {file = "PettingZoo-1.16.0.tar.gz", hash = "sha256:01636b1f71f4b236fcda53e9b3a30553b8cb539ac2489f2922de1ec537949c1b"},
 ]
 pexpect = [
     {file = "pexpect-4.8.0-py2.py3-none-any.whl", hash = "sha256:0b48a55dcb3c05f3329815901ea4fc1537514d6ba867a152b581d69ae3710937"},

@@ -8,7 +8,7 @@ from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 
 envs = MicroRTSGridModeVecEnv(
-    num_selfplay_envs=0,
+    num_selfplay_envs=2,
     num_bot_envs=1,
     max_steps=2000,
     render_theme=2,
@@ -52,7 +52,8 @@ for i in range(10000):
             sample(action_mask[:, 14:18]),  # return parameter
             sample(action_mask[:, 18:22]),  # produce_direction parameter
             sample(action_mask[:, 22:29]),  # produce_unit_type parameter
-            sample(action_mask[:, 29 : sum(envs.action_space.nvec[1:])]),  # attack_target parameter
+            # attack_target parameter
+            sample(action_mask[:, 29 : sum(envs.action_space.nvec[1:])]),
         ),
         axis=1,
     )
