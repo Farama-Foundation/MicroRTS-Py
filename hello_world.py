@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.random import choice
 
 from gym_microrts import microrts_ai
 from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
@@ -20,38 +19,31 @@ envs = MicroRTSGridModeVecEnv(
 # envs = VecVideoRecorder(envs, 'videos', record_video_trigger=lambda x: x % 4000 == 0, video_length=2000)
 
 
-def softmax(x):
-    """Compute softmax values for each sets of scores in x."""
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum()
+def softmax(x, axis=None):
+    x = x - x.max(axis=axis, keepdims=True)
+    y = np.exp(x)
+    return y / y.sum(axis=axis, keepdims=True)
 
 
 def sample(logits):
-    # sample 1 or 2 from logits [0, 1 ,1, 0] but not 0 or 3
-    if sum(logits) == 0:
-        return 0
-    return choice(range(len(logits)), p=logits / sum(logits))
+    # https://stackoverflow.com/a/40475357/6611317
+    p = softmax(logits, axis=1)
+    c = p.cumsum(axis=1)
+    u = np.random.rand(len(c), 1)
+    choices = (u < c).argmax(axis=1)
+    return choices.reshape(-1, 1)
 
 
 envs.action_space.seed(0)
 envs.reset()
-print(envs.action_plane_space.nvec)
 nvec = envs.action_space.nvec
-
-
-def sample(logits):
-    return np.array([choice(range(len(item)), p=softmax(item)) for item in logits]).reshape(-1, 1)
-
 
 for i in range(10000):
     envs.render()
-    print(i)
-    # TODO: this numpy's `sample` function is very very slow.
-    # PyTorch's `sample` function is much much faster,
-    # but we want to remove PyTorch as a core dependency...
     action_mask = envs.get_action_mask()
     action_mask = action_mask.reshape(-1, action_mask.shape[-1])
-    action_type_mask = action_mask[:, 0:6]
+    action_mask[action_mask == 0] = -9e8
+    # sample valid actions
     action = np.concatenate(
         (
             sample(action_mask[:, 0:6]),  # action type
@@ -65,7 +57,7 @@ for i in range(10000):
         ),
         axis=1,
     )
-
-    action = np.array([envs.action_space.sample()])
+    # doing the following could result in invalid actions
+    # action = np.array([envs.action_space.sample()])
     next_obs, reward, done, info = envs.step(action)
 envs.close()
