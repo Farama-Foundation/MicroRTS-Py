@@ -1,5 +1,7 @@
 import json
 import os
+import sys
+import warnings
 import xml.etree.ElementTree as ET
 from itertools import cycle
 
@@ -12,6 +14,34 @@ from jpype.types import JArray, JInt
 from PIL import Image
 
 import gym_microrts
+
+MICRORTS_INSTALLTION_MESSAGE = """
+
+`microrts.jar` not found in `gym-microrts/microrts` folder. 
+Please make sure you have recursively cloned the microrts repository,
+and build the microrts.jar.
+
+If you already has cloned the gym-microrts repo, you can run the following command:
+
+$ git submodule update --init --recursive
+bash build.sh &> build.log
+python hello_world.py
+
+
+Otherwise feel free to start from scratch:
+
+$ git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
+cd gym-microrts 
+poetry install
+bash build.sh &> build.log
+python hello_world.py
+"""
+
+MICRORTS_MAC_OS_RENDER_MESSAGE = """
+gym-microrts render is not available on MacOS. See https://github.com/jpype-project/jpype/issues/906
+
+It is however possible to record the videos via `env.render(mode='rgb_array')`. 
+"""
 
 
 class MicroRTSGridModeVecEnv:
@@ -63,6 +93,9 @@ class MicroRTSGridModeVecEnv:
         self.next_map = cycle(self.cycle_maps)
 
         # read map
+        if not os.path.exists(f"{self.microrts_path}/microrts.jar"):
+            raise Exception(MICRORTS_INSTALLTION_MESSAGE)
+
         root = ET.parse(os.path.join(self.microrts_path, self.map_paths[0])).getroot()
         self.height, self.width = int(root.get("height")), int(root.get("width"))
 
@@ -232,6 +265,10 @@ class MicroRTSGridModeVecEnv:
             return None
 
     def render(self, mode="human"):
+        # give warning on macos because the render is not available
+        if sys.platform == "darwin":
+            warnings.warn("", stacklevel=2)
+
         if mode == "human":
             self.render_client.render(False)
         elif mode == "rgb_array":
@@ -277,6 +314,8 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
 
         # read map
         self.microrts_path = os.path.join(gym_microrts.__path__[0], "microrts")
+        if not os.path.exists(f"{self.microrts_path}/microrts.jar"):
+            raise Exception(MICRORTS_INSTALLTION_MESSAGE)
         root = ET.parse(os.path.join(self.microrts_path, self.map_paths[0])).getroot()
         self.height, self.width = int(root.get("height")), int(root.get("width"))
 
@@ -369,34 +408,6 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         raw_obs, reward, done = np.ones((self.num_envs, 2)), np.array(responses.reward), np.array(responses.done)
         infos = [{"raw_rewards": item} for item in reward]
         return raw_obs, reward @ self.reward_weight, done[:, 0], infos
-
-    def step(self, ac):
-        self.step_async(ac)
-        return self.step_wait()
-
-    def getattr_depth_check(self, name, already_found):
-        """Check if an attribute reference is being hidden in a recursive call to __getattr__
-        :param name: (str) name of attribute to check for
-        :param already_found: (bool) whether this attribute has already been found in a wrapper
-        :return: (str or None) name of module whose attribute is being shadowed, if any.
-        """
-        if hasattr(self, name) and already_found:
-            return "{0}.{1}".format(type(self).__module__, type(self).__name__)
-        else:
-            return None
-
-    def render(self, mode="human"):
-        if mode == "human":
-            self.render_client.render(False)
-        elif mode == "rgb_array":
-            bytes_array = np.array(self.render_client.render(True))
-            image = Image.frombytes("RGB", (640, 640), bytes_array)
-            return np.array(image)[:, :, ::-1]
-
-    def close(self):
-        if jpype._jpype.isStarted():
-            self.vec_client.close()
-            jpype.shutdownJVM()
 
 
 class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
