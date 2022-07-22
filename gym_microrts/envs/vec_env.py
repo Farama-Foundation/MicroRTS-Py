@@ -41,6 +41,8 @@ MICRORTS_MAC_OS_RENDER_MESSAGE = """
 gym-microrts render is not available on MacOS. See https://github.com/jpype-project/jpype/issues/906
 
 It is however possible to record the videos via `env.render(mode='rgb_array')`. 
+See https://github.com/vwxyzjn/gym-microrts/blob/b46c0815efd60ae959b70c14659efb95ef16ffb0/hello_world_record_video.py
+as an example.
 """
 
 
@@ -267,7 +269,7 @@ class MicroRTSGridModeVecEnv:
     def render(self, mode="human"):
         # give warning on macos because the render is not available
         if sys.platform == "darwin":
-            warnings.warn("", stacklevel=2)
+            warnings.warn(MICRORTS_MAC_OS_RENDER_MESSAGE)
 
         if mode == "human":
             self.render_client.render(False)
