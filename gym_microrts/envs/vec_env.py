@@ -267,12 +267,11 @@ class MicroRTSGridModeVecEnv:
             return None
 
     def render(self, mode="human"):
-        # give warning on macos because the render is not available
-        if sys.platform == "darwin":
-            warnings.warn(MICRORTS_MAC_OS_RENDER_MESSAGE)
-
         if mode == "human":
             self.render_client.render(False)
+            # give warning on macos because the render is not available
+            if sys.platform == "darwin":
+                warnings.warn(MICRORTS_MAC_OS_RENDER_MESSAGE)
         elif mode == "rgb_array":
             bytes_array = np.array(self.render_client.render(True))
             image = Image.frombytes("RGB", (640, 640), bytes_array)
