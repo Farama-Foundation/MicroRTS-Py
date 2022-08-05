@@ -156,26 +156,43 @@ To cite the Gym-µRTS simulator:
 
 ```bibtex
 @inproceedings{huang2021gym,
-  author={Huang, Shengyi and Ontañón, Santiago and Bamford, Chris and Grela, Lukasz},
-  booktitle={2021 IEEE Conference on Games (CoG)}, 
-  title={Gym-µRTS: Toward Affordable Full Game Real-time Strategy Games Research with Deep Reinforcement Learning}, 
-  year={2021},
-  volume={},
-  number={},
-  pages={1-8},
-  doi={10.1109/CoG52621.2021.9619076}}
+  author    = {Shengyi Huang and
+               Santiago Onta{\~{n}}{\'{o}}n and
+               Chris Bamford and
+               Lukasz Grela},
+  title     = {Gym-{\(\mathrm{\mu}\)}RTS: Toward Affordable Full Game Real-time Strategy
+               Games Research with Deep Reinforcement Learning},
+  booktitle = {2021 {IEEE} Conference on Games (CoG), Copenhagen, Denmark, August
+               17-20, 2021},
+  pages     = {1--8},
+  publisher = {{IEEE}},
+  year      = {2021},
+  url       = {https://doi.org/10.1109/CoG52621.2021.9619076},
+  doi       = {10.1109/CoG52621.2021.9619076},
+  timestamp = {Fri, 10 Dec 2021 10:41:01 +0100},
+  biburl    = {https://dblp.org/rec/conf/cig/HuangO0G21.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
 ```
 
 To cite the invalid action masking technique used in our training script:
 
 ```bibtex
 @inproceedings{huang2020closer,
-    title={A Closer Look at Invalid Action Masking in Policy Gradient Algorithms},
-    volume={35},url={https://journals.flvc.org/FLAIRS/article/view/130584},
-    DOI={10.32473/flairs.v35i.130584},
-    journal={The International FLAIRS Conference Proceedings},
-    author={Huang, Shengyi and Ontañón, Santiago},
-    year={2022},
-    month={May}
+  author    = {Shengyi Huang and
+               Santiago Onta{\~{n}}{\'{o}}n},
+  editor    = {Roman Bart{\'{a}}k and
+               Fazel Keshtkar and
+               Michael Franklin},
+  title     = {A Closer Look at Invalid Action Masking in Policy Gradient Algorithms},
+  booktitle = {Proceedings of the Thirty-Fifth International Florida Artificial Intelligence
+               Research Society Conference, {FLAIRS} 2022, Hutchinson Island, Jensen
+               Beach, Florida, USA, May 15-18, 2022},
+  year      = {2022},
+  url       = {https://doi.org/10.32473/flairs.v35i.130584},
+  doi       = {10.32473/flairs.v35i.130584},
+  timestamp = {Thu, 09 Jun 2022 16:44:11 +0200},
+  biburl    = {https://dblp.org/rec/conf/flairs/HuangO22.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
 }
 ```
