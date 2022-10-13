@@ -1,4 +1,6 @@
-# Gym-μRTS (pronounced "gym-micro-RTS")
+
+
+Formerly Gym-μRTS/Gym-MicroRTS
 
 [<img src="https://img.shields.io/badge/discord-gym%20microrts-green?label=Discord&logo=discord&logoColor=ffffff&labelColor=7289DA&color=2c2f33">](https://discord.gg/DdJsrdry6F)
 [<img src="https://github.com/vwxyzjn/gym-microrts/workflows/build/badge.svg">](
