@@ -1,4 +1,6 @@
-
+<p align="center">
+    <img src="micrortspy-text.png" width="500px"/>
+</p>
 
 Formerly Gym-μRTS/Gym-MicroRTS
 
