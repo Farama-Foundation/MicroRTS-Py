@@ -12,6 +12,8 @@ https://pypi.org/project/gym-microrts/)
 
 This repo contains the source code for the gym wrapper of μRTS authored by [Santiago Ontañón](https://github.com/santiontanon/microrts).
 
+MicroRTS-Py will eventually be updated, maintained, and made compliant with the standards of the Farama Foundation (https://farama.org/project_standards). However, this is currently a lower priority than other projects we're working to maintain. If you'd like to contribute to development, you can join our discord server here- https://discord.gg/jfERDCSw.
+
 ![demo.gif](static/fullgame.gif)
 
 ## Get Started
