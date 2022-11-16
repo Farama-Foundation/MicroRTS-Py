@@ -12,8 +12,8 @@ from typing import List
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 import torch.distributed as dist
+import torch.nn as nn
 import torch.optim as optim
 from gym.spaces import MultiDiscrete
 from stable_baselines3.common.vec_env import VecEnvWrapper, VecMonitor, VecVideoRecorder
@@ -386,9 +386,7 @@ E.g., ` torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_gridnet_multigpu
     envs = MicroRTSStatsRecorder(envs, args.gamma)
     envs = VecMonitor(envs)
     if args.capture_video:
-        envs = VecVideoRecorder(
-            envs, f"videos/{run_name}", record_video_trigger=lambda x: x % 100000 == 0, video_length=2000
-        )
+        envs = VecVideoRecorder(envs, f"videos/{run_name}", record_video_trigger=lambda x: x % 100000 == 0, video_length=2000)
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
     eval_executor = None
@@ -487,7 +485,7 @@ E.g., ` torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_gridnet_multigpu
         print(
             f"local_rank: {local_rank}, action.sum(): {action.sum()}, update: {update}, agent.actor.weight.sum(): {list(agent.actor)[0].weight.sum()}"
         )
-        training_time_start =  time.time()
+        training_time_start = time.time()
         # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
             last_value = agent.get_value(next_obs).reshape(1, -1)
