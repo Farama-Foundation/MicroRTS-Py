@@ -13,7 +13,7 @@ envs = MicroRTSGridModeVecEnv(
     max_steps=2000,
     render_theme=2,
     ai2s=[microrts_ai.coacAI for _ in range(1)],
-    map_paths=["maps/16x16/basesWorkers16x16.xml"],
+    map_paths=["maps/16x16/basesWorkers16x16Bwall.xml"],
     reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
 )
 # envs = VecVideoRecorder(envs, 'videos', record_video_trigger=lambda x: x % 4000 == 0, video_length=2000)

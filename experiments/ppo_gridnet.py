@@ -19,9 +19,7 @@ from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
 from gym_microrts import microrts_ai
-from gym_microrts.envs.vec_env import (
-    MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv,
-)
+from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 
 def parse_args():
@@ -410,6 +408,9 @@ if __name__ == "__main__":
     )
 
     for update in range(starting_update, args.num_updates + 1):
+        step_time = 0
+        inference_time = 0
+        get_mask_time = 0
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / args.num_updates
@@ -417,27 +418,34 @@ if __name__ == "__main__":
             optimizer.param_groups[0]["lr"] = lrnow
 
         # TRY NOT TO MODIFY: prepare the execution of the game.
+        rollout_time_start = time.time()
         for step in range(0, args.num_steps):
             # envs.render()
             global_step += 1 * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
+
+            get_mask_time_start = time.time()
+            invalid_action_masks[step] = torch.tensor(envs.get_action_mask()).to(device)
+            get_mask_time += time.time() - get_mask_time_start
+
             # ALGO LOGIC: put action logic here
+            inference_time_start = time.time()
             with torch.no_grad():
-                invalid_action_masks[step] = torch.tensor(envs.get_action_mask()).to(device)
                 action, logproba, _, _, vs = agent.get_action_and_value(
                     next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
                 )
                 values[step] = vs.flatten()
-
             actions[step] = action
             logprobs[step] = logproba
-            try:
-                next_obs, rs, ds, infos = envs.step(action.cpu().numpy().reshape(envs.num_envs, -1))
-                next_obs = torch.Tensor(next_obs).to(device)
-            except Exception as e:
-                e.printStackTrace()
-                raise
+            cpu_action = action.cpu().numpy().reshape(envs.num_envs, -1)
+            inference_time += time.time() - inference_time_start
+
+            step_time_start = time.time()
+            next_obs, rs, ds, infos = envs.step(cpu_action)
+            step_time += time.time() - step_time_start
+
+            next_obs = torch.Tensor(next_obs).to(device)
             rewards[step], next_done = torch.Tensor(rs).to(device), torch.Tensor(ds).to(device)
 
             for info in infos:
@@ -449,6 +457,8 @@ if __name__ == "__main__":
                         writer.add_scalar(f"charts/episodic_return/{key}", info["microrts_stats"][key], global_step)
                     break
 
+
+        training_time_start =  time.time()
         # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
             last_value = agent.get_value(next_obs).reshape(1, -1)
@@ -559,6 +569,13 @@ if __name__ == "__main__":
         if args.kle_stop or args.kle_rollback:
             writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
         writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
+        writer.add_scalar("charts/sps_step", int(args.num_envs * args.num_steps / step_time), global_step)
+        writer.add_scalar("charts/sps_inference", int(args.num_envs * args.num_steps / inference_time), global_step)
+        writer.add_scalar("charts/step_time", step_time, global_step)
+        writer.add_scalar("charts/inference_time", inference_time, global_step)
+        writer.add_scalar("charts/get_mask_time", get_mask_time, global_step)
+        writer.add_scalar("charts/rollout_time", time.time() - rollout_time_start, global_step)
+        writer.add_scalar("charts/training_time", time.time() - training_time_start, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
 
     if eval_executor is not None:

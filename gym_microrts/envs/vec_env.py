@@ -52,6 +52,7 @@ class MicroRTSGridModeVecEnv:
         map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
         cycle_maps=[],
+        autobuild_microrts=True,
     ):
 
         self.num_selfplay_envs = num_selfplay_envs
@@ -81,13 +82,15 @@ class MicroRTSGridModeVecEnv:
         if not os.path.exists(f"{self.microrts_path}/README.md"):
             print(MICRORTS_CLONE_MESSAGE)
             os.system(f"git submodule update --init --recursive")
-        print(f"removing {self.microrts_path}/microrts.jar...")
-        if os.path.exists(f"{self.microrts_path}/microrts.jar"):
-            os.remove(f"{self.microrts_path}/microrts.jar")
-        print(f"building {self.microrts_path}/microrts.jar...")
 
-        # call the build script at the microrts folder
-        subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{self.microrts_path}")
+        if autobuild_microrts:
+            print(f"removing {self.microrts_path}/microrts.jar...")
+            if os.path.exists(f"{self.microrts_path}/microrts.jar"):
+                os.remove(f"{self.microrts_path}/microrts.jar")
+            print(f"building {self.microrts_path}/microrts.jar...")
+
+            # call the build script at the microrts folder
+            subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{self.microrts_path}")
 
         # read map
         root = ET.parse(os.path.join(self.microrts_path, self.map_paths[0])).getroot()
@@ -141,11 +144,10 @@ class MicroRTSGridModeVecEnv:
 
         # computed properties
         # [num_planes_hp(5), num_planes_resources(5), num_planes_player(5),
-        # num_planes_unit_type(z), num_planes_unit_action(6)]
-
-        self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6]
+        # num_planes_unit_type(z), num_planes_unit_action(6), num_planes_terrain(2)]
+        self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6, 2]
         if partial_obs:
-            self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6, 2]
+            self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6, 2] # two extra planes for visibility # TODO
         self.observation_space = gym.spaces.Box(
             low=0.0, high=1.0, shape=(self.height, self.width, sum(self.num_planes)), dtype=np.int32
         )
