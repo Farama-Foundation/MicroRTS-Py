@@ -237,7 +237,7 @@ class MicroRTSGridModeVecEnv:
                     if d and done_idx % 2 == 0:
                         done_idx -= self.num_bot_envs  # recalibrate the index
                         self.vec_client.selfPlayClients[done_idx // 2].mapPath = next(self.next_map)
-                        self.vec_client.selfPlayClients[done_idx // 2].reset(0)
+                        self.vec_client.selfPlayClients[done_idx // 2].reset()
                         p0_response = self.vec_client.selfPlayClients[done_idx // 2].getResponse(0)
                         p1_response = self.vec_client.selfPlayClients[done_idx // 2].getResponse(1)
                         obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
