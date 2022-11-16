@@ -185,6 +185,7 @@ class Match:
                 ai2s=built_in_ais,
                 map_paths=[map_path],
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
+                autobuild_microrts=False,
             )
             self.agent = Agent(self.envs).to(self.device)
             self.agent.load_state_dict(torch.load(self.rl_ai, map_location=self.device))
@@ -198,6 +199,7 @@ class Match:
                 render_theme=2,
                 map_paths=[map_path],
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
+                autobuild_microrts=False,
             )
             self.agent = Agent(self.envs).to(self.device)
             self.agent.load_state_dict(torch.load(self.rl_ai, map_location=self.device))
@@ -213,6 +215,7 @@ class Match:
                 render_theme=2,
                 map_paths=[map_path],
                 reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
+                autobuild_microrts=False,
             )
         self.envs = MicroRTSStatsRecorder(self.envs)
         self.envs = VecMonitor(self.envs)

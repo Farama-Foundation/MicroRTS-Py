@@ -295,6 +295,7 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         render_theme=2,
         map_paths="maps/10x10/basesTwoWorkers10x10.xml",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
+        autobuild_microrts=True,
     ):
 
         self.ai1s = ai1s
@@ -312,13 +313,16 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         if not os.path.exists(f"{self.microrts_path}/README.md"):
             print(MICRORTS_CLONE_MESSAGE)
             os.system(f"git submodule update --init --recursive")
-        print(f"removing {self.microrts_path}/microrts.jar...")
-        if os.path.exists(f"{self.microrts_path}/microrts.jar"):
-            os.remove(f"{self.microrts_path}/microrts.jar")
-        print(f"building {self.microrts_path}/microrts.jar...")
 
-        # call the build script at the microrts folder
-        subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{self.microrts_path}")
+        if autobuild_microrts:
+            print(f"removing {self.microrts_path}/microrts.jar...")
+            if os.path.exists(f"{self.microrts_path}/microrts.jar"):
+                os.remove(f"{self.microrts_path}/microrts.jar")
+            print(f"building {self.microrts_path}/microrts.jar...")
+
+            # call the build script at the microrts folder
+            subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{self.microrts_path}")
+
         root = ET.parse(os.path.join(self.microrts_path, self.map_paths[0])).getroot()
         self.height, self.width = int(root.get("height")), int(root.get("width"))
 
