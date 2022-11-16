@@ -457,8 +457,7 @@ if __name__ == "__main__":
                         writer.add_scalar(f"charts/episodic_return/{key}", info["microrts_stats"][key], global_step)
                     break
 
-
-        training_time_start =  time.time()
+        training_time_start = time.time()
         # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
             last_value = agent.get_value(next_obs).reshape(1, -1)

@@ -107,4 +107,3 @@ def test_observation():
     next_obs = envs.reset()
     print(next_obs[0][0][0], wall)
     np.testing.assert_array_equal(next_obs[0][0][0], wall)
-

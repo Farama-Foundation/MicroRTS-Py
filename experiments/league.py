@@ -85,11 +85,12 @@ db = SqliteDatabase(dbpath)
 
 if args.model_type == "ppo_gridnet":
     from ppo_gridnet import Agent, MicroRTSStatsRecorder
-    from gym_microrts.envs.vec_env import MicroRTSBotVecEnv
-    from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
+
+    from gym_microrts.envs.vec_env import MicroRTSBotVecEnv, MicroRTSGridModeVecEnv
 
 else:
     raise ValueError(f"model_type {args.model_type} is not supported")
+
 
 class BaseModel(Model):
     class Meta:

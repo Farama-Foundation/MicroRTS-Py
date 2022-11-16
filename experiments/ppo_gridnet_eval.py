@@ -74,6 +74,7 @@ if __name__ == "__main__":
 
     if args.model_type == "ppo_gridnet":
         from ppo_gridnet import Agent, MicroRTSStatsRecorder
+
         from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
     else:
         raise ValueError(f"model_type {args.model_type} is not supported")
