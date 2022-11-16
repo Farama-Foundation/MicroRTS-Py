@@ -25,12 +25,12 @@ jobs:
         java-version: '8.x' # The JDK version to make available on the path.
         java-package: jdk # (jre, jdk, or jdk+fx) - defaults to jdk
         architecture: x64 # (x64 or x86) - defaults to x64
-    - name: Build microrts
-      run: bash build.sh
-    - name: Run image
-      uses: abatilo/actions-poetry@v2.0.0
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
       with:
-        poetry-version: 1.1.7
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
     - name: Build a source tarball
       run: pip install poetry-dynamic-versioning && poetry install --no-dev && poetry build --format sdist
     - name: Upload artifact to S3
