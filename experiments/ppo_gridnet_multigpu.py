@@ -5,12 +5,14 @@ import os
 import random
 import subprocess
 import time
-from concurrent.futures import ThreadPoolExecutor
+import warnings
 from distutils.util import strtobool
+from typing import List
 
 import numpy as np
 import pandas as pd
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 from gym.spaces import MultiDiscrete
@@ -33,7 +35,7 @@ def parse_args():
         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=300000000,
+    parser.add_argument('--total-timesteps', type=int, default=50000000,
         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -87,11 +89,20 @@ def parse_args():
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--clip-vloss', type=lambda x: bool(strtobool(x)), default=True, nargs='?', const=True,
         help='Toggles whether or not to use a clipped loss for the value function, as per the paper.')
-    parser.add_argument('--num-models', type=int, default=200,
+    parser.add_argument('--num-models', type=int, default=100,
         help='the number of models saved')
-    parser.add_argument('--max-eval-workers', type=int, default=2,
+    parser.add_argument('--max-eval-workers', type=int, default=4,
         help='the maximum number of eval workers (skips evaluation when set to 0)')
+    parser.add_argument('--train-maps', nargs='+', default=["maps/16x16/basesWorkers16x16A.xml"],
+        help='the list of maps used during training')
+    parser.add_argument('--eval-maps', nargs='+', default=["maps/16x16/basesWorkers16x16A.xml"],
+        help='the list of maps used during evaluation')
 
+    # multi-GPU arguments
+    parser.add_argument("--device-ids", nargs="+", default=[],
+        help="the device ids that subprocess workers will use")
+    parser.add_argument("--backend", type=str, default="gloo", choices=["gloo", "nccl", "mpi"],
+        help="the id of the environment")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -100,7 +111,6 @@ def parse_args():
     args.minibatch_size = int(args.batch_size // args.n_minibatch)
     args.num_updates = args.total_timesteps // args.batch_size
     args.save_frequency = max(1, int(args.num_updates // args.num_models))
-    print(args.save_frequency)
     # fmt: on
     return args
 
@@ -177,18 +187,9 @@ class Agent(nn.Module):
             layer_init(nn.Conv2d(32, 64, kernel_size=3, padding=1)),
             nn.MaxPool2d(3, stride=2, padding=1),
             nn.ReLU(),
-            layer_init(nn.Conv2d(64, 128, kernel_size=3, padding=1)),
-            nn.MaxPool2d(3, stride=2, padding=1),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(128, 256, kernel_size=3, padding=1)),
-            nn.MaxPool2d(3, stride=2, padding=1),
         )
 
         self.actor = nn.Sequential(
-            layer_init(nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1)),
-            nn.ReLU(),
-            layer_init(nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1)),
-            nn.ReLU(),
             layer_init(nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1, output_padding=1)),
             nn.ReLU(),
             layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1)),
@@ -196,7 +197,7 @@ class Agent(nn.Module):
         )
         self.critic = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(256, 128)),
+            layer_init(nn.Linear(64 * 4 * 4, 128)),
             nn.ReLU(),
             layer_init(nn.Linear(128, 1), std=1),
         )
@@ -209,7 +210,6 @@ class Agent(nn.Module):
         split_logits = torch.split(grid_logits, envs.action_plane_space.nvec.tolist(), dim=1)
 
         if action is None:
-            # invalid_action_masks = torch.tensor(np.array(envs.vec_client.getMasks(0))).to(device)
             invalid_action_masks = invalid_action_masks.view(-1, invalid_action_masks.shape[-1])
             split_invalid_action_masks = torch.split(invalid_action_masks, envs.action_plane_space.nvec.tolist(), dim=1)
             multi_categoricals = [
@@ -237,7 +237,7 @@ class Agent(nn.Module):
         return self.critic(self.encoder(x))
 
 
-def run_evaluation(model_path: str, output_path: str):
+def run_evaluation(model_path: str, output_path: str, eval_maps: List[str]):
     args = [
         "python",
         "league.py",
@@ -249,6 +249,10 @@ def run_evaluation(model_path: str, output_path: str):
         "false",
         "--output-path",
         output_path,
+        "--model-type",
+        "ppo_gridnet",
+        "--maps",
+        *eval_maps,
     ]
     fd = subprocess.Popen(args)
     print(f"Evaluating {model_path}")
@@ -298,35 +302,73 @@ class TrueskillWriter:
 
 
 if __name__ == "__main__":
+    # torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_gridnet_multigpu.py
+    # taken from https://pytorch.org/docs/stable/elastic/run.html
+    local_rank = int(os.getenv("LOCAL_RANK", "0"))
+    world_size = int(os.getenv("WORLD_SIZE", "1"))
     args = parse_args()
 
-    # TRY NOT TO MODIFY: setup the environment
-    experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    if args.prod_mode:
-        import wandb
+    args.num_selfplay_envs = args.num_selfplay_envs // world_size
+    args.num_bot_envs = args.num_bot_envs // world_size
 
-        run = wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            # sync_tensorboard=True,
-            config=vars(args),
-            name=experiment_name,
-            monitor_gym=True,
-            save_code=True,
+    args.num_envs = args.num_selfplay_envs + args.num_bot_envs
+    args.batch_size = int(args.num_envs * args.num_steps)
+    args.minibatch_size = int(args.batch_size // args.n_minibatch)
+    args.num_updates = args.total_timesteps // (args.batch_size * world_size)
+    if world_size > 1:
+        dist.init_process_group(args.backend, rank=local_rank, world_size=world_size)
+    else:
+        warnings.warn(
+            """
+Not using distributed mode!
+If you want to use distributed mode, please execute this script with 'torchrun'.
+E.g., ` torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_gridnet_multigpu.py`
+        """
         )
-        wandb.tensorboard.patch(save=False)
-        CHECKPOINT_FREQUENCY = 50
-    writer = SummaryWriter(f"runs/{experiment_name}")
-    writer.add_text(
-        "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))
-    )
+    print(f"================================")
+    print(f"args.num_envs: {args.num_envs}, args.batch_size: {args.batch_size}, args.minibatch_size: {args.minibatch_size}")
+    run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    writer = None
+    if local_rank == 0:
+        if args.prod_mode:
+            import wandb
 
+            run = wandb.init(
+                project=args.wandb_project_name,
+                entity=args.wandb_entity,
+                sync_tensorboard=True,
+                config=vars(args),
+                name=run_name,
+                monitor_gym=True,
+                save_code=True,
+            )
+        writer = SummaryWriter(f"runs/{run_name}")
+        writer.add_text(
+            "hyperparameters",
+            "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+        )
+
+    print(f"Save frequency: {args.save_frequency}")
     # TRY NOT TO MODIFY: seeding
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    print(f"Device: {device}")
+    # CRUCIAL: note that we needed to pass a different seed for each data parallelism worker
+    args.seed += local_rank
     random.seed(args.seed)
     np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    torch.manual_seed(args.seed - local_rank)
     torch.backends.cudnn.deterministic = args.torch_deterministic
+
+    if len(args.device_ids) > 0:
+        assert len(args.device_ids) == world_size, "you must specify the same number of device ids as `--nproc_per_node`"
+        device = torch.device(f"cuda:{args.device_ids[local_rank]}" if torch.cuda.is_available() and args.cuda else "cpu")
+    else:
+        device_count = torch.cuda.device_count()
+        if device_count < world_size:
+            device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+        else:
+            device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() and args.cuda else "cpu")
+
     envs = MicroRTSGridModeVecEnv(
         num_selfplay_envs=args.num_selfplay_envs,
         num_bot_envs=args.num_bot_envs,
@@ -337,22 +379,24 @@ if __name__ == "__main__":
         + [microrts_ai.randomBiasedAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.lightRushAI for _ in range(min(args.num_bot_envs, 2))]
         + [microrts_ai.workerRushAI for _ in range(min(args.num_bot_envs, 2))],
-        map_paths=["maps/16x16/basesWorkers16x16.xml"],
+        map_paths=[args.train_maps[0]],
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
+        cycle_maps=args.train_maps,
     )
     envs = MicroRTSStatsRecorder(envs, args.gamma)
     envs = VecMonitor(envs)
     if args.capture_video:
-        envs = VecVideoRecorder(
-            envs, f"videos/{experiment_name}", record_video_trigger=lambda x: x % 100000 == 0, video_length=2000
-        )
+        envs = VecVideoRecorder(envs, f"videos/{run_name}", record_video_trigger=lambda x: x % 100000 == 0, video_length=2000)
     assert isinstance(envs.action_space, MultiDiscrete), "only MultiDiscrete action space is supported"
 
     eval_executor = None
-    if args.max_eval_workers > 0:
+    if args.max_eval_workers > 0 and local_rank == 0:
+        from concurrent.futures import ThreadPoolExecutor
+
         eval_executor = ThreadPoolExecutor(max_workers=args.max_eval_workers, thread_name_prefix="league-eval-")
 
     agent = Agent(envs).to(device)
+    torch.manual_seed(args.seed)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     if args.anneal_lr:
         # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
@@ -378,32 +422,21 @@ if __name__ == "__main__":
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
 
-    ## CRASH AND RESUME LOGIC:
-    starting_update = 1
-
-    if args.prod_mode and wandb.run.resumed:
-        starting_update = run.summary.get("charts/update") + 1
-        global_step = starting_update * args.batch_size
-        api = wandb.Api()
-        run = api.run(f"{run.entity}/{run.project}/{run.id}")
-        model = run.file("agent.pt")
-        model.download(f"models/{experiment_name}/")
-        agent.load_state_dict(torch.load(f"models/{experiment_name}/agent.pt", map_location=device))
-        agent.eval()
-        print(f"resumed at update {starting_update}")
-
     print("Model's state_dict:")
     for param_tensor in agent.state_dict():
         print(param_tensor, "\t", agent.state_dict()[param_tensor].size())
     total_params = sum([param.nelement() for param in agent.parameters()])
     print("Model's total parameters:", total_params)
 
-    ## EVALUATION LOGIC:
+    # EVALUATION LOGIC:
     trueskill_writer = TrueskillWriter(
         args.prod_mode, writer, "gym-microrts-static-files/league.csv", "gym-microrts-static-files/league.csv"
     )
 
-    for update in range(starting_update, args.num_updates + 1):
+    for update in range(1, args.num_updates + 1):
+        step_time = 0
+        inference_time = 0
+        get_mask_time = 0
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / args.num_updates
@@ -411,41 +444,51 @@ if __name__ == "__main__":
             optimizer.param_groups[0]["lr"] = lrnow
 
         # TRY NOT TO MODIFY: prepare the execution of the game.
+        rollout_time_start = time.time()
         for step in range(0, args.num_steps):
             # envs.render()
-            global_step += 1 * args.num_envs
+            global_step += 1 * args.num_envs * world_size
             obs[step] = next_obs
             dones[step] = next_done
+
+            get_mask_time_start = time.time()
+            invalid_action_masks[step] = torch.tensor(envs.get_action_mask()).to(device)
+            get_mask_time += time.time() - get_mask_time_start
+
             # ALGO LOGIC: put action logic here
+            inference_time_start = time.time()
             with torch.no_grad():
-                invalid_action_masks[step] = torch.tensor(np.array(envs.get_action_mask())).to(device)
                 action, logproba, _, _, vs = agent.get_action_and_value(
                     next_obs, envs=envs, invalid_action_masks=invalid_action_masks[step], device=device
                 )
                 values[step] = vs.flatten()
-
             actions[step] = action
             logprobs[step] = logproba
-            try:
-                next_obs, rs, ds, infos = envs.step(action.cpu().numpy().reshape(envs.num_envs, -1))
-                next_obs = torch.Tensor(next_obs).to(device)
-            except Exception as e:
-                e.printStackTrace()
-                raise
+            cpu_action = action.cpu().numpy().reshape(envs.num_envs, -1)
+            inference_time += time.time() - inference_time_start
+
+            step_time_start = time.time()
+            next_obs, rs, ds, infos = envs.step(cpu_action)
+            step_time += time.time() - step_time_start
+
+            next_obs = torch.Tensor(next_obs).to(device)
             rewards[step], next_done = torch.Tensor(rs).to(device), torch.Tensor(ds).to(device)
 
             for info in infos:
-                if "episode" in info.keys():
+                if "episode" in info.keys() and local_rank == 0:
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                     for key in info["microrts_stats"]:
                         writer.add_scalar(f"charts/episodic_return/{key}", info["microrts_stats"][key], global_step)
                     break
-
+        print(
+            f"local_rank: {local_rank}, action.sum(): {action.sum()}, update: {update}, agent.actor.weight.sum(): {list(agent.actor)[0].weight.sum()}"
+        )
+        training_time_start = time.time()
         # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
-            last_value = agent.get_value(next_obs.to(device)).reshape(1, -1)
+            last_value = agent.get_value(next_obs).reshape(1, -1)
             if args.gae:
                 advantages = torch.zeros_like(rewards).to(device)
                 lastgaelam = 0
@@ -523,37 +566,68 @@ if __name__ == "__main__":
 
                 optimizer.zero_grad()
                 loss.backward()
+
+                if world_size > 1:
+                    # batch allreduce ops: see https://github.com/entity-neural-network/incubator/pull/220
+                    all_grads_list = []
+                    for param in agent.parameters():
+                        if param.grad is not None:
+                            all_grads_list.append(param.grad.view(-1))
+                    all_grads = torch.cat(all_grads_list)
+                    dist.all_reduce(all_grads, op=dist.ReduceOp.SUM)
+                    offset = 0
+                    for param in agent.parameters():
+                        if param.grad is not None:
+                            param.grad.data.copy_(
+                                all_grads[offset : offset + param.numel()].view_as(param.grad.data) / world_size
+                            )
+                            offset += param.numel()
+
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
 
-        if (update - 1) % args.save_frequency == 0:
-            if not os.path.exists(f"models/{experiment_name}"):
-                os.makedirs(f"models/{experiment_name}")
-            torch.save(agent.state_dict(), f"models/{experiment_name}/agent.pt")
-            torch.save(agent.state_dict(), f"models/{experiment_name}/{global_step}.pt")
+        if (update - 1) % args.save_frequency == 0 and local_rank == 0:
+            if not os.path.exists(f"models/{run_name}"):
+                os.makedirs(f"models/{run_name}")
+            torch.save(agent.state_dict(), f"models/{run_name}/agent.pt")
+            torch.save(agent.state_dict(), f"models/{run_name}/{global_step}.pt")
             if args.prod_mode:
-                wandb.save(f"models/{experiment_name}/agent.pt", base_path=f"models/{experiment_name}", policy="now")
+                wandb.save(f"models/{run_name}/agent.pt", base_path=f"models/{run_name}", policy="now")
             if eval_executor is not None:
                 future = eval_executor.submit(
-                    run_evaluation, f"models/{experiment_name}/{global_step}.pt", f"runs/{experiment_name}/{global_step}.csv"
+                    run_evaluation,
+                    f"models/{run_name}/{global_step}.pt",
+                    f"runs/{run_name}/{global_step}.csv",
+                    args.eval_maps,
                 )
-                print(f"Queued models/{experiment_name}/{global_step}.pt")
+                print(f"Queued models/{run_name}/{global_step}.pt")
                 future.add_done_callback(trueskill_writer.on_evaluation_done)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
-        writer.add_scalar("charts/update", update, global_step)
-        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
-        writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
-        writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-        if args.kle_stop or args.kle_rollback:
-            writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
-        writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
-        print("SPS:", int(global_step / (time.time() - start_time)))
+        if local_rank == 0:
+            writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+            writer.add_scalar("charts/update", update, global_step)
+            writer.add_scalar("losses/value_loss", v_loss.detach().item(), global_step)
+            writer.add_scalar("losses/policy_loss", pg_loss.detach().item(), global_step)
+            writer.add_scalar("losses/entropy", entropy.detach().mean().item(), global_step)
+            writer.add_scalar("losses/approx_kl", approx_kl.detach().item(), global_step)
+            if args.kle_stop or args.kle_rollback:
+                writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
+            writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
+            writer.add_scalar("charts/sps_step", int(args.num_envs * args.num_steps / step_time), global_step)
+            writer.add_scalar("charts/sps_inference", int(args.num_envs * args.num_steps / inference_time), global_step)
+            writer.add_scalar("charts/step_time", step_time, global_step)
+            writer.add_scalar("charts/inference_time", inference_time, global_step)
+            writer.add_scalar("charts/get_mask_time", get_mask_time, global_step)
+            writer.add_scalar("charts/rollout_time", time.time() - rollout_time_start, global_step)
+            writer.add_scalar("charts/training_time", time.time() - training_time_start, global_step)
+            print("SPS:", int(global_step / (time.time() - start_time)))
 
     if eval_executor is not None:
         # shutdown pool of threads but make sure we finished scheduled evaluations
         eval_executor.shutdown(wait=True, cancel_futures=False)
     envs.close()
-    writer.close()
+    if local_rank == 0:
+        writer.close()
+        if args.prod_mode:
+            wandb.finish()

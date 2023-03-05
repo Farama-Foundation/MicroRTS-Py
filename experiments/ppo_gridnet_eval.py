@@ -53,7 +53,7 @@ def parse_args():
         help="the path to the agent's model")
     parser.add_argument('--ai', type=str, default="",
         help='the opponent AI to evaluate against')
-    parser.add_argument('--model-type', type=str, default=f"ppo_gridnet_large", choices=["ppo_gridnet_large", "ppo_gridnet"],
+    parser.add_argument('--model-type', type=str, default=f"ppo_gridnet", choices=["ppo_gridnet"],
         help='the output path of the leaderboard csv')
     args = parser.parse_args()
     if not args.seed:
@@ -72,16 +72,12 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    if args.model_type == "ppo_gridnet_large":
-        from ppo_gridnet_large import Agent, MicroRTSStatsRecorder
+    if args.model_type == "ppo_gridnet":
+        from ppo_gridnet import Agent, MicroRTSStatsRecorder
 
         from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
     else:
-        from ppo_gridnet import Agent, MicroRTSStatsRecorder
-
-        from gym_microrts.envs.vec_env import (
-            MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv,
-        )
+        raise ValueError(f"model_type {args.model_type} is not supported")
 
     # TRY NOT TO MODIFY: setup the environment
     experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
