@@ -25,9 +25,11 @@ Prerequisites:
 * FFmpeg (for video recording utilities)
 
 ```bash
-$ git clone --recursive https://github.com/vwxyzjn/gym-microrts.git && \
+$ git clone --recursive https://github.com/Farama-Foundation/MicroRTS-Py.git && \
 cd gym-microrts
 poetry install
+# By default, the torch wheel is built with CUDA 10.2. If you are using newer NVIDIA GPUs (e.g., 3060 TI), you may need to specifically install CUDA 11.3 wheels by overriding the torch dependency with pip:
+# poetry run pip install "torch==1.12.1" --upgrade --extra-index-url https://download.pytorch.org/whl/cu113
 python hello_world.py
 ```
 
@@ -40,6 +42,8 @@ python ppo_gridnet.py \
     --capture-video \
     --seed 1
 ```
+
+[![asciicast](https://asciinema.org/a/586754.svg)](https://asciinema.org/a/586754)
 
 For running a partial observable example, tune the `partial_obs` argument.
 ```bash
