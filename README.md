@@ -43,6 +43,8 @@ python ppo_gridnet.py \
     --seed 1
 ```
 
+[![asciicast](https://asciinema.org/a/586754.svg)](https://asciinema.org/a/586754)
+
 For running a partial observable example, tune the `partial_obs` argument.
 ```bash
 cd experiments
