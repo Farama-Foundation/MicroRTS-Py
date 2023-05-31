@@ -90,8 +90,7 @@ if args.model_type == "ppo_gridnet_large":
 else:
     from ppo_gridnet import Agent, MicroRTSStatsRecorder
 
-    from gym_microrts.envs.vec_env import MicroRTSBotVecEnv
-    from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
+    from gym_microrts.envs.vec_env import MicroRTSBotVecEnv, MicroRTSGridModeVecEnv
 
 
 class BaseModel(Model):
