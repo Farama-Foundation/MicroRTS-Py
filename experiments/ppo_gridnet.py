@@ -19,9 +19,7 @@ from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
 from gym_microrts import microrts_ai
-from gym_microrts.envs.vec_env import (
-    MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv,
-)
+from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
 
 def parse_args():
