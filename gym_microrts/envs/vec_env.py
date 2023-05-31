@@ -86,8 +86,10 @@ class MicroRTSGridModeVecEnv:
             os.remove(f"{self.microrts_path}/microrts.jar")
         print(f"building {self.microrts_path}/microrts.jar...")
 
-        # call the build script at the microrts folder
-        subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{self.microrts_path}")
+        # call the build script at the root folder
+        root_dir = os.path.dirname(gym_microrts.__path__[0])
+        print(root_dir)
+        subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{root_dir}")
 
         # read map
         root = ET.parse(os.path.join(self.microrts_path, self.map_paths[0])).getroot()
@@ -116,7 +118,7 @@ class MicroRTSGridModeVecEnv:
         from rts.units import UnitTypeTable
 
         self.real_utt = UnitTypeTable()
-        from ai.rewardfunction import (
+        from ai.reward import (
             AttackRewardFunction,
             ProduceBuildingRewardFunction,
             ProduceCombatUnitRewardFunction,
@@ -344,7 +346,7 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         from rts.units import UnitTypeTable
 
         self.real_utt = UnitTypeTable()
-        from ai.rewardfunction import (
+        from ai.reward import (
             AttackRewardFunction,
             ProduceBuildingRewardFunction,
             ProduceCombatUnitRewardFunction,

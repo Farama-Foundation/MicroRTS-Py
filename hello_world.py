@@ -39,7 +39,7 @@ envs.reset()
 nvec = envs.action_space.nvec
 
 for i in range(10000):
-    envs.render()
+    # envs.render()
     action_mask = envs.get_action_mask()
     action_mask = action_mask.reshape(-1, action_mask.shape[-1])
     action_mask[action_mask == 0] = -9e8
