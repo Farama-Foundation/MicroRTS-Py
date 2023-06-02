@@ -52,6 +52,7 @@ class MicroRTSGridModeVecEnv:
         map_paths=["maps/10x10/basesTwoWorkers10x10.xml"],
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
         cycle_maps=[],
+        autobuild=True,
     ):
 
         self.num_selfplay_envs = num_selfplay_envs
@@ -81,13 +82,15 @@ class MicroRTSGridModeVecEnv:
         if not os.path.exists(f"{self.microrts_path}/README.md"):
             print(MICRORTS_CLONE_MESSAGE)
             os.system(f"git submodule update --init --recursive")
-        print(f"removing {self.microrts_path}/microrts.jar...")
-        if os.path.exists(f"{self.microrts_path}/microrts.jar"):
-            os.remove(f"{self.microrts_path}/microrts.jar")
-        print(f"building {self.microrts_path}/microrts.jar...")
 
-        # call the build script at the microrts folder
-        subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{self.microrts_path}")
+        if autobuild:
+            print(f"removing {self.microrts_path}/microrts.jar...")
+            if os.path.exists(f"{self.microrts_path}/microrts.jar"):
+                os.remove(f"{self.microrts_path}/microrts.jar")
+            print(f"building {self.microrts_path}/microrts.jar...")
+            root_dir = os.path.dirname(gym_microrts.__path__[0])
+            print(root_dir)
+            subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{root_dir}")
 
         # read map
         root = ET.parse(os.path.join(self.microrts_path, self.map_paths[0])).getroot()
@@ -116,7 +119,7 @@ class MicroRTSGridModeVecEnv:
         from rts.units import UnitTypeTable
 
         self.real_utt = UnitTypeTable()
-        from ai.rewardfunction import (
+        from ai.reward import (
             AttackRewardFunction,
             ProduceBuildingRewardFunction,
             ProduceCombatUnitRewardFunction,
@@ -235,7 +238,7 @@ class MicroRTSGridModeVecEnv:
                     if d and done_idx % 2 == 0:
                         done_idx -= self.num_bot_envs  # recalibrate the index
                         self.vec_client.selfPlayClients[done_idx // 2].mapPath = next(self.next_map)
-                        self.vec_client.selfPlayClients[done_idx // 2].reset(0)
+                        self.vec_client.selfPlayClients[done_idx // 2].reset()
                         p0_response = self.vec_client.selfPlayClients[done_idx // 2].getResponse(0)
                         p1_response = self.vec_client.selfPlayClients[done_idx // 2].getResponse(1)
                         obs[done_idx] = self._encode_obs(np.array(p0_response.observation))
@@ -293,6 +296,7 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         render_theme=2,
         map_paths="maps/10x10/basesTwoWorkers10x10.xml",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
+        autobuild=True,
     ):
 
         self.ai1s = ai1s
@@ -310,13 +314,16 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         if not os.path.exists(f"{self.microrts_path}/README.md"):
             print(MICRORTS_CLONE_MESSAGE)
             os.system(f"git submodule update --init --recursive")
-        print(f"removing {self.microrts_path}/microrts.jar...")
-        if os.path.exists(f"{self.microrts_path}/microrts.jar"):
-            os.remove(f"{self.microrts_path}/microrts.jar")
-        print(f"building {self.microrts_path}/microrts.jar...")
 
-        # call the build script at the microrts folder
-        subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{self.microrts_path}")
+        if autobuild:
+            print(f"removing {self.microrts_path}/microrts.jar...")
+            if os.path.exists(f"{self.microrts_path}/microrts.jar"):
+                os.remove(f"{self.microrts_path}/microrts.jar")
+            print(f"building {self.microrts_path}/microrts.jar...")
+            root_dir = os.path.dirname(gym_microrts.__path__[0])
+            print(root_dir)
+            subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{root_dir}")
+
         root = ET.parse(os.path.join(self.microrts_path, self.map_paths[0])).getroot()
         self.height, self.width = int(root.get("height")), int(root.get("width"))
 
@@ -344,7 +351,7 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         from rts.units import UnitTypeTable
 
         self.real_utt = UnitTypeTable()
-        from ai.rewardfunction import (
+        from ai.reward import (
             AttackRewardFunction,
             ProduceBuildingRewardFunction,
             ProduceCombatUnitRewardFunction,
@@ -516,7 +523,7 @@ class MicroRTSGridModeSharedMemVecEnv(MicroRTSGridModeVecEnv):
         reward, done = np.array(responses.reward), np.array(responses.done)
         infos = [{"raw_rewards": item} for item in reward]
         # check if it is in evaluation, if not, then change maps
-        if len(self.cycle_maps) > 0:
+        if len(self.cycle_maps) > 1:
             # check if an environment is done, if done, reset the client, and replace the observation
             for done_idx, d in enumerate(done[:, 0]):
                 # bot envs settings
