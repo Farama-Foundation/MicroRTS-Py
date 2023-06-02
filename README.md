@@ -26,8 +26,12 @@ Prerequisites:
 
 ```bash
 $ git clone --recursive https://github.com/Farama-Foundation/MicroRTS-Py.git && \
-cd gym-microrts
+cd MicroRTS-Py
 poetry install
+# The `poetry install` command above creates a virtual environment for us, in which all the dependencies are installed.
+# We can use `poetry shell` to create a new shell in which this environment is activated. Once we are done working with
+# MicroRTS, we can leave it again using `exit`.
+poetry shell
 # By default, the torch wheel is built with CUDA 10.2. If you are using newer NVIDIA GPUs (e.g., 3060 TI), you may need to specifically install CUDA 11.3 wheels by overriding the torch dependency with pip:
 # poetry run pip install "torch==1.12.1" --upgrade --extra-index-url https://download.pytorch.org/whl/cu113
 python hello_world.py
@@ -56,7 +60,7 @@ python ppo_gridnet.py \
 
 ## Technical Paper
 
-Before diving into the code, we highly recommend reading the preprint of our paper: [Gym-μRTS: Toward Affordable Deep Reinforcement Learning Research in Real-time Strategy Games](https://arxiv.org/abs/2105.13807)
+Before diving into the code, we highly recommend reading the preprint of our paper: [Gym-μRTS: Toward Affordable Deep Reinforcement Learning Research in Real-time Strategy Games](https://arxiv.org/abs/2105.13807).
 
 ### Depreciation note
 
@@ -172,7 +176,7 @@ To cite the Gym-µRTS simulator:
                Games Research with Deep Reinforcement Learning},
   booktitle = {2021 {IEEE} Conference on Games (CoG), Copenhagen, Denmark, August
                17-20, 2021},
-  pages     = {1--8},
+  pages     = {671--678},
   publisher = {{IEEE}},
   year      = {2021},
   url       = {https://doi.org/10.1109/CoG52621.2021.9619076},
