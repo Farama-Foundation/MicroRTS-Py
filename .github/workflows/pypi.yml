@@ -5,10 +5,13 @@ on:
     paths-ignore:
       - 'README.md'
       - 'static/**'
+  release:
+    types: [published]
 jobs:
   build-n-publish:
     name: Build
     runs-on: ubuntu-18.04
+    if: github.event_name == 'release' && github.event.action == 'published'
     steps:
     - uses: actions/checkout@v2
       with:
