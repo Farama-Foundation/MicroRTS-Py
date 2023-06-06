@@ -42,7 +42,7 @@ def parse_args():
     parser.add_argument('--prod-mode', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
         help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--capture-video', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
-        help='weather to capture videos of the agent performances (check out `videos` folder)')
+        help='whether to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="gym-microrts",
         help="the wandb's project name")
     parser.add_argument('--wandb-entity', type=str, default=None,
@@ -54,7 +54,7 @@ def parse_args():
     parser.add_argument('--n-minibatch', type=int, default=4,
         help='the number of mini batch')
     parser.add_argument('--num-bot-envs', type=int, default=0,
-        help='the number of bot game environment; 16 bot envs measn 16 games')
+        help='the number of bot game environment; 16 bot envs means 16 games')
     parser.add_argument('--num-selfplay-envs', type=int, default=24,
         help='the number of self play envs; 16 self play envs means 8 games')
     parser.add_argument('--num-steps', type=int, default=256,
