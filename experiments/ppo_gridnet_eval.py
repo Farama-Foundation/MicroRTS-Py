@@ -36,7 +36,7 @@ def parse_args():
     parser.add_argument('--prod-mode', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
         help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--capture-video', type=lambda x: bool(strtobool(x)), default=False, nargs='?', const=True,
-        help='weather to capture videos of the agent performances (check out `videos` folder)')
+        help='whether to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
         help="the wandb's project name")
     parser.add_argument('--wandb-entity', type=str, default=None,
