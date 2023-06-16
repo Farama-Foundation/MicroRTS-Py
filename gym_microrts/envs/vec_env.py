@@ -53,6 +53,7 @@ class MicroRTSGridModeVecEnv:
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
         cycle_maps=[],
         autobuild=True,
+        jvm_args=[],
     ):
 
         self.num_selfplay_envs = num_selfplay_envs
@@ -113,7 +114,7 @@ class MicroRTSGridModeVecEnv:
             ]
             for jar in jars:
                 jpype.addClassPath(os.path.join(self.microrts_path, jar))
-            jpype.startJVM(convertStrings=False)
+            jpype.startJVM(*jvm_args, convertStrings=False)
 
         # start microrts client
         from rts.units import UnitTypeTable
@@ -297,6 +298,7 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
         map_paths="maps/10x10/basesTwoWorkers10x10.xml",
         reward_weight=np.array([0.0, 1.0, 0.0, 0.0, 0.0, 5.0]),
         autobuild=True,
+        jvm_args=[],
     ):
 
         self.ai1s = ai1s
@@ -345,7 +347,7 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
             ]
             for jar in jars:
                 jpype.addClassPath(os.path.join(self.microrts_path, jar))
-            jpype.startJVM(convertStrings=False)
+            jpype.startJVM(*jvm_args, convertStrings=False)
 
         # start microrts client
         from rts.units import UnitTypeTable
