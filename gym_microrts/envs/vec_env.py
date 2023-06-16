@@ -279,7 +279,13 @@ class MicroRTSGridModeVecEnv:
             jpype.shutdownJVM()
 
     def get_action_mask(self):
+        """
+        :return: Mask for action types and action parameters,
+        of shape [num_envs, map height * width, action types + params]
+        """
+        # action_mask shape: [num_envs, map height, map width, 1 + action types + params]
         action_mask = np.array(self.vec_client.getMasks(0))
+        # self.source_unit_mask shape: [num_envs, map height * map width * 1]
         self.source_unit_mask = action_mask[:, :, :, 0].reshape(self.num_envs, -1)
         action_type_and_parameter_mask = action_mask[:, :, :, 1:].reshape(self.num_envs, self.height * self.width, -1)
         return action_type_and_parameter_mask
