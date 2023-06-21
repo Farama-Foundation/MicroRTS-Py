@@ -59,4 +59,4 @@ jobs:
         uses: GabrielBB/xvfb-action@v1
         with:
           run: |
-            xvfb-run -a poetry run pytest tests -v -p no:faulthandle
+            xvfb-run -a poetry run pytest -p no:faulthandle tests -v
