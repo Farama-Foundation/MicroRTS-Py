@@ -137,7 +137,6 @@ if __name__ == "__main__":
     mapsize = 16 * 16
     invalid_action_shape = (mapsize, envs.action_plane_space.nvec.sum())
 
-    invalid_action_masks = torch.zeros((1, args.num_envs) + invalid_action_shape).to(device)
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
@@ -167,17 +166,17 @@ if __name__ == "__main__":
             global_step += 1 * args.num_envs
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
-                invalid_action_masks[0] = torch.tensor(np.array(envs.get_action_mask())).to(device)
+                invalid_action_masks = torch.tensor(np.array(envs.get_action_mask())).to(device)
 
                 if args.ai:
                     action, logproba, _, _, vs = agent.get_action_and_value(
-                        next_obs, envs=envs, invalid_action_masks=invalid_action_masks[0], device=device
+                        next_obs, envs=envs, invalid_action_masks=invalid_action_masks, device=device
                     )
                 else:
                     p1_obs = next_obs[::2]
                     p2_obs = next_obs[1::2]
-                    p1_mask = invalid_action_masks[0][::2]
-                    p2_mask = invalid_action_masks[0][1::2]
+                    p1_mask = invalid_action_masks[::2]
+                    p2_mask = invalid_action_masks[1::2]
 
                     p1_action, _, _, _, _ = agent.get_action_and_value(
                         p1_obs, envs=envs, invalid_action_masks=p1_mask, device=device
