@@ -203,6 +203,14 @@ class Agent(nn.Module):
         self.register_buffer("mask_value", torch.tensor(-1e8))
 
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
+        """
+        :return:
+            (1) action (shape = [num_envs, width*height, 7], where 7 = dimensionality of per-unit action)
+            (2) log probability of action (shape = [num_envs])
+            (3) entropy (shape = [num_envs])
+            (4) invalid action masks
+            (5) Critic's prediction
+        """
         hidden = self.encoder(x)
         logits = self.actor(hidden)
         grid_logits = logits.reshape(-1, envs.action_plane_space.nvec.sum())
