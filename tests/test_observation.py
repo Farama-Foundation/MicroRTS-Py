@@ -63,14 +63,13 @@ def test_observation():
     np.testing.assert_array_equal(next_obs[0][14][14], p2_worker)
     np.testing.assert_array_equal(next_obs[0][13][13], p2_base)
 
-    # TODO: fix this BUG
     # player 2's perspective (self play)
-    # np.testing.assert_array_equal(next_obs[1][0][0], resource) # BUG: in `MicroRTSGridModeVecEnv` the onwer is correctly set to [0, 1, 0]
-    # np.testing.assert_array_equal(next_obs[1][1][0], resource) # BUG: in `MicroRTSGridModeVecEnv` the onwer is correctly set to [0, 1, 0]
+    np.testing.assert_array_equal(next_obs[1][0][0], resource)
+    np.testing.assert_array_equal(next_obs[1][1][0], resource)
     np.testing.assert_array_equal(next_obs[1][1][1], p2_worker)
     np.testing.assert_array_equal(next_obs[1][2][2], p2_base)
-    # np.testing.assert_array_equal(next_obs[1][15][15], resource) # BUG: in `MicroRTSGridModeVecEnv` the onwer is correctly set to [0, 1, 0]
-    # np.testing.assert_array_equal(next_obs[1][14][15], resource) # BUG: in `MicroRTSGridModeVecEnv` the onwer is correctly set to [0, 1, 0]
+    np.testing.assert_array_equal(next_obs[1][15][15], resource)
+    np.testing.assert_array_equal(next_obs[1][14][15], resource)
     np.testing.assert_array_equal(next_obs[1][14][14], p1_worker)
     np.testing.assert_array_equal(next_obs[1][13][13], p1_base)
 
