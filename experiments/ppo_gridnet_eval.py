@@ -78,9 +78,7 @@ if __name__ == "__main__":
     else:
         from ppo_gridnet import Agent, MicroRTSStatsRecorder
 
-        from gym_microrts.envs.vec_env import (
-            MicroRTSGridModeSharedMemVecEnv as MicroRTSGridModeVecEnv,
-        )
+        from gym_microrts.envs.vec_env import MicroRTSGridModeVecEnv
 
     # TRY NOT TO MODIFY: setup the environment
     experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
