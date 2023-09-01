@@ -152,8 +152,7 @@ where `--train-maps` allows you to specify the training maps and `--eval-maps` t
 
 ## Papers written using Gym-μRTS
 
-* AIIDE 2022 Strategy Games Workshop: [Transformers as Policies for Variable Action Environments
-Niklas Zwingenberger](https://arxiv.org/abs/2301.03679)
+* AIIDE 2022 Strategy Games Workshop: [Transformers as Policies for Variable Action Environments](https://arxiv.org/abs/2301.03679)
 * CoG 2021: [Gym-μRTS: Toward Affordable Deep Reinforcement Learning Research in Real-time Strategy Games](https://arxiv.org/abs/2105.13807),
 * AAAI RLG 2021: [Generalization in Deep Reinforcement Learning with Real-time Strategy Games](http://aaai-rlg.mlanctot.info/papers/AAAI21-RLG_paper_33.pdf),
 * AIIDE 2020 Strategy Games Workshop: [Action Guidance: Getting the Best of Training Agents with Sparse Rewards and Shaped Rewards](https://arxiv.org/abs/2010.03956),
