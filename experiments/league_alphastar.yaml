@@ -1,0 +1,87 @@
+league:
+  folder: "league_v2/"
+  max_matches: 10_000
+population:
+  initial_agents:
+    - "gym-microrts-static-files/agent_sota.pt"
+  structure:
+    - group: "main_player"
+      num_agents: 2
+      learner: true
+      init_archive: true
+    - group: "main_exploiter"
+      num_agents: 2
+      learner: true
+      init_archive: true
+    - group: "league_exploiter"
+      num_agents: 5
+      learner: true
+      init_archive: false
+archive:
+  algorithm: "alphastar"
+  args:
+    min_steps: 1_000_000
+    max_steps: 7_500_000
+    winrate_threshold: 0.7
+matchmaking:
+  bootstrap: "random"
+  bootstrap_args:
+    num_opponents: 2
+  algorithm: "alphastar"
+train:
+  num_workers: 2
+  entrypoint: ppo_gridnet_selfplay:train 
+  args:
+    prod_mode: false
+    num_models: 100
+    num_selfplay_envs: 2
+    num_bot_envs: 0
+    partial_obs: false
+    n_minibatch: 4
+    kle_stop: false
+    kle_rollback: false
+    exp_name: ppo_gridnet_selfplay
+    gym_id: MicroRTSGridModeVecEnv
+    learning_rate: 2.5e-4
+    seed: 42
+    total_timesteps: 5_000
+    torch_deterministic: true
+    cuda: true
+    track: false
+    capture_video: false
+    num_steps: 256
+    anneal_lr: true
+    gae: true
+    gamma: 0.99
+    gae_lambda: 0.95
+    num_minibatches: 4
+    update_epochs: 4
+    norm_adv: true
+    clip_coef: 0.2
+    clip_vloss: true
+    ent_coef: 0.01
+    vf_coef: 0.5
+    max_grad_norm: 0.5
+    target_kl: null
+evaluate:
+  num_workers: 2
+  reference_agents_folder: "league_v2/eval"
+  matches_per_opponent: 3
+  entrypoint: ppo_gridnet_selfplay:evaluate
+  mmr:
+    algorithm: "trueskill"
+  args:
+    gym_id: MicroRTSGridModeVecEnv
+    exp_name: ppo_gridnet_selfplay
+    seed: 42
+    torch_deterministic: true
+    capture_video: false
+    cuda: false
+    partial_obs: false
+    max_steps: 2_000
+    total_timesteps: 5_000
+    num_selfplay_envs: 2
+    num_bot_envs: 0
+    num_steps: 256
+    n_minibatch: 4
+    num_models: 100
