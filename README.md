@@ -5,8 +5,7 @@
 Formerly Gym-μRTS/Gym-MicroRTS
 
 [<img src="https://img.shields.io/badge/discord-gym%20microrts-green?label=Discord&logo=discord&logoColor=ffffff&labelColor=7289DA&color=2c2f33">](https://discord.gg/DdJsrdry6F)
-[<img src="https://github.com/vwxyzjn/gym-microrts/workflows/build/badge.svg">](
-https://github.com/vwxyzjn/gym-microrts/actions)
+[<img src="https://github.com/vwxyzjn/gym-microrts/workflows/build/badge.svg">](https://github.com/Farama-Foundation/MicroRTS-Py/actions)
 [<img src="https://badge.fury.io/py/gym-microrts.svg">](
 https://pypi.org/project/gym-microrts/)
 
@@ -64,7 +63,7 @@ Before diving into the code, we highly recommend reading the preprint of our pap
 
 ### Depreciation note
 
-Note that the experiments in the technical paper above are done with [`gym_microrts==0.3.2`](https://github.com/vwxyzjn/gym-microrts/tree/v0.3.2). As we move forward beyond `v0.4.x`, we are planing to deprecate UAS despite its better performance in the paper. This is because UAS has more complex implementation and makes it really difficult to incorporate selfplay or imitation learning in the future.
+Note that the experiments in the technical paper above are done with [`gym_microrts==0.3.2`](https://github.com/vwxyzjn/gym-microrts/tree/v0.3.2). As we move forward beyond `v0.4.x`, we are planning to deprecate UAS despite its better performance in the paper. This is because UAS has a more complex implementation and makes it really difficult to incorporate selfplay or imitation learning in the future.
 
 
 
@@ -72,30 +71,51 @@ Note that the experiments in the technical paper above are done with [`gym_micro
 
 Here is a description of Gym-μRTS's observation and action space:
 
-* **Observation Space.** (`Box(0, 1, (h, w, 27), int32)`) Given a map of size `h x w`, the observation is a tensor of shape `(h, w, n_f)`, where `n_f` is a number of feature planes that have binary values. The observation space used in this paper uses 27 feature planes as shown in the following table. A feature plane can be thought of as a concatenation of multiple one-hot encoded features. As an example, if there is a worker with hit points equal to 1, not carrying any resources, owner being Player 1, and currently not executing any actions, then the one-hot encoding features will look like the following:
+* **Observation Space.** (`Box(0, 1, (h, w, 29), int32)`) Given a map of size `h x w`, the observation is a tensor of shape `(h, w, n_f)`, where `n_f` is a number of feature planes that have binary values. The observation space used in the original paper used 27 feature planes. Since then, 2 more feature planes (for terrain/walls) have been added, increasing the number of feature planes to 29, as shown below. A feature plane can be thought of as a concatenation of multiple one-hot encoded features. As an example, the unit at a cell could be encoded as follows:
 
-   `[0,1,0,0,0],  [1,0,0,0,0],  [1,0,0], [0,0,0,0,1,0,0,0],  [1,0,0,0,0,0]`
+    * the unit has 1 hit point -> `[0,1,0,0,0]`
+    * the unit is not carrying any resources, -> `[1,0,0,0,0]`
+    * the unit is owned by Player 1 -> `[0,1,0]`
+    * the unit is a worker -> `[0,0,0,0,1,0,0,0]`
+    * the unit is not executing any actions -> `[1,0,0,0,0,0]`
+    * the unit is standing at free terrain cell -> `[1,0]`
 
+    The 29 values of each feature plane for the position in the map of such a worker will thus be:
 
-    The 27 values of each feature plane for the position in the map of such worker will thus be:
+    `[0,1,0,0,0, 1,0,0,0,0, 0,1,0, 0,0,0,0,1,0,0,0, 1,0,0,0,0,0, 1,0]`
+    
+* **Partial Observation Space.** (`Box(0, 1, (h, w, 31), int32)`) under the partial observation space, there are two additional planes indicating if the unit is visible to the opponent. For example, if the unit is visible to the opponent, the feature plane will be `[0,1]`. If the unit is not visible to the opponent, the feature plane will be `[1,0]`. Using the example above and assuming that the worker unit is not visible to the opponent, then the 31 values of each feature plane for the position in the map of such worker will thus be:
 
-    `[0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0]`
-
-* **Partial Observation Space.** (`Box(0, 1, (h, w, 29), int32)`) Given a map of size `h x w`, the observation is a tensor of shape `(h, w, n_f)`, where `n_f` is a number of feature planes that have binary values. The observation space for partial observability uses 29 feature planes as shown in the following table. A feature plane can be thought of as a concatenation of multiple one-hot encoded features. As an example, if there is a worker with hit points equal to 1, not carrying any resources, owner being Player 1,  currently not executing any actions, and not visible to the opponent, then the one-hot encoding features will look like the following:
-
-   `[0,1,0,0,0],  [1,0,0,0,0],  [1,0,0], [0,0,0,0,1,0,0,0],  [1,0,0,0,0,0], [1,0]`
-
-
-    The 29 values of each feature plane for the position in the map of such worker will thus be:
-
-    `[0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0]`
+    `[0,1,0,0,0, 1,0,0,0,0, 0,1,0, 0,0,0,0,1,0,0,0, 1,0,0,0,0,0, 1,0, 1,0]`
 
 * **Action Space.** (`MultiDiscrete(concat(h * w * [[6   4   4   4   4   7 a_r]]))`) Given a map of size `h x w` and the maximum attack range `a_r=7`, the action is an (7hw)-dimensional vector of discrete values as specified in the following table. The first 7 component of the action vector represents the actions issued to the unit at `x=0,y=0`, and the second 7 component represents actions issued to the unit at `x=0,y=1`, etc. In these 7 components, the first component is the action type, and the rest of components represent the different parameters different action types can take. Depending on which action type is selected, the game engine will use the corresponding parameters to execute the action. As an example, if the RL agent issues a move south action to the worker at $x=0, y=1$ in a 2x2 map, the action will be encoded in the following way:
 
     `concat([0,0,0,0,0,0,0], [1,2,0,0,0,0,0], [0,0,0,0,0,0,0], [0,0,0,0,0,0,0]]`
     `=[0,0,0,0,0,0,0,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
 
-![image](https://user-images.githubusercontent.com/5555347/120344517-a5bf7300-c2c7-11eb-81b6-172813ba8a0b.png)
+<!-- ![image](https://user-images.githubusercontent.com/5555347/120344517-a5bf7300-c2c7-11eb-81b6-172813ba8a0b.png) -->
+
+Here are tables summarizing observation features and action components, where $a_r=7$ is the maximum attack range, and `-` means not applicable.
+
+| Observation Features        | Planes             | Description                                              |
+|-----------------------------|--------------------|----------------------------------------------------------|
+| Hit Points                  | 5                  | 0, 1, 2, 3, $\geq 4$                                     |
+| Resources                   | 5                  | 0, 1, 2, 3, $\geq 4$                                     |
+| Owner                       | 3                  | -,player 1, player 2                                     |
+| Unit Types                  | 8                  | -, resource, base, barrack, worker, light, heavy, ranged |
+| Current Action              | 6                  | -, move, harvest, return, produce, attack                |
+| Terrain                     | 2                  | free, wall                                               |
+
+| Action Components           | Range              | Description                                              |
+|-----------------------------|--------------------|----------------------------------------------------------|
+| Source Unit                 | $[0,h \times w-1]$ | the location of the unit selected to perform an action   |
+| Action Type                 | $[0,5]$            | NOOP, move, harvest, return, produce, attack             |
+| Move Parameter              | $[0,3]$            | north, east, south, west                                 |
+| Harvest Parameter           | $[0,3]$            | north, east, south, west                                 |
+| Return Parameter            | $[0,3]$            | north, east, south, west                                 |
+| Produce Direction Parameter | $[0,3]$            | north, east, south, west                                 |
+| Produce Type Parameter      | $[0,6]$            | resource, base, barrack, worker, light, heavy, ranged    |
+| Relative Attack Position    | $[0,a_r^2 - 1]$    | the relative location of the unit that  will be attacked |
 
 ## Evaluation
 
