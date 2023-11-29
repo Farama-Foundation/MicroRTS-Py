@@ -93,9 +93,29 @@ class MicroRTSGridModeVecEnv:
             print(root_dir)
             subprocess.run(["bash", "build.sh", "&>", "build.log"], cwd=f"{root_dir}")
 
-        # read map
-        root = ET.parse(os.path.join(self.microrts_path, self.map_paths[0])).getroot()
-        self.height, self.width = int(root.get("height")), int(root.get("width"))
+        # read maps, store all map sizes
+        self.map_heights = np.zeros(len(map_paths), dtype=int)
+        self.map_widths = np.zeros(len(map_paths), dtype=int)
+        self.cycle_map_heights = np.zeros(len(self.cycle_maps), dtype=int)
+        self.cycle_map_widths = np.zeros(len(self.cycle_maps), dtype=int)
+
+        for i in range(len(map_paths)):
+            root = ET.parse(os.path.join(self.microrts_path, self.map_paths[i])).getroot()
+            self.map_heights[i] = int(root.get("height"))
+            self.map_widths[i] = int(root.get("width"))
+
+        for i in range(len(self.cycle_maps)):
+            root = ET.parse(self.cycle_maps[i]).getroot()
+            self.cycle_map_heights[i] = int(root.get("height"))
+            self.cycle_map_widths[i] = int(root.get("width"))
+
+        # for height and width (independent of map) we'll pick the biggest over all maps
+        self.height = np.max(self.map_heights)
+        self.width = np.max(self.map_widths)
+
+        if len(self.cycle_maps) > 0:
+            self.height = max(self.height, np.max(self.cycle_map_heights))
+            self.width = max(self.width, np.max(self.cycle_map_widths))
 
         # launch the JVM
         if not jpype._jpype.isStarted():

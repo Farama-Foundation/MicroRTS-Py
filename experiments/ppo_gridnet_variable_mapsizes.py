@@ -1,5 +1,3 @@
-# http://proceedings.mlr.press/v97/han19a/han19a.pdf
-
 import argparse
 import os
 import random
@@ -12,6 +10,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from gym.spaces import MultiDiscrete
 from stable_baselines3.common.vec_env import VecEnvWrapper, VecMonitor, VecVideoRecorder
@@ -91,7 +90,7 @@ def parse_args():
         help='the number of models saved')
     parser.add_argument('--max-eval-workers', type=int, default=4,
         help='the maximum number of eval workers (skips evaluation when set to 0)')
-    parser.add_argument('--train-maps', nargs='+', default=["maps/16x16/basesWorkers16x16A.xml"],
+    parser.add_argument('--train-maps', nargs='+', default=["maps/EightBasesWorkers16x12.xml"],
         help='the list of maps used during training')
     parser.add_argument('--eval-maps', nargs='+', default=["maps/16x16/basesWorkers16x16A.xml"],
         help='the list of maps used during evaluation')
@@ -170,6 +169,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 class Agent(nn.Module):
     def __init__(self, envs):
         super(Agent, self).__init__()
+        self.mapsize = envs.height * envs.width
         h, w, c = envs.observation_space.shape
         self.encoder = nn.Sequential(
             Transpose((0, 3, 1, 2)),
@@ -187,13 +187,33 @@ class Agent(nn.Module):
             layer_init(nn.ConvTranspose2d(32, 78, 3, stride=2, padding=1, output_padding=1)),
             Transpose((0, 2, 3, 1)),
         )
-        self.critic = nn.Sequential(
+
+        # The old critic (cannot handle different map sizes)
+        # self.critic = nn.Sequential(
+        #     nn.Flatten(),
+        #     layer_init(nn.Linear(64 * 4 * 4, 128)),
+        #     nn.ReLU(),
+        #     layer_init(nn.Linear(128, 1), std=1),
+        # )
+
+        self.num_critic_channels = 32
+        self.critic_before_pooling = nn.Sequential(
+            layer_init(nn.ConvTranspose2d(64, self.num_critic_channels, 3, stride=2, padding=1, output_padding=1)),
+            nn.ReLU(),
+        )
+        self.critic_after_pooling = nn.Sequential(
             nn.Flatten(),
-            layer_init(nn.Linear(64 * 4 * 4, 128)),
+            layer_init(nn.Linear(self.num_critic_channels * 2, 128)),
             nn.ReLU(),
             layer_init(nn.Linear(128, 1), std=1),
         )
+
         self.register_buffer("mask_value", torch.tensor(-1e8))
+
+    def critic(self, encoded_input):
+        v = self.critic_before_pooling(encoded_input)
+        pool = torch.cat((F.adaptive_max_pool2d(v, 1), F.adaptive_avg_pool2d(v, 1)), 1)
+        return self.critic_after_pooling(pool)
 
     def get_action_and_value(self, x, action=None, invalid_action_masks=None, envs=None, device=None):
         hidden = self.encoder(x)
@@ -242,7 +262,7 @@ def run_evaluation(model_path: str, output_path: str, eval_maps: List[str]):
         "--output-path",
         output_path,
         "--model-type",
-        "ppo_gridnet",
+        "ppo_gridnet_variable_mapsizes",
         "--maps",
         *eval_maps,
     ]
@@ -362,7 +382,7 @@ if __name__ == "__main__":
         lr = lambda f: f * args.learning_rate
 
     # ALGO Logic: Storage for epoch data
-    mapsize = 16 * 16
+    mapsize = envs.height * envs.width
     action_space_shape = (mapsize, len(envs.action_plane_space.nvec))
     invalid_action_shape = (mapsize, envs.action_plane_space.nvec.sum())
 
