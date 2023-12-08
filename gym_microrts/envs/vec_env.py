@@ -214,6 +214,20 @@ class MicroRTSGridModeVecEnv:
         return np.array(obs)
 
     def _encode_obs(self, obs):
+        num_channels, height, width = obs.shape
+
+        # Add padding to obs such that it is as big as we need for our biggest map
+        pad_width = self.width - width
+        pad_height = self.height - height
+        if pad_width > 0 or pad_height > 0:
+            obs_padded = np.ndarray((num_channels, self.height, self.width), np.int32)
+            for channel_idx, plane in enumerate(obs):
+                if channel_idx == 5:  # Index for the walls/terrain channel
+                    obs_padded[channel_idx, :, :] = np.pad(plane, ((0, pad_height), (0, pad_width)), constant_values=1)
+                else:
+                    obs_padded[channel_idx, :, :] = np.pad(plane, ((0, pad_height), (0, pad_width)), constant_values=0)
+            obs = obs_padded
+
         obs = obs.reshape(len(obs), -1).clip(0, np.array([self.num_planes]).T - 1)
         obs_planes = np.zeros((self.height * self.width, self.num_planes_prefix_sum[-1]), dtype=np.int32)
         obs_planes_idx = np.arange(len(obs_planes))
@@ -221,6 +235,7 @@ class MicroRTSGridModeVecEnv:
 
         for i in range(1, self.num_planes_len):
             obs_planes[obs_planes_idx, obs[i] + self.num_planes_prefix_sum[i]] = 1
+
         return obs_planes.reshape(self.height, self.width, -1)
 
     def step_async(self, actions):

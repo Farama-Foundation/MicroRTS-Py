@@ -94,6 +94,8 @@ def parse_args():
         help='the list of maps used during training')
     parser.add_argument('--eval-maps', nargs='+', default=["maps/16x16/basesWorkers16x16A.xml"],
         help='the list of maps used during evaluation')
+    parser.add_argument('--cycle-maps', nargs='+', default=["maps/EightBasesWorkers16x12.xml", "maps/16x16/basesWorkers16x16A.xml"],
+        help='list of maps to cycle through after environments complete during training')
 
     args = parser.parse_args()
     if not args.seed:
@@ -359,7 +361,7 @@ if __name__ == "__main__":
         + [microrts_ai.workerRushAI for _ in range(min(args.num_bot_envs, 2))],
         map_paths=[args.train_maps[0]],
         reward_weight=np.array([10.0, 1.0, 1.0, 0.2, 1.0, 4.0]),
-        cycle_maps=args.train_maps,
+        cycle_maps=args.cycle_maps,
     )
     envs = MicroRTSStatsRecorder(envs, args.gamma)
     envs = VecMonitor(envs)
