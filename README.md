@@ -61,9 +61,10 @@ python ppo_gridnet.py \
 
 Before diving into the code, we highly recommend reading the preprint of our paper: [Gym-μRTS: Toward Affordable Deep Reinforcement Learning Research in Real-time Strategy Games](https://arxiv.org/abs/2105.13807).
 
-### Depreciation note
+### Depreciation notes
 
-Note that the experiments in the technical paper above are done with [`gym_microrts==0.3.2`](https://github.com/vwxyzjn/gym-microrts/tree/v0.3.2). As we move forward beyond `v0.4.x`, we are planning to deprecate UAS despite its better performance in the paper. This is because UAS has a more complex implementation and makes it really difficult to incorporate selfplay or imitation learning in the future.
+1. Note that the experiments in the technical paper above are done with [`gym_microrts==0.3.2`](https://github.com/vwxyzjn/gym-microrts/tree/v0.3.2). As we move forward beyond `v0.4.x`, we are planning to deprecate UAS despite its better performance in the paper. This is because UAS has a more complex implementation and makes it really difficult to incorporate selfplay or imitation learning in the future.
+2. [v0.6.1](https://github.com/Farama-Foundation/MicroRTS-Py/releases/tag/v0.6.1) is the last version in which wall/terrain observations were not present in state tensors. As of December 2023, every state observation has an extra channel encoding the presence of walls, and models trained before this will therefore no longer be compatible with code in the `master` branch. Such models should use the code from `v0.6.1` instead.
 
 
 
