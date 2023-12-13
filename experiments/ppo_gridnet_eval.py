@@ -52,7 +52,7 @@ def parse_args():
         help="the path to the agent's model")
     parser.add_argument('--ai', type=str, default="",
         help='the opponent AI to evaluate against')
-    parser.add_argument('--model-type', type=str, default=f"ppo_gridnet_large", choices=["ppo_gridnet_large", "ppo_gridnet"],
+    parser.add_argument('--model-type', type=str, default=f"ppo_gridnet", choices=["ppo_gridnet_large", "ppo_gridnet"],
         help='the output path of the leaderboard csv')
     args = parser.parse_args()
     if not args.seed:
