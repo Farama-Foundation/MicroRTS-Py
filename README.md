@@ -36,6 +36,8 @@ poetry shell
 python hello_world.py
 ```
 
+If the `poetry install` command gets stuck on a Linux machine, [it may help to first run](https://github.com/python-poetry/poetry/issues/8623): `export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring`.
+
 To train an agent, run the following
 
 ```bash
