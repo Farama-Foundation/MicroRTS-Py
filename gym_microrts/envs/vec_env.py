@@ -320,6 +320,14 @@ class MicroRTSGridModeVecEnv:
         """
         # action_mask shape: [num_envs, map height, map width, 1 + action types + params]
         action_mask = np.array(self.vec_client.getMasks(0))
+        num_envs, height, width, action_channels = action_mask.shape
+
+        # Add padding to the mask such that it is as big as we need for our biggest map
+        pad_width = self.width - width
+        pad_height = self.height - height
+        if pad_width > 0 or pad_height > 0:
+            action_mask = np.pad(action_mask, ((0, 0), (0, pad_height), (0, pad_width), (0, 0)))
+
         # self.source_unit_mask shape: [num_envs, map height * map width * 1]
         self.source_unit_mask = action_mask[:, :, :, 0].reshape(self.num_envs, -1)
         action_type_and_parameter_mask = action_mask[:, :, :, 1:].reshape(self.num_envs, self.height * self.width, -1)
