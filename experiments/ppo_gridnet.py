@@ -356,17 +356,17 @@ if __name__ == "__main__":
 
         eval_executor = ThreadPoolExecutor(max_workers=args.max_eval_workers, thread_name_prefix="league-eval-")
 
-    agent = Agent(envs).to(device)
+    mapsize = envs.height * envs.width
+    agent = Agent(envs, mapsize=mapsize).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     if args.anneal_lr:
         # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
         lr = lambda f: f * args.learning_rate
 
     # ALGO Logic: Storage for epoch data
-    mapsize = 16 * 16
+
     action_space_shape = (mapsize, len(envs.action_plane_space.nvec))
     invalid_action_shape = (mapsize, envs.action_plane_space.nvec.sum())
-
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + action_space_shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)

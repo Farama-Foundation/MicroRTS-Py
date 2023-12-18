@@ -235,7 +235,6 @@ class Match:
 
     def run_m0(self, num_matches):
         results = []
-        16 * 16
         next_obs = torch.Tensor(self.envs.reset()).to(self.device)
         while True:
             # self.envs.render()
@@ -260,7 +259,6 @@ class Match:
 
     def run_m1(self, num_matches):
         results = []
-        16 * 16
         next_obs = torch.Tensor(self.envs.reset()).to(self.device)
         while True:
             # self.envs.render()
