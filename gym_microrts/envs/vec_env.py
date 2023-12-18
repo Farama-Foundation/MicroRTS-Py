@@ -145,11 +145,11 @@ class MicroRTSGridModeVecEnv:
 
         # computed properties
         # [num_planes_hp(5), num_planes_resources(5), num_planes_player(3),
-        # num_planes_unit_type(z), num_planes_unit_action(6)]
+        # num_planes_unit_type(z), num_planes_unit_action(6), num_planes_terrain(2)]
 
-        self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6]
+        self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6, 2]
         if partial_obs:
-            self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6, 2]
+            self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6, 2, 2]  # 2 extra for visibility
         self.observation_space = gym.spaces.Box(
             low=0.0, high=1.0, shape=(self.height, self.width, sum(self.num_planes)), dtype=np.int32
         )
@@ -384,11 +384,11 @@ class MicroRTSBotVecEnv(MicroRTSGridModeVecEnv):
 
         # computed properties
         # [num_planes_hp(5), num_planes_resources(5), num_planes_player(5),
-        # num_planes_unit_type(z), num_planes_unit_action(6)]
+        # num_planes_unit_type(z), num_planes_unit_action(6), num_planes_terrain(2)]
 
-        self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6]
+        self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6, 2]
         if partial_obs:
-            self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6, 2]
+            self.num_planes = [5, 5, 3, len(self.utt["unitTypes"]) + 1, 6, 2, 2]  # 2 extra for visibility
         self.observation_space = gym.spaces.Discrete(2)
         self.action_space = gym.spaces.Discrete(2)
 
