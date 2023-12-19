@@ -321,13 +321,27 @@ class MicroRTSGridModeVecEnv:
         # action_mask shape: [num_envs, map height, map width, 1 + action types + params]
         action_mask = np.array(self.vec_client.getMasks(0))
 
-        for env_idx in range(len(action_mask)):
-            # Add padding to the mask such that it is as big as we need for our biggest map
-            height, width, _ = action_mask[env_idx].shape
+        if np.ndim(action_mask) == 1:
+            # Need to add padding to maximum map size for jagged array
+            action_mask_padded = np.ndarray(
+                (action_mask.shape[0], self.height, self.width, sum(self.action_space_dims) + 1), np.int32
+            )
+            for env_idx in range(len(action_mask)):
+                action_mask_array = np.array(action_mask[env_idx])
+                height, width, _ = action_mask_array.shape
+                pad_width = self.width - width
+                pad_height = self.height - height
+                if pad_width > 0 or pad_height > 0:
+                    action_mask_padded[env_idx] = np.pad(action_mask_array, ((0, pad_height), (0, pad_width), (0, 0)))
+                else:
+                    action_mask_padded[env_idx] = action_mask_array
+            action_mask = action_mask_padded
+        elif action_mask.shape[1] < self.height or action_mask.shape[2] < self.width:
+            # Need to add padding to maximum map size for non-jagged batch that are all too small
+            _, height, width, _ = action_mask.shape
             pad_width = self.width - width
             pad_height = self.height - height
-            if pad_width > 0 or pad_height > 0:
-                action_mask[env_idx] = np.pad(action_mask[env_idx], ((0, pad_height), (0, pad_width), (0, 0)))
+            action_mask = np.pad(action_mask, ((0, 0), (0, pad_height), (0, pad_width), (0, 0)))
 
         # self.source_unit_mask shape: [num_envs, map height * map width * 1]
         self.source_unit_mask = action_mask[:, :, :, 0].reshape(self.num_envs, -1)
