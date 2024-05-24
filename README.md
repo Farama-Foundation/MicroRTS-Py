@@ -87,7 +87,7 @@ Here is a description of Gym-μRTS's observation and action space:
 
     `[0,1,0,0,0, 1,0,0,0,0, 0,1,0, 0,0,0,0,1,0,0,0, 1,0,0,0,0,0, 1,0]`
     
-* **Partial Observation Space.** (`Box(0, 1, (h, w, 31), int32)`) under the partial observation space, there are two additional planes indicating if the unit is visible to the opponent. For example, if the unit is visible to the opponent, the feature plane will be `[0,1]`. If the unit is not visible to the opponent, the feature plane will be `[1,0]`. Using the example above and assuming that the worker unit is not visible to the opponent, then the 31 values of each feature plane for the position in the map of such worker will thus be:
+* **Partial Observation Space.** (`Box(0, 1, (h, w, 31), int32)`) under the partial observation space, there are two additional binary planes, indicating visibility for the player and their opponent, respectively. If a cell is visible to the player, the second-to-last channel will contain a value of `1`. If the player knows that a cell is visible to the opponent (because the player can observe a nearby enemy unit), the last channel will contain a value of `1`. Using the example above and assuming that the worker unit is not visible to the opponent, then the 31 values of each feature plane for the position in the map of such worker will thus be:
 
     `[0,1,0,0,0, 1,0,0,0,0, 0,1,0, 0,0,0,0,1,0,0,0, 1,0,0,0,0,0, 1,0, 1,0]`
 
